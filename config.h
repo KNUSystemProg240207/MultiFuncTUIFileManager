@@ -1,0 +1,28 @@
+#ifndef __CONFIG_H_INCLUDED__
+#define __CONFIG_H_INCLUDED__
+
+#define PROG_NAME "Demo"
+
+#define FRAME_INTERVAL_USEC (50 * 1000)
+#define DIR_INTERVAL_USEC (1 * 1000 * 1000)
+
+#define MAX_DIRWINS 1
+#define MAX_STAT_ENTRIES 100
+// #define MAX_DIRWINS 3
+#define MAX_NAME_LEN 255
+
+#define COLOR_PAIR_TITLE 1
+#define COLOR_PAIR_BOTTOM 2
+
+#define COLOR_BRIGHT_WHITE 8
+
+#define COLOR_TITLE_FG COLOR_WHITE
+#define COLOR_TITLE_BG COLOR_BLACK
+
+#define COLOR_BOTTOM_FG COLOR_WHITE
+#define COLOR_BOTTOM_BG COLOR_BLACK
+
+#define DATETIME_FORMAT "%2.2d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"
+#define DATETIME_LEN 19
+
+#endif

@@ -1,0 +1,50 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "Compile with GCC",
+            "command": "/usr/bin/gcc",
+            "args": [
+                "${file}",
+                "-lncurses",
+                "-o", "${fileDirname}/${fileBasenameNoExtension}"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Linux, default (ncurses)"
+        }, {
+            "type": "cppbuild",
+            "label": "Compile with GCC",
+            "command": "/usr/bin/gcc",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-std=gnu99",
+                "-Wall",
+                "-fanalyzer",
+                "-g", "${file}",
+                "-lncurses",
+                "-o", "${fileDirname}/${fileBasenameNoExtension}"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Linux, gnu99 (ncurses)"
+        }
+    ],
+    "version": "2.0.0"
+}
