@@ -1,4 +1,5 @@
 #include <curses.h>
+#include <limits.h>
 #include <pthread.h>
 #include <sys/stat.h>
 
@@ -12,7 +13,7 @@ struct _DirWin {
     size_t currentPos;
     pthread_mutex_t *statMutex;
     struct stat *statEntries;
-    char **entryNames;
+    char (*entryNames)[MAX_NAME_LEN + 1];
     size_t *totalReadItems;
 };
 typedef struct _DirWin DirWin;
@@ -28,7 +29,7 @@ static int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w);
 int initDirWin(
     pthread_mutex_t *statMutex,
     struct stat *statEntries,
-    char **entryNames,
+    char (*entryNames)[MAX_NAME_LEN + 1],
     size_t *totalReadItems
 ) {
     int y, x, h, w;
@@ -36,7 +37,7 @@ int initDirWin(
     if (calculateWinPos(winCnt - 1, &y, &x, &h, &w) == -1) {
         return -1;
     }
-    WINDOW *newWin = newwin(y, x, h, w);
+    WINDOW *newWin = newwin(h, w, y, x);
     if (newWin == NULL) {
         winCnt--;
         return -1;
@@ -50,11 +51,14 @@ int initDirWin(
         .entryNames = entryNames,
         .totalReadItems = totalReadItems,
     };
+    mvwaddstr(newWin, 0, 0, "Test | Hello, World!");
+    wrefresh(newWin);
     return winCnt;
 }
 
 int updateWins(void) {
-    int ret, winH, winW, linesTopToCenter;
+    int ret, winH, winW, curY, curX, linesTopToCenter;
+    size_t itemsCnt;
     ssize_t startIdx, endIdx;
     DirWin *win;
     for (int i = 0; i < winCnt; i++) {
@@ -62,6 +66,7 @@ int updateWins(void) {
         ret = pthread_mutex_trylock(win->statMutex);
         if (ret != 0)
             continue;
+        itemsCnt = *win->totalReadItems;
 
         getmaxyx(win->win, winH, winW);
         linesTopToCenter = (winW - 1) / 2;
@@ -70,14 +75,23 @@ int updateWins(void) {
 
         if (startIdx < 0) {
             startIdx = 0;
-        } else if (*win->totalReadItems >= endIdx) {
-            startIdx -= *win->totalReadItems - endIdx + 1;
-            endIdx = *win->totalReadItems - 1;
+        } else if (itemsCnt >= endIdx) {
+            startIdx -= itemsCnt - endIdx + 1;
+            endIdx = itemsCnt - 1;
         }
 
-        for (int i = 0; i < winW; i++) {
-            mvwaddstr(win->win, i, 0, win->entryNames[startIdx + i]);
+        int l;
+        for (l = 0; l < winH && l < itemsCnt; l++) {
+            mvwaddstr(win->win, l, 0, win->entryNames[startIdx + l]);
+            getyx(win->win, curY, curX);
+            whline(win->win, ' ', winW - curX);
+            char *tmp = win->entryNames[startIdx + l];
+            int foo = 1 + 1;
         }
+        for (; l < winH; l++) {
+            mvwhline(win->win, l, 0, ' ', winW);
+        }
+        wrefresh(win->win);
 
         pthread_mutex_unlock(win->statMutex);
     }
@@ -86,7 +100,7 @@ int updateWins(void) {
 
 int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w) {
     int screenW, screenH;
-    getmaxyx(stdscr, screenW, screenH);
+    getmaxyx(stdscr, screenH, screenW);
     switch (winCnt) {
         case 1:
             *y = 2;

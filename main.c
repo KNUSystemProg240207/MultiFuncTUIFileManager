@@ -20,11 +20,12 @@ WINDOW *titleBar, *bottomBox;
 static pthread_t threadListDir[MAX_DIRWINS];
 static pthread_mutex_t statMutex[MAX_DIRWINS];
 static struct stat statEntries[MAX_DIRWINS][MAX_STAT_ENTRIES];
-static char entryNames[MAX_DIRWINS][MAX_NAME_LEN + 1];
+static char entryNames[MAX_DIRWINS][MAX_STAT_ENTRIES][MAX_NAME_LEN + 1];
 static pthread_cond_t condStopTrd[MAX_DIRWINS];
+static int stopRequested[MAX_DIRWINS];
 static pthread_mutex_t stopTrdMutex[MAX_DIRWINS];
 static size_t totalReadItems[MAX_DIRWINS] = { 0 };
-// static unsigned int dirWinCnt;
+static unsigned int dirWinCnt;
 
 static void initVariables(void);
 static void initScreen(void);
@@ -38,8 +39,19 @@ int main(int argc, char **argv) {
 
     initVariables();
     initScreen();
-    // initThreads();
+    initThreads();
     mainLoop();
+
+    // Stop threads, and wait
+    for (int i = 0; i < dirWinCnt; i++) {
+        pthread_mutex_lock(&stopTrdMutex[i]);
+        stopRequested[i] = 1;
+        pthread_cond_signal(&condStopTrd[i]);
+        pthread_mutex_unlock(&stopTrdMutex[i]);
+    }
+    for (int i = 0; i < dirWinCnt; i++) {
+        pthread_join(threadListDir[i], NULL);
+    }
 
     CHECK_CURSES(delwin(titleBar));
     CHECK_CURSES(delwin(bottomBox));
@@ -78,14 +90,15 @@ void initScreen(void) {
     CHECK_CURSES(mvhline(1, 0, ACS_HLINE, w));
     CHECK_CURSES(mvhline(h - 3, 0, ACS_HLINE, w));
 
-    // initDirWin(&statMutex[0], statEntries[0], entryNames[0], &totalReadItems[0]);
+    initDirWin(&statMutex[0], statEntries[0], entryNames[0], &totalReadItems[0]);
+    dirWinCnt = 1;
 }
 
 void initThreads(void) {
     startDirListender(
         &threadListDir[0], &statMutex[0],
         statEntries[0], entryNames[0], MAX_STAT_ENTRIES,
-        &totalReadItems[0], &condStopTrd[0], &stopTrdMutex[0]
+        &totalReadItems[0], &condStopTrd[0], &stopRequested[0], &stopTrdMutex[0]
     );
 }
 
@@ -108,7 +121,7 @@ void mainLoop(void) {
 
         // Do render
         renderTime();
-        // updateWins();
+        updateWins();
         // TODO: get current window's cwd
         char *cwd = getcwd(NULL, 0);
         printPath(cwd);
