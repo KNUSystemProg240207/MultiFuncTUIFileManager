@@ -1,6 +1,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -18,7 +19,7 @@ struct _DirListenerArgs {
     size_t bufLen;
     size_t *totalReadItems;
     pthread_cond_t *stopTrd;
-    int *stopRequested;
+    bool *stopRequested;
     pthread_mutex_t *stopMutex;
 };
 typedef struct _DirListenerArgs DirListenerArgs;
@@ -39,20 +40,21 @@ int startDirListender(
     size_t bufLen,
     size_t *totalReadItems,
     pthread_cond_t *stopTrd,
-    int *stopRequested,
+    bool *stopRequested,
     pthread_mutex_t *stopMutex
 ) {
-    argsArr[subWinCnt] = (DirListenerArgs) {
-        .bufMutex = bufMutex,
-        .buf = buf,
-        .nameBuf = entryNames,
-        .bufLen = bufLen,
-        .totalReadItems = totalReadItems,
-        .stopTrd = stopTrd,
-        .stopRequested = stopRequested,
-        .stopMutex = stopMutex,
-    };
-    if (pthread_create(newThread, NULL, dirListener, argsArr + subWinCnt) == -1) {
+    // 설정 초기화
+    DirListenerArgs *newWinArg = argsArr + subWinCnt;
+    newWinArg->bufMutex = bufMutex;
+    newWinArg->buf = buf;
+    newWinArg->nameBuf = entryNames;
+    newWinArg->bufLen = bufLen;
+    newWinArg->totalReadItems = totalReadItems;
+    newWinArg->stopTrd = stopTrd;
+    newWinArg->stopRequested = stopRequested;
+    newWinArg->stopMutex = stopMutex;
+
+    if (pthread_create(newThread, NULL, dirListener, newWinArg) == -1) {
         return -1;
     }
     subWinCnt++;

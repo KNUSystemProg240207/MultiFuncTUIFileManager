@@ -1,6 +1,7 @@
 #include <curses.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <pthread.h>
 #include <sys/stat.h>
@@ -22,7 +23,7 @@ static pthread_mutex_t statMutex[MAX_DIRWINS];
 static struct stat statEntries[MAX_DIRWINS][MAX_STAT_ENTRIES];
 static char entryNames[MAX_DIRWINS][MAX_STAT_ENTRIES][MAX_NAME_LEN + 1];
 static pthread_cond_t condStopTrd[MAX_DIRWINS];
-static int stopRequested[MAX_DIRWINS];
+static bool stopRequested[MAX_DIRWINS];
 static pthread_mutex_t stopTrdMutex[MAX_DIRWINS];
 static size_t totalReadItems[MAX_DIRWINS] = { 0 };
 static unsigned int dirWinCnt;
@@ -45,7 +46,7 @@ int main(int argc, char **argv) {
     // Stop threads, and wait
     for (int i = 0; i < dirWinCnt; i++) {
         pthread_mutex_lock(&stopTrdMutex[i]);
-        stopRequested[i] = 1;
+        stopRequested[i] = true;
         pthread_cond_signal(&condStopTrd[i]);
         pthread_mutex_unlock(&stopTrdMutex[i]);
     }

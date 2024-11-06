@@ -2,6 +2,7 @@
 #define __LIST_DIR_H_INCLUDED__
 
 #include <pthread.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 
 /**
@@ -26,7 +27,7 @@ int startDirListender(
     size_t bufLen,
     size_t *totalReadItems,
     pthread_cond_t *stopTrd,
-    int *stopRequested,
+    bool *stopRequested,
     pthread_mutex_t *stopMutex
 );
 

@@ -9,20 +9,9 @@
 #define DIR_INTERVAL_USEC (1 * 1000 * 1000)  // 폴더 정보 새로고침 간격 (단위: μs)
 
 #define MAX_DIRWINS 1  // 최대 가능한 '탭' 수
-#define MAX_STAT_ENTRIES 100  // 한 폴더에 표시 가능한 최대 Item 수
 // #define MAX_DIRWINS 3
+#define MAX_STAT_ENTRIES 100  // 한 폴더에 표시 가능한 최대 Item 수
 #define MAX_NAME_LEN 255  // 표시할 최대 이름 길이
-
-#define COLOR_PAIR_TITLE 1
-#define COLOR_PAIR_BOTTOM 2
-
-#define COLOR_BRIGHT_WHITE 8
-
-#define COLOR_TITLE_FG COLOR_WHITE
-#define COLOR_TITLE_BG COLOR_BLACK
-
-#define COLOR_BOTTOM_FG COLOR_WHITE
-#define COLOR_BOTTOM_BG COLOR_BLACK
 
 // 날짜 및 시간 출력 형식 지정
 #define DATETIME_FORMAT "%2.2d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"  // 날짜-시간 문자열 형식 (printf 형식)

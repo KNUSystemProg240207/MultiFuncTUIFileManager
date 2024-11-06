@@ -19,9 +19,6 @@ static unsigned int centerAreaEnd;
 WINDOW *initTitleBar(int width) {
     titleBar = newwin(1, width, 0, 0);
     CHECK_NULL(titleBar);
-    CHECK_CURSES(init_pair(COLOR_PAIR_TITLE, COLOR_TITLE_FG, COLOR_TITLE_BG));
-    // CHECK_CURSES(wattron(titleBar, COLOR_PAIR(COLOR_PAIR_TITLE)));
-    // CHECK_CURSES(mvwhline(titleBar, 0, 0, ' ', width));
     CHECK_CURSES(mvwaddstr(titleBar, 0, 0, PROG_NAME));
 
     w = width;
@@ -44,11 +41,7 @@ void renderTime() {
     }
     struct tm *dt = localtime(&now.tv_sec);
 
-    sprintf(
-        buf, DATETIME_FORMAT,
-        dt->tm_year + 1900, dt->tm_mon + 1, dt->tm_mday,
-        dt->tm_hour, dt->tm_min, dt->tm_sec
-    );
+    DT_TO_STR(buf, dt);
     mvwaddstr(titleBar, 0, w - DATETIME_LEN, buf);
 }
 
