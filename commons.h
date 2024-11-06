@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <time.h>
 
+
+// '오류 확인 후 종료' 관련 매크로 함수들
+
 #define CHECK_CURSES1(ret, msg, errno) do {\
     if ((ret) == ERR) {\
         fprintf(stderr, msg);\
@@ -40,6 +43,12 @@
 #define CHECK_FAIL(ret) CHECK_FAIL1(ret, "Error", -1)
 
 
+/**
+ * (현재 시간) - (시작 시간) 계산해서 돌려줌
+ * 
+ * @param baseTime 시작 시간 (Clock: CLOCK_MONOTONIC 사용)
+ * @return 흐른 시간 (단위: μs)
+ */
 uint64_t getElapsedTime(struct timespec baseTime);
 
 #endif
