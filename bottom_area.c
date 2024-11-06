@@ -7,11 +7,13 @@
 
 #include "config.h"
 #include "commons.h"
-#include "footer_area.h"
+#include "bottom_area.h"
+
+
+static WINDOW *bottomBox;
 
 
 WINDOW *initBottomBox(int width, int startY) {
-    WINDOW *bottomBox = newwin(2, width, startY, 0);
-    CHECK_NULL(bottomBox);
+    CHECK_NULL(bottomBox = newwin(2, width, startY, 0));
     return bottomBox;
 }

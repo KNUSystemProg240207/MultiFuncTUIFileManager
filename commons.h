@@ -12,7 +12,7 @@
 
 #define CHECK_CURSES1(ret, msg, errno) do {\
     if ((ret) == ERR) {\
-        fprintf(stderr, msg);\
+        fprintf(stderr, (msg));\
         exit(errno);\
     }\
 } while (0)
@@ -20,7 +20,7 @@
 
 #define CHECK_NULL1(ret, msg, errno) do {\
     if ((ret) == NULL) {\
-        fprintf(stderr, msg);\
+        fprintf(stderr, (msg));\
         exit(errno);\
     }\
 } while (0)
@@ -28,15 +28,15 @@
 
 #define CHECK_FALSE1(ret, msg, errno) do {\
     if ((ret) == FALSE) {\
-        fprintf(stderr, msg);\
+        fprintf(stderr, (msg));\
         exit(errno);\
     }\
 } while (0)
 #define CHECK_FALSE(ret) CHECK_FALSE1(ret, "Error", -1)
 
 #define CHECK_FAIL1(ret, msg, errno) do {\
-    if ((ret) == -1) {\
-        perror(msg);\
+    if ((ret) != 0) {\
+        perror((msg));\
         exit(errno);\
     }\
 } while (0)
@@ -46,7 +46,7 @@
 /**
  * (현재 시간) - (시작 시간) 계산해서 돌려줌
  * 
- * @param baseTime 시작 시간 (Clock: CLOCK_MONOTONIC 사용)
+ * @param baseTime 시작 시간 (Clock: CLOCK_MONOTONIC 기준)
  * @return 흐른 시간 (단위: μs)
  */
 uint64_t getElapsedTime(struct timespec baseTime);
