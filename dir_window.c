@@ -97,9 +97,9 @@ int updateDirWins(void) {
 
         // 최상단에 출력될 항목의 index 계산
         getmaxyx(win->win, winH, winW);
-        linesTopToCenter = (winW - 1) / 2;
+        linesTopToCenter = (winH - 1) / 2;
         startIdx = win->currentPos - linesTopToCenter;
-        endIdx = startIdx + winW - 1;
+        endIdx = startIdx + winH - 1;
 
         if (startIdx < 0) {  // 최상단에 출력될 index가 범위 벗어난 경우
             startIdx = 0;
