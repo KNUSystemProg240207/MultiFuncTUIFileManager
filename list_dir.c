@@ -47,7 +47,8 @@ static unsigned int threadCnt = 0;			 // 생성된 Thread 개수
  * @param argsPtr thread의 runtime 정보
  * @return 없음
  */
-static void *dirListener(void *argsPtr);
+static void *
+dirListener(void *argsPtr);
 
 /**
  * 현 폴더의 항목 정보 읽어들임
@@ -117,7 +118,7 @@ void *dirListener(void *argsPtr)
 			switch (currentJob)
 			{
 			case JOB_ENTER:
-				performEnter(args.buf, args.nameBuf, args.bufLen); // 선택된 디렉토리로 이동 함수
+				performEnter(); // 선택된 디렉토리로 이동 함수
 			case JOB_COPY:
 				performCopy(); //  복사 함수
 				break;
@@ -229,14 +230,29 @@ void performMove()
 void performRemove()
 {
 }
-void performEnter(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], size_t bufLen)
+void performEnter()
 {
-	if (S_ISDIR(resultBuf->st_mode))
+	if (strcmp(".", curSelectedName) == 0)
 	{
-		chdir("..");
+		return;
 	}
-	else
+	int maxY, maxX;
+
+	// 경로가 유효한지 확인 (curSelectedName이 NULL이 아니어야 함)
+	CHECK_NULL(curSelectedName);
+
+	// chdir() 호출 전에 경로가 실제로 존재하는지 확인
+	struct stat statbuf;
+	CHECK_FAIL(stat(curSelectedName, &statbuf));
+
+	if (!S_ISDIR(statbuf.st_mode))
 	{
-		printw("no dir");
+		getmaxyx(stdscr, maxY, maxX);
+		printw("Error: '%s' is not a directory\n", curSelectedName);
+		move(maxY - 3, 0);
+		return;
 	}
+
+	// chdir() 호출
+	CHECK_FAIL(chdir(curSelectedName));
 }

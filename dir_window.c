@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "dir_window.h"
+#include "list_dir.h"
 
 /**
  * @struct _DirWin
@@ -156,13 +157,13 @@ int updateDirWins(void)
 
 		// 출력
 		currentLine = win->currentPos - startIdx; // 역상으로 출력할, 현재 선택된 줄
+		strcpy(curSelectedName, win->entryNames[currentLine]);
 		for (line = 0; line < itemsToPrint; line++)
 		{													// 항목 있는 공간: 출력
 			if (winNo == currentWin && line == currentLine) // 선택된 것 역상으로 출력
 				wattron(win->win, A_REVERSE);
 			mvwaddstr(win->win, line, 0, win->entryNames[startIdx + line]); // 항목 이름 출력
-			strcpy(curSelectedName, win->entryNames[startIdx + line]);
-			whline(win->win, ' ', winW - getcurx(win->win)); // 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
+			whline(win->win, ' ', winW - getcurx(win->win));				// 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
 			if (winNo == currentWin && line == currentLine)
 				wattroff(win->win, A_REVERSE);
 		}

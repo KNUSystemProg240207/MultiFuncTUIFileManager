@@ -46,5 +46,5 @@ extern char curSelectedName[MAX_NAME_LEN + 1];
 void performCopy();
 void performMove();
 void performRemove();
-void performEnter(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], size_t bufLen);
+void performEnter();
 #endif
