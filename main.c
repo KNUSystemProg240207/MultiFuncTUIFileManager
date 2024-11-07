@@ -81,6 +81,7 @@ void initScreen(void) {
     }
     CHECK_CURSES(cbreak());  // stdin의 line buffering 해제: 키 입력 즉시 받음 (~ICANON과 유사)
     CHECK_CURSES(noecho());  // echo 끄기: 키 입력 안 보임
+    CHECK_CURSES(nodelay(stdscr, TRUE));
     CHECK_CURSES(keypad(stdscr, TRUE));  // 특수 키를 일반 키처럼 입력받을 수 있게 함
     CHECK_CURSES(curs_set(0));  // 커서 숨김
 
@@ -112,7 +113,6 @@ void initThreads(void) {
 }
 
 void mainLoop(void) {
-    CHECK_CURSES(nodelay(stdscr, TRUE));
     struct timespec startTime;
     uint64_t elapsedUSec;
     char cwdBuf[MAX_CWD_LEN];
@@ -124,6 +124,18 @@ void mainLoop(void) {
         // 키 입력 처리
         for (int ch = wgetch(stdscr); ch != ERR; ch = wgetch(stdscr)) {
             switch (ch) {
+                case KEY_UP:
+                    moveCursorUp();
+                    break;
+                case KEY_DOWN:
+                    moveCursorDown();
+                    break;
+                case KEY_LEFT:
+                    selectNextWindow();
+                    break;
+                case KEY_RIGHT:
+                    selectPreviousWindow();
+                    break;
                 case 'q':
                 case 'Q':
                     goto CLEANUP;  // Main Loop 빠져나감

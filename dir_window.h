@@ -28,4 +28,24 @@ int initDirWin(
  */
 int updateDirWins(void);
 
+/**
+ * 선택된 창의 커서 한 칸 위로 이동
+ */
+void moveCursorUp(void);
+
+/**
+ * 선택된 창의 커서 한 칸 아래로 이동
+ */
+void moveCursorDown(void);
+
+/**
+ * 왼쪽 창 선택
+ */
+void selectPreviousWindow(void);
+
+/**
+ * 오른쪽 창 선택
+ */
+void selectNextWindow(void);
+
 #endif
