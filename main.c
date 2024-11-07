@@ -138,6 +138,9 @@ void mainLoop(void)
 		{
 			switch (ch)
 			{
+			case '\n':
+				currentJob = JOB_ENTER;
+				break;
 			case 'c': // Copy
 				currentJob = JOB_COPY;
 				break;

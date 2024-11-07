@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <stdlib.h>
 
 #include "commons.h"
 #include "config.h"
@@ -108,6 +109,34 @@ void *dirListener(void *argsPtr)
 	{
 		CHECK_FAIL(clock_gettime(CLOCK_REALTIME, &startTime)); // iteration 시작 시간 저장
 
+		//////////////////////////////////////////////////////
+		// 작업 요청이 들어왔는지 확인
+		pthread_mutex_lock(&jobMutex);
+		if (currentJob != JOB_NONE)
+		{
+			switch (currentJob)
+			{
+			case JOB_ENTER:
+				performEnter(args.buf, args.nameBuf, args.bufLen); // 선택된 디렉토리로 이동 함수
+			case JOB_COPY:
+				performCopy(); //  복사 함수
+				break;
+			case JOB_MOVE:
+				performMove(); // 이동 함수
+				break;
+			case JOB_REMOVE:
+				performRemove(); // 삭제 함수
+				break;
+			default:
+				break;
+			}
+			// 작업 완료 후, 상태 초기화
+			currentJob = JOB_NONE;
+		}
+		pthread_mutex_unlock(&jobMutex);
+
+		///////////////////////////////////////////////////
+
 		// 현재 폴더 내용 가져옴
 		pthread_mutex_lock(args.bufMutex);							  // 결과값 보호 Mutex 획득
 		readItems = listEntries(args.buf, args.nameBuf, args.bufLen); // 내용 가져오기
@@ -124,32 +153,6 @@ void *dirListener(void *argsPtr)
 			pthread_mutex_unlock(args.stopMutex);
 			break;
 		}
-
-		//////////////////////////////////////////////////////
-		// 작업 요청이 들어왔는지 확인
-		pthread_mutex_lock(&jobMutex);
-		if (currentJob != JOB_NONE)
-		{
-			switch (currentJob)
-			{
-			case JOB_COPY:
-				performCopy(); // 예: 복사 함수
-				break;
-			case JOB_MOVE:
-				performMove(); // 예: 이동 함수
-				break;
-			case JOB_REMOVE:
-				performRemove(); // 예: 삭제 함수
-				break;
-			default:
-				break;
-			}
-			// 작업 완료 후, 상태 초기화
-			currentJob = JOB_NONE;
-		}
-		pthread_mutex_unlock(&jobMutex);
-
-		///////////////////////////////////////////////////
 
 		elapsedUSec = getElapsedTime(startTime); // 실제 지연 시간 계산
 		if (elapsedUSec > DIR_INTERVAL_USEC)
@@ -219,13 +222,21 @@ struct timespec getWakeupTime(uint32_t wakeupUs)
 
 void performCopy()
 {
-	printw("copy");
 }
 void performMove()
 {
-	printw("move");
 }
 void performRemove()
 {
-	printw("remove");
+}
+void performEnter(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], size_t bufLen)
+{
+	if (S_ISDIR(resultBuf->st_mode))
+	{
+		chdir("..");
+	}
+	else
+	{
+		printw("no dir");
+	}
 }

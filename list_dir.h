@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <sys/stat.h>
-
+#include <unistd.h>
 /**
  * 새 Directory Listener Thread 시작
  *
@@ -35,14 +35,16 @@ typedef enum
 	JOB_NONE,
 	JOB_COPY,
 	JOB_MOVE,
-	JOB_REMOVE
+	JOB_REMOVE,
+	JOB_ENTER
 } JobType;
 extern JobType currentJob;
 extern pthread_mutex_t jobMutex;
 extern pthread_cond_t jobCond;
+extern char curSelectedName[MAX_NAME_LEN + 1];
 
 void performCopy();
 void performMove();
 void performRemove();
-
+void performEnter(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], size_t bufLen);
 #endif
