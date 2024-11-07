@@ -7,7 +7,7 @@
 
 /**
  * 새 Directory Listener Thread 시작
- * 
+ *
  * @param newThread (반환) 새 쓰레드
  * @param bufMutex Data Buffer Mutex
  * @param buf Data Buffer: Stat 결과 저장
@@ -20,15 +20,29 @@
  * @return 성공: 0, 실패: -1
  */
 int startDirListender(
-    pthread_t *newThread,
-    pthread_mutex_t *bufMutex,
-    struct stat *buf,
-    char (*entryNames)[MAX_NAME_LEN + 1],
-    size_t bufLen,
-    size_t *totalReadItems,
-    pthread_cond_t *stopTrd,
-    bool *stopRequested,
-    pthread_mutex_t *stopMutex
-);
+	pthread_t *newThread,
+	pthread_mutex_t *bufMutex,
+	struct stat *buf,
+	char (*entryNames)[MAX_NAME_LEN + 1],
+	size_t bufLen,
+	size_t *totalReadItems,
+	pthread_cond_t *stopTrd,
+	bool *stopRequested,
+	pthread_mutex_t *stopMutex);
+
+typedef enum
+{
+	JOB_NONE,
+	JOB_COPY,
+	JOB_MOVE,
+	JOB_REMOVE
+} JobType;
+extern JobType currentJob;
+extern pthread_mutex_t jobMutex;
+extern pthread_cond_t jobCond;
+
+void performCopy();
+void performMove();
+void performRemove();
 
 #endif
