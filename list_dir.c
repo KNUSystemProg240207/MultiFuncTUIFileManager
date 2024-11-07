@@ -231,12 +231,9 @@ void performRemove()
 }
 void performEnter()
 {
-	int maxY, maxX;
-	getmaxyx(stdscr, maxY, maxX);
-
 	if (strcmp(".", curSelectedName) == 0)
 	{
-		move(maxY - 2, 0);
+		MoveToLogPosition();
 		printw("Error: Same Directory\n");
 		return;
 	}
@@ -250,11 +247,18 @@ void performEnter()
 
 	if (!S_ISDIR(statbuf.st_mode))
 	{
-		move(maxY - 2, 0);
+		MoveToLogPosition();
 		printw("Error: '%s' is not a directory\n", curSelectedName);
 		return;
 	}
 
 	// chdir() 호출
 	CHECK_FAIL(chdir(curSelectedName));
+}
+
+void MoveToLogPosition() //
+{
+	int maxY, maxX;
+	getmaxyx(stdscr, maxY, maxX);
+	move(maxY - 2, 0);
 }
