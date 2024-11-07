@@ -254,9 +254,10 @@ void performEnter()
 
 	// chdir() 호출
 	CHECK_FAIL(chdir(curSelectedName));
+	currentJob = JOB_CHANGEDIR;
 }
 
-void MoveToLogPosition() //
+void MoveToLogPosition() // Log를 띄울 위치로 커서를 이동시킴
 {
 	int maxY, maxX;
 	getmaxyx(stdscr, maxY, maxX);

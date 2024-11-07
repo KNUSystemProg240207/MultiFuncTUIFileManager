@@ -36,7 +36,8 @@ typedef enum
 	JOB_COPY,
 	JOB_MOVE,
 	JOB_REMOVE,
-	JOB_ENTER
+	JOB_ENTER,
+	JOB_CHANGEDIR
 } JobType;
 extern JobType currentJob;
 extern pthread_mutex_t jobMutex;
