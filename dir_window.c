@@ -18,6 +18,8 @@
  * @var _DirWin::statEntries 항목들의 stat 정보
  * @var _DirWin::entryNames 항목들의 이름
  * @var _DirWin::totalReadItems 현 폴더에서 읽어들인 항목 수
+ *   일반적으로, 디렉토리에 있는 파일, 폴더의 수와 같음
+ *   단, buffer 공간 부족한 경우, 최대 buffer 길이
  */
 struct _DirWin {
     WINDOW *win;
@@ -126,21 +128,30 @@ int updateDirWins(void) {
 int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w) {
     int screenW, screenH;
     getmaxyx(stdscr, screenH, screenW);
-    // 창의 개수에 따라 분기: 1개 (TODO: 2~3개)
+
+    // 창의 개수에 따라 분기
+    // TODO: 세로줄로 각 창 구분 반영
     switch (winCnt) {
         case 1:  // 창 1개 존재
             if (winNo != 0)
                 return -1;
             *y = 2;
             *x = 0;
-            *h = screenH - 5;
+            *h = screenH - 5;  // 상단 제목 창과 하단 단축키 창 제외
             *w = screenW;
             return 0;
-        // TODO: Implement below cases
-        // case 2:
-        //     return 0;
-        // case 3:
-        //     return 0;
+        case 2:
+            *y = 2;  // 타이틀 아래
+            *x = (winNo == 0) ? 0 : *w;  // 첫 번째 창은 왼쪽, 두 번째 창은 오른쪽
+            *h = screenH - 5;  // 상단 제목 창과 하단 단축키 창 제외
+            *w = screenW / 2;
+            return 0;
+        case 3:
+            *y = 2;  // 타이틀 아래
+            *x = winNo * (*w);  // 각 창은 1/3씩 너비 차지
+            *h = screenH - 5;  // 상단 제목 창과 하단 단축키 창 제외
+            *w = screenW / 3;
+            return 0;
         default:
             return -1;
     }
