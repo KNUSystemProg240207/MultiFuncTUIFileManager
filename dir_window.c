@@ -157,7 +157,6 @@ int updateDirWins(void)
 
 		// 출력
 		currentLine = win->currentPos - startIdx; // 역상으로 출력할, 현재 선택된 줄
-		strcpy(curSelectedName, win->entryNames[currentLine]);
 		for (line = 0; line < itemsToPrint; line++)
 		{													// 항목 있는 공간: 출력
 			if (winNo == currentWin && line == currentLine) // 선택된 것 역상으로 출력
@@ -167,6 +166,8 @@ int updateDirWins(void)
 			if (winNo == currentWin && line == currentLine)
 				wattroff(win->win, A_REVERSE);
 		}
+		strcpy(curSelectedName, win->entryNames[currentLine]);
+
 		wclrtobot(win->win); // 아래 남는 공간: 지움
 		wrefresh(win->win);	 // 창 새로 그림
 

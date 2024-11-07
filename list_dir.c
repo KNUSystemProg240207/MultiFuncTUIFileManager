@@ -12,7 +12,6 @@
 #include "commons.h"
 #include "config.h"
 #include "list_dir.h"
-
 /**
  * @struct _DirListenerArgs
  *
@@ -232,11 +231,15 @@ void performRemove()
 }
 void performEnter()
 {
+	int maxY, maxX;
+	getmaxyx(stdscr, maxY, maxX);
+
 	if (strcmp(".", curSelectedName) == 0)
 	{
+		move(maxY - 2, 0);
+		printw("Error: Same Directory\n");
 		return;
 	}
-	int maxY, maxX;
 
 	// 경로가 유효한지 확인 (curSelectedName이 NULL이 아니어야 함)
 	CHECK_NULL(curSelectedName);
@@ -247,9 +250,8 @@ void performEnter()
 
 	if (!S_ISDIR(statbuf.st_mode))
 	{
-		getmaxyx(stdscr, maxY, maxX);
+		move(maxY - 2, 0);
 		printw("Error: '%s' is not a directory\n", curSelectedName);
-		move(maxY - 3, 0);
 		return;
 	}
 
