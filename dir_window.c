@@ -21,8 +21,8 @@
  * @var _DirWin::totalReadItems 현 폴더에서 읽어들인 항목 수
  *   일반적으로, 디렉토리에 있는 파일, 폴더의 수와 같음
  *   단, buffer 공간 부족한 경우, 최대 buffer 길이
- * @var _DirWin::lineMovementEvent 창별 줄 이동 Event 저장
- *   Event당 2bit -> 최대 32개 Event 저장
+ * @var _DirWin::lineMovementEvent (bit field) 창별 줄 이동 Event 저장
+ *   Event당 2bit (3종류 Event 존재: 이벤트 없음(0b00), 위로 이동(0b10), 아래로 이동(0b11)) -> 최대 32개 Event 저장
  *   (Mutex 잠그지 않고 이동 처리 가능하게 함)
  */
 struct _DirWin {
@@ -97,6 +97,7 @@ int updateDirWins(void) {
     DirWin *win;
 
     // 각 창들 업데이트
+    int eventStartPos;  // 이벤트 시작 위치
     int line;  // 내부 출력 for 문에서 사용할 변수
     for (int winNo = 0; winNo < winCnt; winNo++) {
         win = windows + winNo;
@@ -107,21 +108,25 @@ int updateDirWins(void) {
             continue;
         itemsCnt = *win->totalReadItems;  // 읽어들인 개수 가져옴
 
-        // 선택 항목 이동 처리
-        while (win->lineMovementEvent) {
-            lineMovement = win->lineMovementEvent & 0x03;
-            win->lineMovementEvent >>= 2;
+        // 첫 Event의 위치 찾아내기: loop 끝나면, eventStartPos는 (event 수 * 2)에 해당하는 값 가짐 (매 event의 크기: 2-bit)
+        for (eventStartPos = 0; (win->lineMovementEvent & (UINT64_C(2) << eventStartPos)) != 0; eventStartPos += 2);
+
+        // 처음 event부터 선택 항목 이동 처리
+        while (eventStartPos > 0) {  // 남은 event 있는 동안
+            eventStartPos -= 2;  // 다음 event로 이동
+            lineMovement = (win->lineMovementEvent >> eventStartPos) & 0x03;  // 현 위치 event만 가져옴
             switch (lineMovement) {
                 case 0x02:  // '한 칸 위로 이동' Event
-                    if (win->currentPos > 0)
+                    if (win->currentPos > 0)  // 위로 이동 가능하면
                         win->currentPos--;
                     break;
                 case 0x03:  // '한 칸 아래로 이동' Event
-                    if (win->currentPos < itemsCnt - 1)
+                    if (win->currentPos < itemsCnt - 1)  // 아래로 이동 가능하면
                         win->currentPos++;
                     break;
             }
         }
+        win->lineMovementEvent = 0;  // Event 모두 삭제
 
         // 최상단에 출력될 항목의 index 계산
         getmaxyx(win->win, winH, winW);
@@ -133,7 +138,7 @@ int updateDirWins(void) {
         } else if (win->currentPos < centerLine) {  // 위쪽 item 선택됨
             startIdx = 0;
             itemsToPrint = itemsCnt < winH ? itemsCnt : winH;
-        } else if (win->currentPos + (centerLine - winH - 1) >= itemsCnt) {  // 아래쪽 item 선택됨
+        } else if (win->currentPos >= itemsCnt - (winH - centerLine - 1)) {  // 아래쪽 item 선택된 경우 (우변: 개수 - 커서 아래쪽에 출력될 item 수)
             startIdx = itemsCnt - winH;
             itemsToPrint = winH;
         } else {  // 일반적인 경우
@@ -147,6 +152,7 @@ int updateDirWins(void) {
             if (winNo == currentWin && line == currentLine)  // 선택된 것 역상으로 출력
                 wattron(win->win, A_REVERSE);
             mvwaddstr(win->win, line, 0, win->entryNames[startIdx + line]);  // 항목 이름 출력
+            // mvwprintw(win->win, line, 0, "%2d | %3ld | %s", line, startIdx + line, win->entryNames[startIdx + line]);  // 디버그용: 줄번호 & Item index 같이 출력 (윗 줄 대신 사용)
             whline(win->win, ' ', winW - getcurx(win->win));  // 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
             if (winNo == currentWin && line == currentLine)
                 wattroff(win->win, A_REVERSE);
@@ -192,16 +198,25 @@ int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w) {
     }
 }
 
+/*
+currentPos 변수 자체는 다른 thread에서 (추가로, 다른 file에서도) 접근 안 함 -> 별도 보호 없이 값 써도 안전
+단, totalReadItems 변수는 다른 thread와 공유되는 자원 -> mutex 획득 필요
+또한, moveCursorDown 함수는 현재 총 항목 수 필요
+=> mutex 획득 없이 처리 위해, 별도로 event 저장 -> 나중에 mutex 획득 후, 한 번에 계산
+*/
+
 void moveCursorUp(void) {
-    if (windows[currentWin].lineMovementEvent & (UINT64_C(0x80) << (7 * 8)))  // 이미 공간 다 썼다면 (= MSB가 1) -> 무시
+    // 이미 공간 다 썼다면 (= MSB가 1) -> 이후 수신된 이벤트 버림
+    if (windows[currentWin].lineMovementEvent & (UINT64_C(0x80) << (7 * 8)))
         return;
-    windows[currentWin].lineMovementEvent = windows[currentWin].lineMovementEvent << 2 | 0x02;  // Event 저장: 한 칸 위로
+    windows[currentWin].lineMovementEvent = windows[currentWin].lineMovementEvent << 2 | 0x02;  // <한 칸 위로> Event 저장
 }
 
 void moveCursorDown(void) {
-    if (windows[currentWin].lineMovementEvent & (UINT64_C(0x80) << (7 * 8)))  // 이미 공간 다 썼다면 (= MSB가 1) -> 무시
+    // 이미 공간 다 썼다면 (= MSB가 1) -> 이후 수신된 이벤트 버림
+    if (windows[currentWin].lineMovementEvent & (UINT64_C(0x80) << (7 * 8)))
         return;
-    windows[currentWin].lineMovementEvent = windows[currentWin].lineMovementEvent << 2 | 0x03;  // Event 저장: 한 칸 아래로
+    windows[currentWin].lineMovementEvent = windows[currentWin].lineMovementEvent << 2 | 0x03;  // <한 칸 아래로> Event 저장
 }
 
 void selectPreviousWindow(void) {
