@@ -28,6 +28,11 @@ static bool stopRequested[MAX_DIRWINS];
 static pthread_mutex_t stopTrdMutex[MAX_DIRWINS];
 static size_t totalReadItems[MAX_DIRWINS] = { 0 };
 
+// 파일 경로 관련 전역 변수 추가
+static char src_path[MAX_CWD_LEN];
+static char dst_path[MAX_CWD_LEN];
+static char selected_path[MAX_CWD_LEN];
+
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
 static void initVariables(void);  // 변수들 초기화
@@ -117,6 +122,11 @@ void mainLoop(void) {
     uint64_t elapsedUSec;
     char cwdBuf[MAX_CWD_LEN];
 
+    // 경로 버퍼 초기화
+    memset(src_path, 0, MAX_CWD_LEN);
+    memset(dst_path, 0, MAX_CWD_LEN);
+    memset(selected_path, 0, MAX_CWD_LEN);
+
     char *cwd;
     while (1) {
         clock_gettime(CLOCK_MONOTONIC, &startTime);  // 시작 시간
@@ -135,6 +145,23 @@ void mainLoop(void) {
                     break;
                 case KEY_RIGHT:
                     selectPreviousWindow();
+                    break;
+                case 'c':  // 복사
+                case 'C':
+                    // TODO: 현재 선택된 파일/폴더의 경로를 src_path에 저장
+                    // TODO: 사용자로부터 대상 경로를 입력받아 dst_path에 저장
+                    copyFile(src_path, dst_path);
+                    break;
+                case 'm':  // 이동
+                case 'M':
+                    // TODO: 현재 선택된 파일/폴더의 경로를 src_path에 저장
+                    // TODO: 사용자로부터 대상 경로를 입력받아 dst_path에 저장
+                    moveFile(src_path, dst_path);
+                    break;
+                case 'd':  // 삭제
+                case 'D':
+                    // TODO: 현재 선택된 파일/폴더의 경로를 selected_path에 저장
+                    removeFile(selected_path);
                     break;
                 case 'q':
                 case 'Q':
