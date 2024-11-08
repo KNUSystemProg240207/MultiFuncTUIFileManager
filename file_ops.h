@@ -27,4 +27,14 @@ int moveFile(const char *src, const char *dst);
  */
 int removeFile(const char *path);
 
+/**
+ * 사용자로부터 경로 입력받기
+ * 
+ * @param prompt 입력 프롬프트 메시지
+ * @param result 입력받은 경로를 저장할 버퍼
+ * @param maxlen 버퍼의 최대 길이
+ * @return 성공: 0, 취소: -1
+ */
+int getPathInput(const char *prompt, char *result, size_t maxlen);
+
 #endif

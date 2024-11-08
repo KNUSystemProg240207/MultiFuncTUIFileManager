@@ -148,20 +148,35 @@ void mainLoop(void) {
                     break;
                 case 'c':  // 복사
                 case 'C':
-                    // TODO: 현재 선택된 파일/폴더의 경로를 src_path에 저장
-                    // TODO: 사용자로부터 대상 경로를 입력받아 dst_path에 저장
-                    copyFile(src_path, dst_path);
+                    // 현재 선택된 파일 경로 가져오기 (TODO: 구현 필요)
+                    // strncpy(src_path, selected_file_path, MAX_CWD_LEN);
+                    
+                    // 대상 경로 입력받기
+                    if (getPathInput("Copy to", dst_path, MAX_CWD_LEN) == 0) {
+                        copyFile(src_path, dst_path);
+                    }
                     break;
+
                 case 'm':  // 이동
                 case 'M':
-                    // TODO: 현재 선택된 파일/폴더의 경로를 src_path에 저장
-                    // TODO: 사용자로부터 대상 경로를 입력받아 dst_path에 저장
-                    moveFile(src_path, dst_path);
+                    // 현재 선택된 파일 경로 가져오기 (TODO: 구현 필요)
+                    // strncpy(src_path, selected_file_path, MAX_CWD_LEN);
+                    
+                    // 대상 경로 입력받기
+                    if (getPathInput("Move to", dst_path, MAX_CWD_LEN) == 0) {
+                        moveFile(src_path, dst_path);
+                    }
                     break;
+
                 case 'd':  // 삭제
                 case 'D':
-                    // TODO: 현재 선택된 파일/폴더의 경로를 selected_path에 저장
-                    removeFile(selected_path);
+                    // 현재 선택된 파일 경로 가져오기 (TODO: 구현 필요)
+                    // strncpy(selected_path, selected_file_path, MAX_CWD_LEN);
+                    
+                    // 확인 메시지
+                    if (getPathInput("Delete? (y/n)", dst_path, 2) == 0 && (dst_path[0] == 'y' || dst_path[0] == 'Y')) {
+                        removeFile(selected_path);
+                    }
                     break;
                 case 'q':
                 case 'Q':

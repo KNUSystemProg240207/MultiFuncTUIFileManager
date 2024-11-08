@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <curses.h>
+#include <ctype.h>
 
 #include "file_ops.h"
 #include "commons.h"
@@ -93,4 +95,67 @@ int removeFile(const char *path) {
     } else {
         return unlink(path);
     }
+}
+
+int getPathInput(const char *prompt, char *result, size_t maxlen) {
+    WINDOW *input_win;
+    char buf[MAX_CWD_LEN] = {0};
+    int ch;
+    int pos = 0;
+
+    // 화면 하단에 입력창 생성
+    int rows, cols;
+    getmaxyx(stdscr, rows, cols);
+    input_win = newwin(3, cols, rows-5, 0);
+    box(input_win, 0, 0);
+    
+    // 프롬프트 표시
+    mvwprintw(input_win, 1, 2, "%s: ", prompt);
+    wrefresh(input_win);
+
+    // 입력 처리
+    keypad(input_win, TRUE);
+    echo();
+    curs_set(1);  // 커서 보이기
+
+    while (1) {
+        ch = wgetch(input_win);
+        
+        if (ch == '\n') {
+            break;  // 입력 완료
+        }
+        else if (ch == 27) {  // ESC
+            pos = -1;
+            break;  // 취소
+        }
+        else if (ch == KEY_BACKSPACE || ch == 127) {
+            if (pos > 0) {
+                pos--;
+                buf[pos] = '\0';
+                mvwprintw(input_win, 1, 2 + strlen(prompt) + 2 + pos, " ");
+                wmove(input_win, 1, 2 + strlen(prompt) + 2 + pos);
+            }
+        }
+        else if (pos < maxlen - 1 && isprint(ch)) {
+            buf[pos++] = ch;
+            buf[pos] = '\0';
+        }
+        
+        // 현재 입력 내용 표시
+        mvwprintw(input_win, 1, 2 + strlen(prompt) + 2, "%-*s", maxlen, buf);
+        wrefresh(input_win);
+    }
+
+    // 원래 상태로 복구
+    noecho();
+    curs_set(0);  // 커서 숨기기
+    delwin(input_win);
+    touchwin(stdscr);
+    refresh();
+
+    if (pos == -1) return -1;  // 취소됨
+    
+    strncpy(result, buf, maxlen);
+    result[maxlen-1] = '\0';
+    return 0;
 }
