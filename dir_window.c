@@ -167,6 +167,7 @@ int updateDirWins(void)
 				wattroff(win->win, A_REVERSE);
 		}
 		strcpy(curSelectedName, win->entryNames[win->currentPos]);
+
 		wclrtobot(win->win); // 아래 남는 공간: 지움
 		wrefresh(win->win);	 // 창 새로 그림
 

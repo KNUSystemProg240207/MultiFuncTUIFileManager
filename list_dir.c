@@ -256,7 +256,7 @@ void performEnter()
 	CHECK_FAIL(chdir(curSelectedName));
 }
 
-void MoveToLogPosition() // Log를 띄울 위치로 커서를 이동시킴
+void MoveToLogPosition() //
 {
 	int maxY, maxX;
 	getmaxyx(stdscr, maxY, maxX);
