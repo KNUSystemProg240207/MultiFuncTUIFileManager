@@ -155,12 +155,6 @@ int updateDirWins(void)
 			itemsToPrint = winH;
 		}
 
-		if (currentJob == JOB_CHANGEDIR)
-		{
-			win->currentPos = 1;
-			printw("//////////////////////////////////////////////////");
-			currentJob = JOB_NONE;
-		}
 		// 출력
 		currentLine = win->currentPos - startIdx; // 역상으로 출력할, 현재 선택된 줄
 		for (line = 0; line < itemsToPrint; line++)
