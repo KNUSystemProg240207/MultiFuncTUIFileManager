@@ -11,6 +11,7 @@
 
 #include "file_ops.h"
 #include "commons.h"
+#include "commons.h"
 
 #define BUFFER_SIZE 4096
 
@@ -99,7 +100,6 @@ int removeFile(const char *path) {
 
 int getPathInput(const char *prompt, char *result, size_t maxlen) {
     WINDOW *input_win;
-    char buf[MAX_CWD_LEN] = {0};
     int ch;
     int pos = 0;
 
@@ -118,6 +118,9 @@ int getPathInput(const char *prompt, char *result, size_t maxlen) {
     echo();
     curs_set(1);  // 커서 보이기
 
+    // 결과 버퍼 초기화
+    memset(result, 0, maxlen);
+
     while (1) {
         ch = wgetch(input_win);
         
@@ -131,18 +134,18 @@ int getPathInput(const char *prompt, char *result, size_t maxlen) {
         else if (ch == KEY_BACKSPACE || ch == 127) {
             if (pos > 0) {
                 pos--;
-                buf[pos] = '\0';
+                result[pos] = '\0';
                 mvwprintw(input_win, 1, 2 + strlen(prompt) + 2 + pos, " ");
                 wmove(input_win, 1, 2 + strlen(prompt) + 2 + pos);
             }
         }
         else if (pos < maxlen - 1 && isprint(ch)) {
-            buf[pos++] = ch;
-            buf[pos] = '\0';
+            result[pos++] = ch;
+            result[pos] = '\0';
         }
         
         // 현재 입력 내용 표시
-        mvwprintw(input_win, 1, 2 + strlen(prompt) + 2, "%-*s", maxlen, buf);
+        mvwprintw(input_win, 1, 2 + strlen(prompt) + 2, "%-*s", (int)maxlen, result);
         wrefresh(input_win);
     }
 
@@ -153,9 +156,10 @@ int getPathInput(const char *prompt, char *result, size_t maxlen) {
     touchwin(stdscr);
     refresh();
 
-    if (pos == -1) return -1;  // 취소됨
+    if (pos == -1) {
+        memset(result, 0, maxlen);  // 취소된 경우 버퍼 초기화
+        return -1;  // 취소됨
+    }
     
-    strncpy(result, buf, maxlen);
-    result[maxlen-1] = '\0';
     return 0;
 }
