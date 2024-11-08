@@ -47,6 +47,4 @@ void performCopy();
 void performMove();
 void performRemove();
 void performEnter();
-void MoveToLogPosition();
-
 #endif
