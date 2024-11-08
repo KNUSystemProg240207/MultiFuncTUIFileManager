@@ -145,7 +145,7 @@ void mainLoop(void) {
         // 제목 영역 업데이트
         renderTime();  // 시간 업데이트
         // TODO: get current window's cwd
-        char *cwd = getcwd(cwdBuf, MAX_CWD_LEN);  // 경로 가져옴
+        cwd = getcwd(cwdBuf, MAX_CWD_LEN);  // 경로 가져옴
         if (cwd == NULL)
             printPath("-----");  // 경로 가져오기 실패 시
         else
