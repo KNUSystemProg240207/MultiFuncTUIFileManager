@@ -1,5 +1,5 @@
-#ifndef __LIST_DIR_H_INCLUDED__
-#define __LIST_DIR_H_INCLUDED__
+#ifndef __DIR_LISTENER_H_INCLUDED__
+#define __DIR_LISTENER_H_INCLUDED__
 
 #include <pthread.h>
 #include <stdbool.h>
