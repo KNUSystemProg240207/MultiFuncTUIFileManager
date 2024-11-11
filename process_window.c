@@ -1,32 +1,14 @@
-#include <curses.h>
 #include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <sys/stat.h>
-
 #include "config.h"
-#include "dir_window.h"
+#include "proc_win.h"
 
 #define MAX_PROCESSES 256  // 한 번에 표시 가능한 최대 프로세스 수
-
-
-typedef struct {
-    pid_t pid;  // 프로세스 ID
-    char name[MAX_NAME_LEN + 1];  // 프로세스 이름
-} ProcInfo;
-
-struct _ProcWin {
-    WINDOW *win;
-    size_t currentPos;
-    pthread_mutex_t statMutex;
-    ProcInfo procEntries[MAX_PROCESSES];  // 프로세스 정보 배열
-    size_t totalReadItems;  // 읽어들인 총 프로세스 수
-    uint64_t lineMovementEvent;  // 라인 이동 이벤트
-};
-typedef struct _ProcWin ProcWin;
+#define MAX_NAME_LEN 256
 
 static ProcWin procWindow;  // 프로세스 관리 창 하나만 생성
-
 
 
 int initProcWin(void) {
