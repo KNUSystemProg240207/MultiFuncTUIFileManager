@@ -9,6 +9,7 @@
 
 
 // '오류 확인 후 종료' 관련 매크로 함수들
+// clang-format off
 
 #define CHECK_CURSES1(ret, msg, errno) do {\
     if ((ret) == ERR) {\
@@ -42,10 +43,12 @@
 } while (0)
 #define CHECK_FAIL(ret) CHECK_FAIL1(ret, "Error", -1)
 
+// clang-format on
+
 
 /**
  * (현재 시간) - (시작 시간) 계산해서 돌려줌
- * 
+ *
  * @param baseTime 시작 시간 (Clock: CLOCK_MONOTONIC 기준)
  * @return 흐른 시간 (단위: μs)
  */
