@@ -18,7 +18,7 @@
 
 WINDOW *titleBar, *bottomBox;
 
-// 각 (폴더의 내용 가져오는) Directory Listener Thread별 저장 공간: 
+// 각 (폴더의 내용 가져오는) Directory Listener Thread별 저장 공간:
 static pthread_t threadListDir[MAX_DIRWINS];
 static pthread_mutex_t statMutex[MAX_DIRWINS];
 static struct stat statEntries[MAX_DIRWINS][MAX_STAT_ENTRIES];
