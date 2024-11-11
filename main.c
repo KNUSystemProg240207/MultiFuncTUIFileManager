@@ -19,14 +19,20 @@
 WINDOW *titleBar, *bottomBox;
 
 // 각 (폴더의 내용 가져오는) Directory Listener Thread별 저장 공간:
+// Thread 번호 저장
 static pthread_t threadListDir[MAX_DIRWINS];
-static pthread_mutex_t statMutex[MAX_DIRWINS];
+// 결과 Buffer
 static struct stat statEntries[MAX_DIRWINS][MAX_STAT_ENTRIES];
 static char entryNames[MAX_DIRWINS][MAX_STAT_ENTRIES][MAX_NAME_LEN + 1];
-static pthread_cond_t condStopTrd[MAX_DIRWINS];
-static bool stopRequested[MAX_DIRWINS];
-static pthread_mutex_t stopTrdMutex[MAX_DIRWINS];
 static size_t totalReadItems[MAX_DIRWINS] = { 0 };
+// 상태 관련
+static uint16_t threadStatusFlags[MAX_DIRWINS];
+static size_t chdirIdx[MAX_DIRWINS];
+// Mutexes
+static pthread_mutex_t statMutex[MAX_DIRWINS];
+static pthread_mutex_t statusMutex[MAX_DIRWINS];
+// Condition Variables
+static pthread_cond_t condResumeThread[MAX_DIRWINS];
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
@@ -47,14 +53,19 @@ int main(int argc, char **argv) {
 
     // Thread들 정지 요청
     for (int i = 0; i < dirWinCnt; i++) {
-        pthread_mutex_lock(&stopTrdMutex[i]);
-        stopRequested[i] = true;
-        pthread_cond_signal(&condStopTrd[i]);
-        pthread_mutex_unlock(&stopTrdMutex[i]);
+        pthread_mutex_lock(&statusMutex[i]);
+        threadStatusFlags[i] = LTHREAD_FLAG_STOP;
+        pthread_cond_signal(&condResumeThread[i]);
+        pthread_mutex_unlock(&statusMutex[i]);
     }
     // 각 Thread들 대기
     for (int i = 0; i < dirWinCnt; i++) {
-        pthread_join(threadListDir[i], NULL);
+        pthread_mutex_lock(&statusMutex[i]);
+        if (threadStatusFlags[i] & LTHREAD_FLAG_RUNNING) {
+            pthread_mutex_unlock(&statusMutex[i]);
+            pthread_join(threadListDir[i], NULL);
+        }
+        pthread_mutex_unlock(&statusMutex[i]);
     }
 
     // 창 '지움' (자원 해제)
@@ -68,8 +79,8 @@ void initVariables(void) {
     // 변수들 기본값으로 초기화
     for (int i = 0; i < MAX_DIRWINS; i++) {
         pthread_mutex_init(statMutex + i, NULL);
-        pthread_cond_init(condStopTrd + i, NULL);
-        pthread_mutex_init(stopTrdMutex + i, NULL);
+        pthread_mutex_init(statusMutex + i, NULL);
+        pthread_cond_init(condResumeThread + i, NULL);
     }
 }
 
@@ -106,9 +117,9 @@ void initScreen(void) {
 
 void initThreads(void) {
     startDirListender(
-        &threadListDir[0], &statMutex[0],
-        statEntries[0], entryNames[0], MAX_STAT_ENTRIES,
-        &totalReadItems[0], &condStopTrd[0], &stopRequested[0], &stopTrdMutex[0]
+        &threadListDir[0], &threadStatusFlags[0], &chdirIdx[0],
+        statEntries[0], entryNames[0], &totalReadItems[0], MAX_STAT_ENTRIES,
+        &statMutex[0], &statusMutex[0], &condResumeThread[0]
     );  // Directory Listener Thread 시작
 }
 
@@ -116,6 +127,8 @@ void mainLoop(void) {
     struct timespec startTime;
     uint64_t elapsedUSec;
     char cwdBuf[MAX_CWD_LEN];
+    ssize_t currentSelection;
+    unsigned int currentWindow;
 
     char *cwd;
     while (1) {
@@ -135,6 +148,19 @@ void mainLoop(void) {
                     break;
                 case KEY_RIGHT:
                     selectPreviousWindow();
+                    break;
+                // case 'n':
+                // case 'N':
+                case '\n':
+                case KEY_ENTER:
+                    currentSelection = getCurrentSelectedDirectory();
+                    if (currentSelection >= 0) {
+                        currentWindow = getCurrentWindow();
+                        pthread_mutex_lock(&statusMutex[currentWindow]);
+                        chdirIdx[currentWindow] = currentSelection;
+                        threadStatusFlags[currentWindow] |= LTHREAD_FLAG_CHANGE_DIR;
+                        pthread_mutex_unlock(&statusMutex[currentWindow]);
+                    }
                     break;
                 case 'q':
                 case 'Q':

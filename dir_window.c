@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 
 #include "config.h"
+#include "commons.h"
 #include "dir_window.h"
 
 
@@ -231,4 +232,16 @@ void selectNextWindow(void) {
         currentWin = 0;
     else
         currentWin++;
+}
+
+ssize_t getCurrentSelectedDirectory(void) {
+    bool isDirectory;
+    CHECK_FAIL(pthread_mutex_lock(windows[currentWin].statMutex));
+    isDirectory = (windows[currentWin].statEntries[windows[currentWin].currentPos].st_mode & S_IFDIR) == S_IFDIR;
+    pthread_mutex_unlock(windows[currentWin].statMutex);
+    return isDirectory ? windows[currentWin].currentPos : -1;
+}
+
+unsigned int getCurrentWindow(void) {
+    return currentWin;
 }
