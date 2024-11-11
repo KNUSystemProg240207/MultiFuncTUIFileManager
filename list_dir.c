@@ -16,7 +16,7 @@
 
 /**
  * @struct _DirListenerArgs
- * 
+ *
  * @var _DirListenerArgs::bufMutex 두 결과값 buffer 보호 Mutex
  * @var _DirListenerArgs::buf 항목들의 stat 결과 저장 공간
  * @var _DirListenerArgs::nameBuf 항목들의 이름 저장 공간
@@ -43,7 +43,7 @@ static unsigned int threadCnt = 0;  // 생성된 Thread 개수
 
 /**
  * (Thread의 loop 함수) 폴더 정보 반복해서 가져옴
- * 
+ *
  * @param argsPtr thread의 runtime 정보
  * @return 없음
  */
@@ -51,7 +51,7 @@ static void *dirListener(void *argsPtr);
 
 /**
  * 현 폴더의 항목 정보 읽어들임
- * 
+ *
  * @param resultBuf 항목들의 stat 결과 저장할 공간
  * @param nameBuf 항목들의 이름 저장할 공간
  * @param bufLen 최대 읽어올 항목 수
@@ -61,7 +61,7 @@ static ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN 
 
 /**
  * 깨어날 시간 계산
- * 
+ *
  * @param wakeupUs 대기 시간
  * @return 깨어날 시간 (Clock: CLOCK_REALTIME 기준)
  */

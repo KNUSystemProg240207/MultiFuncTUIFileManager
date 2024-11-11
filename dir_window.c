@@ -12,7 +12,7 @@
 /**
  * @struct _DirWin
  * Directory Window의 정보 저장
- * 
+ *
  * @var _DirWin::win WINDOW 구조체
  * @var _DirWin::order Directory 창 순서 (가장 왼쪽=0) ( [0, MAX_DIRWINS) )
  * @var _DirWin::currentPos 현재 선택된 Element
@@ -47,7 +47,7 @@ char curSelectedName[MAX_NAME_LEN + 1] = ".";
 
 /**
  * 창 위치 계산
- * 
+ *
  * @param winNo 창의 순서 (가장 왼쪽=0) ( [0, winCnt) )
  * @param y (반환) 창 좌상단 y좌표
  * @param x (반환) 창 좌상단 x좌표
