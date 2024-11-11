@@ -7,12 +7,12 @@
 #define MAX_NAME_LEN 256
 
 typedef struct {
-    pid_t pid;                   // 프로세스 ID
-    char name[MAX_NAME_LEN + 1]; // 프로세스 이름
-    char state;                  // 프로세스 상태
-    unsigned long vsize;         // 가상 메모리 사용량
-    unsigned long utime;         // 사용자 모드에서의 CPU 시간
-    unsigned long stime;         // 커널 모드에서의 CPU 시간
+    pid_t pid;  // 프로세스 ID
+    char name[MAX_NAME_LEN + 1];  // 프로세스 이름
+    char state;  // 프로세스 상태
+    unsigned long vsize;  // 가상 메모리 사용량
+    unsigned long utime;  // 사용자 모드에서의 CPU 시간
+    unsigned long stime;  // 커널 모드에서의 CPU 시간
 } ProcInfo;
 
 struct _ProcWin {

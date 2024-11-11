@@ -88,21 +88,19 @@ int updateProcWin(void) {
     for (int line = 0; line < itemsToPrint; line++) {
         if (line == currentLine)  // 선택된 것 역상으로 출력
             wattron(procWindow.win, A_REVERSE);
-        
-        mvwprintw(procWindow.win, line, 0, "%d %s", 
-                  procWindow.procEntries[startIdx + line].pid, // pid
-                  procWindow.procEntries[startIdx + line].name); // 프로세스명
-        
+
+        mvwprintw(procWindow.win, line, 0, "%d %s",
+                  procWindow.procEntries[startIdx + line].pid,  // pid
+                  procWindow.procEntries[startIdx + line].name);  // 프로세스명
+
         if (line == currentLine)
             wattroff(procWindow.win, A_REVERSE);
     }
 
 
-    wclrtobot(procWindow.win); // 아래 남는 공간: 지움
-    wrefresh(procWindow.win); // 창 새로 그림
+    wclrtobot(procWindow.win);  // 아래 남는 공간: 지움
+    wrefresh(procWindow.win);  // 창 새로 그림
 
     pthread_mutex_unlock(&procWindow.statMutex);
     return 0;
 }
-
-

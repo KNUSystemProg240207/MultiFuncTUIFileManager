@@ -33,10 +33,10 @@ int readProcInfo(ProcWin *procWindow) {
         // 프로세스 정보를 /proc/<PID>/stat 파일에서 읽음
         char statPath[PATH_MAX];
         strcpy(statPath, PROC_DIR);
-		strcat(statPath, "/");
-		strcat(statPath, entry->d_name);
         strcat(statPath, "/");
-		strcat(statPath, STAT_FILENAME);
+        strcat(statPath, entry->d_name);
+        strcat(statPath, "/");
+        strcat(statPath, STAT_FILENAME);
 
         FILE *statFile = fopen(statPath, "r");
         if (statFile == NULL) {
