@@ -43,8 +43,14 @@ int readProcInfo(ProcWin *procWindow) {
             continue;
         }
 
-        // /proc/<PID>/stat 파일에서 데이터 읽기(어케 하는지 모르겠음)
-
+        // /proc/<PID>/stat 파일에서 데이터 읽기
+		fscanf(statFile, "%d (%255[^)]) %c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %*lu %lu %ld %*ld %*ld %*ld %*ld %*ld, %*llu, %lu",
+               &procWindow->procEntries[procCount].pid,
+               procWindow->procEntries[procCount].name,
+               &procWindow->procEntries[procCount].state,
+               &procWindow->procEntries[procCount].utime,
+               &procWindow->procEntries[procCount].stime,
+               &procWindow->procEntries[procCount].vsize);
         fclose(statFile);
     }
 
