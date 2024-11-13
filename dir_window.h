@@ -4,7 +4,7 @@
 #include <curses.h>
 #include <pthread.h>
 #include <sys/stat.h>
-
+#include <string.h>
 /**
  * 새 폴더 표시 창 초기화 (생성)
  *

@@ -14,7 +14,7 @@
 #include "bottom_area.h"
 #include "list_dir.h"
 #include "title_bar.h"
-
+#include "colors.h"
 
 WINDOW *titleBar, *bottomBox;
 
@@ -43,6 +43,7 @@ int main(int argc, char **argv) {
     initVariables();
     initScreen();
     initThreads();
+    init_colorSet();
     mainLoop();
 
     // Thread들 정지 요청

@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -fdiagnostics-color=always -std=gnu99 -Wall -fanalyzer -g
 LFLAGS = -lncurses
-OBJS = main.o dir_window.o commons.o title_bar.o bottom_area.o list_dir.o
+OBJS = main.o dir_window.o commons.o title_bar.o bottom_area.o list_dir.o colors.o
 TARGET = demo.out
 
 all: $(TARGET)
@@ -26,6 +26,9 @@ bottom_area.o: config.h commons.h bottom_area.h bottom_area.c
 
 list_dir.o: config.h commons.h list_dir.h list_dir.c
 	$(CC) $(CFLAGS) -c list_dir.c
+
+colors.o: colors.h colors.c commons.h
+	$(CC) $(CFLAGS) -c colors.c
 
 clean:
 	rm $(OBJS)
