@@ -143,7 +143,6 @@ ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], s
     // (해당 함수 사용 시, 별도 정렬 불필요)
     // (자동으로 malloc()됨 -> 현재 static buffer 관련 수정 필요, 구현 시 free() 유의하여 구현)
     // (주의: 해당 함수 glibc 비표준 함수임)
-
     DIR *dir = opendir(".");
     if (dir == NULL) {
         return -1;

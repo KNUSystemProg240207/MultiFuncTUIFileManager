@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <sys/stat.h>
-
+#include <string.h>
 #include "config.h"
 #include "dir_window.h"
 
@@ -42,6 +42,9 @@ static DirWin windows[MAX_DIRWINS];  // 각 창의 runtime 정보 저장
 static unsigned int winCnt;  // 창 개수
 static unsigned int currentWin;  // 현재 창의 Index
 
+void printFileHeader(DirWin *win, int winH, int winW);
+
+void printFileInfo(DirWin *win, int startIdx, int line, int winW);
 
 /**
  * 창 위치 계산
@@ -130,6 +133,8 @@ int updateDirWins(void) {
 
         // 최상단에 출력될 항목의 index 계산
         getmaxyx(win->win, winH, winW);
+        winH -= 2;  // 최대 출력 가능한 라인 넘버 -2
+        printFileHeader(win, winH, winW);
 
         centerLine = (winH - 1) / 2;  // 가운데 줄의 줄 번호 ( [0, winH) )
         if (itemsCnt <= winH) {  // 항목 개수 적음 -> 빠르게 처리
@@ -146,13 +151,13 @@ int updateDirWins(void) {
             itemsToPrint = winH;
         }
 
-        // 출력
         currentLine = win->currentPos - startIdx;  // 역상으로 출력할, 현재 선택된 줄
         for (line = 0; line < itemsToPrint; line++) {  // 항목 있는 공간: 출력
             if (winNo == currentWin && line == currentLine)  // 선택된 것 역상으로 출력
                 wattron(win->win, A_REVERSE);
-            mvwaddstr(win->win, line, 0, win->entryNames[startIdx + line]);  // 항목 이름 출력
-            // mvwprintw(win->win, line, 0, "%2d | %3ld | %s", line, startIdx + line, win->entryNames[startIdx + line]);  // 디버그용: 줄번호 & Item index 같이 출력 (윗 줄 대신 사용)
+            // mvwaddstr(win->win, line + 2, 0, win->entryNames[startIdx + line]);  // 항목 이름 출력, 2행씩 밀려씀
+            printFileInfo(win, startIdx, line, winW);
+            // mvwprintw(win->win, line + 2, 0, "%-15s%13ld ", win->entryNames[startIdx + line], (win->statEntries + (startIdx + line))->st_size);
             whline(win->win, ' ', winW - getcurx(win->win));  // 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
             if (winNo == currentWin && line == currentLine)
                 wattroff(win->win, A_REVERSE);
@@ -165,6 +170,52 @@ int updateDirWins(void) {
 
     return 0;
 }
+
+void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
+    struct stat *fileStat = win->statEntries + (startIdx + line);
+    char *fileName = win->entryNames[startIdx + line];
+    size_t fileSize = fileStat->st_size;
+    char fileType[20];
+    char lastModDate[20];
+    char lastModTime[20];
+
+
+    if (S_ISDIR(fileStat->st_mode)) {
+        strcpy(fileType, "DIRECTORY");
+    } else if (S_ISREG(fileStat->st_mode)) {
+        strcpy(fileType, "FILE");
+    } else {
+        strcpy(fileType, "OTHER");
+    }
+
+    // 파일 마지막 수정 시간 출력 (날짜와 시간 분리)
+    struct tm tm;
+    localtime_r(&fileStat->st_mtime, &tm);  // thread-safe한 localtime_r 사용
+    strftime(lastModDate, sizeof(lastModDate), "%Y-%m-%d", &tm);
+    strftime(lastModTime, sizeof(lastModTime), "%H:%M:%S", &tm);
+
+    // 창 너비에 따라 출력할 항목을 결정
+    if (winW < 40) {
+        // 창 너비가 좁으면 파일 이름과 파일 타입만 출력
+        mvwprintw(win->win, line + 2, 0, "%-15s %-10s ", fileName, fileType);
+    } else {
+        // 창 너비가 넓으면 모든 정보를 출력
+        mvwprintw(win->win, line + 2, 0, "%-25s | %10s | %10zu | %15s | %10s", fileName, fileType, fileSize, lastModDate, lastModTime);
+    }
+}
+
+void printFileHeader(DirWin *win, int winH, int winW) {
+    // 윈도우의 너비가 좁으면 날짜와 시간을 생략
+    if (winW < 40) {
+        // 간단한 헤더: "File Name | File Size"
+        mvprintw(2, 0, "FILE NAME | FILE TYPE");
+    } else {
+        // 윈도우에 맞게 헤더 출력
+        mvwprintw(win->win, 0, 0, "%-25s | %10s | %10s | %15s | %10s", "FILE NAME", "FILE TYPE", "FILE SIZE", "LAST DATE", "LAST TIME");
+    }
+    mvhline(3, 0, 0, COLS);  // 구분선
+}
+
 
 int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w) {
     int screenW, screenH;
