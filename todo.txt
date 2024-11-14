@@ -1,0 +1,3 @@
+1. 3종 Thread (Dir Listener, File Operator, Process Listener) 공통 기능 함수화
+    - 기능 함수화, 인자로 '공유변수 구조체', 'init 함수 포인터', 'loop 함수 포인터', 'finish 함수 포인터' 전달
+    - 공유변수들: 구조체화, Main thread에서 구조체 초기화? (or 초기화 함수 작성)

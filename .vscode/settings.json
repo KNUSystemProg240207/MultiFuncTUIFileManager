@@ -1,3 +1,8 @@
 {
-    "makefile.configureOnOpen": true
+    "makefile.configureOnOpen": true,
+    "files.associations": {
+        "*.yaml": "yaml",
+        "*.txt": "plaintext",
+        "config.h": "c"
+    }
 }

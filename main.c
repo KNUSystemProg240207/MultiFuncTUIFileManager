@@ -18,7 +18,7 @@
 
 WINDOW *titleBar, *bottomBox;
 
-// 각 (폴더의 내용 가져오는) Directory Listener Thread별 저장 공간:
+// Directory Listener Thread - Main Thread 사이의 공유 변수
 // Thread 번호 저장
 static pthread_t threadListDir[MAX_DIRWINS];
 // 결과 Buffer
@@ -33,6 +33,18 @@ static pthread_mutex_t statMutex[MAX_DIRWINS];
 static pthread_mutex_t statusMutex[MAX_DIRWINS];
 // Condition Variables
 static pthread_cond_t condResumeThread[MAX_DIRWINS];
+
+// File Operator Thread - Main Thread 사이의 공유 변수
+// Thread 번호
+static pthread_t threadListDir[MAX_FILE_OPERATORS];
+// 진행 상황
+char operatingFiles[MAX_FILE_OPERATORS];
+uint16_t fileOperationProgress[MAX_FILE_OPERATORS];
+// Pipe 쓰기 끝단
+int pipeFileOperationCommand[MAX_FILE_OPERATORS];
+// Mutexes
+static pthread_mutex_t statMutex[MAX_DIRWINS];
+static pthread_mutex_t statusMutex[MAX_DIRWINS];
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
