@@ -4,6 +4,7 @@
 #include <curses.h>
 #include <pthread.h>
 #include <sys/stat.h>
+#include "config.h"  // MAX_NAME_LEN 사용
 
 /**
  * 새 폴더 표시 창 초기화 (생성)

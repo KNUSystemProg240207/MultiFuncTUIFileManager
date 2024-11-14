@@ -1,6 +1,7 @@
 #ifndef __CONFIG_H_INCLUDED__
 #define __CONFIG_H_INCLUDED__
 
+
 // 프로그램 이름 (왼쪽 상단에 표시됨)
 #define PROG_NAME "Demo"
 #define PROG_NAME_LEN (sizeof(PROG_NAME) - 1)
@@ -12,6 +13,7 @@
 #define MAX_DIRWINS 1  // 최대 가능한 '탭' 수
 // #define MAX_DIRWINS 3
 #define MAX_STAT_ENTRIES 100  // 한 폴더에 표시 가능한 최대 Item 수
+#define MAX_PATH_LEN 4096  // 추가
 #define MAX_NAME_LEN 255  // 표시할 최대 이름 길이 (Limit보다 더 길면: 잘림)
 #define MAX_CWD_LEN 2048  // 최대 '현재 경로' 길이
 
@@ -27,7 +29,7 @@ typedef struct {
     int show_hidden_files;
     int preserve_attributes;
     size_t buffer_size;
-    char default_copy_dir[MAX_PATH_LEN];
+    char default_copy_dir[MAX_PATH_LEN];  // 이제 정의되어 있음 - 오류수정 완
 } FileManagerConfig;
 
 // 설정 로드/저장

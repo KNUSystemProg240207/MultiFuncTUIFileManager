@@ -9,7 +9,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CC) -o $(TARGET) $(OBJS) $(LFLAGS)
 
-main.o: config.h commons.h dir_window.h title_bar.h bottom_area.h main.c
+main.o: config.h commons.h dir_window.h title_bar.h bottom_area.h file_ops.h main.c
 	$(CC) $(CFLAGS) -c main.c
 
 dir_window.o: config.h commons.h dir_window.h dir_window.c
@@ -27,8 +27,8 @@ bottom_area.o: config.h commons.h bottom_area.h bottom_area.c
 list_dir.o: config.h commons.h list_dir.h list_dir.c
 	$(CC) $(CFLAGS) -c list_dir.c
 
-file_ops.o: file_ops.h dir_window.h config.h file_ops.c
-    $(CC) $(CFLAGS) -c file_ops.c
+file_ops.o: file_ops.h config.h dir_window.h file_ops.c
+	$(CC) $(CFLAGS) -c file_ops.c
 
 clean:
 	rm $(OBJS)

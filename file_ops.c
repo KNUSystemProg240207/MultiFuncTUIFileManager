@@ -2,9 +2,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "file_ops.h"
-
-#define COPY_BUFFER_SIZE 8192
+#include "dir_window.h"
 
 ssize_t copyFileOperation(FileTask *task, off_t offset, size_t size) {
     char buffer[COPY_BUFFER_SIZE];
@@ -64,14 +64,21 @@ int moveFileOperation(FileTask *task) {
     }
 
     // 다른 디바이스인 경우 복사 후 원본 삭제
-    FileTask copyTask = *task;
-    ssize_t copied = copyFileOperation(&copyTask, 0, task->fileSize);
-    if (copied != task->fileSize) return -1;
+    struct stat st;
+    if (fstatat(task->srcDirFd, task->srcName, &st, 0) != 0) {
+        return -1;
+    }
+    task->fileSize = st.st_size;
+
+    ssize_t copied = copyFileOperation(task, 0, task->fileSize);
+    if (copied != task->fileSize) {
+        unlinkat(task->dstDirFd, task->dstName, 0);  // 실패시 복사본 삭제
+        return -1;
+    }
 
     // 원본 파일 삭제
     if (unlinkat(task->srcDirFd, task->srcName, 0) != 0) {
-        // 복사는 성공했지만 원본 삭제 실패
-        unlinkat(task->dstDirFd, task->dstName, 0);  // 복사본 삭제 시도
+        unlinkat(task->dstDirFd, task->dstName, 0);  // 원본 삭제 실패시 복사본도 삭제
         return -1;
     }
 
@@ -83,41 +90,20 @@ int deleteFileOperation(FileTask *task) {
 }
 
 int executeFileOperation(FileOperation op) {
-    char src_path[MAX_PATH_LEN];
-    char dst_path[MAX_PATH_LEN];
-    const char *selected_file = getCurrentSelection();
-    
-    if (!selected_file) return -1;
-    
-    // 소스 경로 생성
-    snprintf(src_path, MAX_PATH_LEN, "%s/%s", current_path, selected_file);
-    
-    switch(op) {
-        case COPY:
-        case MOVE:
-            // 임시로 같은 디렉토리에 "_copy" 붙여서 복사/이동
-            snprintf(dst_path, MAX_PATH_LEN, "%s/%s_copy", 
-                    current_path, selected_file);
-            break;
-        case DELETE:
-            // 삭제는 dst_path 불필요
-            break;
-    }
-    
     const char *selected_file = getCurrentSelection();
     if (!selected_file) return -1;
     
-    FileTask task;
-    memset(&task, 0, sizeof(FileTask));
+    FileTask task = {0};  // 0으로 초기화
+    task.type = op;
     
-    // 현재 디렉토리 파일 디스크립터 얻기
+    // 현재 디렉토리 열기
     task.srcDirFd = open(".", O_DIRECTORY);
     if (task.srcDirFd == -1) return -1;
     
     // 소스 파일 정보 설정
     strncpy(task.srcName, selected_file, MAX_NAME_LEN-1);
     
-    // 파일 크기 얻기
+    // 파일 정보 가져오기
     struct stat st;
     if (fstatat(task.srcDirFd, task.srcName, &st, 0) == 0) {
         task.fileSize = st.st_size;
@@ -127,16 +113,15 @@ int executeFileOperation(FileOperation op) {
     int result = -1;
     switch(op) {
         case COPY:
-        case MOVE:
-            // TODO: UI에서 대상 경로 입력받기
-            task.dstDirFd = task.srcDirFd;  // 임시로 같은 디렉토리
+            task.dstDirFd = task.srcDirFd;
             snprintf(task.dstName, MAX_NAME_LEN, "%s_copy", selected_file);
+            result = (copyFileOperation(&task, 0, task.fileSize) == task.fileSize) ? 0 : -1;
+            break;
             
-            if (op == COPY) {
-                result = (copyFileOperation(&task, 0, task.fileSize) == task.fileSize) ? 0 : -1;
-            } else {
-                result = moveFileOperation(&task);
-            }
+        case MOVE:
+            task.dstDirFd = task.srcDirFd;
+            snprintf(task.dstName, MAX_NAME_LEN, "%s_moved", selected_file);
+            result = moveFileOperation(&task);
             break;
             
         case DELETE:
@@ -144,7 +129,8 @@ int executeFileOperation(FileOperation op) {
             break;
     }
     
-    close(task.srcDirFd);
+    // 리소스 정리
+    if (task.srcDirFd >= 0) close(task.srcDirFd);
     if (task.dstDirFd >= 0 && task.dstDirFd != task.srcDirFd) {
         close(task.dstDirFd);
     }

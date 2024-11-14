@@ -2,25 +2,26 @@
 #define __FILE_OPS_H_INCLUDED__
 
 #include <sys/types.h>
+#include "config.h"  // MAX_PATH_LEN, MAX_NAME_LEN 사용
 
 #define MAX_NAME_LEN 256
 #define COPY_BUFFER_SIZE 8192
 
-typedef enum _FileOpration {
+typedef enum {  // _FileOperation 대신 간단히
     COPY,
     MOVE,
     DELETE
-} FileOpration;
+} FileOperation;
 
-typedef struct FileTask {
-    FileOperation type;  // 오타 수정
+typedef struct {  // _FileTask 대신 간단히
+    FileOperation type;  // FileOpration -> FileOperation으로 수정
     int srcDirFd;
-    char srcName[MAX_NAME_LEN];
-    int dstDirFd;
-    char dstName[MAX_NAME_LEN];
-    size_t fileSize;
     dev_t srcDevNo;
+    char srcName[MAX_NAME_LEN];
+    size_t fileSize;
+    int dstDirFd;
     dev_t dstDevNo;
+    char dstName[MAX_NAME_LEN];
 } FileTask;
 
 int executeFileOperation(FileOperation op);

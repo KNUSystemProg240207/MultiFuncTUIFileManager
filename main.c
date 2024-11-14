@@ -1,22 +1,21 @@
 #include <curses.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <pthread.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <unistd.h>
-#include <libgen.h>
-#include <fcntl.h> 
+#include <string.h>     // memset 함수용
+#include <errno.h>      // errno 변수용
+#include <libgen.h>     // basename 함수용
+#include <fcntl.h>      // O_DIRECTORY 등 파일 옵션용
+#include <unistd.h>     // 파일 작업용
 
 #include "config.h"
 #include "commons.h"
 #include "dir_window.h"
-#include "bottom_area.h"
-#include "list_dir.h"
 #include "title_bar.h"
+#include "bottom_area.h"
+#include "file_ops.h"   // FileTask 구조체와 파일 작업 함수들
 
+// MAX_PATH_LEN 정의 추가 
+#ifndef MAX_PATH_LEN
+#define MAX_PATH_LEN 4096
+#endif
 
 WINDOW *titleBar, *bottomBox;
 
@@ -157,15 +156,18 @@ void mainLoop(void) {
                         
                         if (selected_file) {
                             snprintf(src_path, MAX_CWD_LEN, "%s/%s", cwdBuf, selected_file);
-                            // TODO: 대상 경로 입력 받기 (UI 팀과 협의 필요)
                             snprintf(dst_path, MAX_CWD_LEN, "%s/%s_copy", cwdBuf, selected_file);
-                            copyFileOperation(&(FileTask){
+                            FileTask task = {
                                 .type = COPY,
                                 .srcDirFd = open(cwdBuf, O_DIRECTORY),
                                 .srcName = selected_file,
                                 .dstDirFd = open(cwdBuf, O_DIRECTORY),
                                 .dstName = basename(dst_path)
-                            });
+                            };
+                            copyFileOperation(&task, 0, task.fileSize);
+                            
+                            if (task.srcDirFd >= 0) close(task.srcDirFd);
+                            if (task.dstDirFd >= 0) close(task.dstDirFd);
                         }
                     }
                     break;
@@ -173,16 +175,24 @@ void mainLoop(void) {
                 case 'm':
                 case 'M':
                     {
-                        // Move 작업 구현 (Copy와 유사)
+                        char src_path[MAX_CWD_LEN];
+                        char dst_path[MAX_CWD_LEN];
                         const char *selected_file = getCurrentSelection();
+                        
                         if (selected_file) {
-                            // TODO: 대상 경로 입력 받기
-                            moveFileOperation(&(FileTask){
+                            snprintf(src_path, MAX_CWD_LEN, "%s/%s", cwdBuf, selected_file);
+                            snprintf(dst_path, MAX_CWD_LEN, "%s/%s_moved", cwdBuf, selected_file);
+                            FileTask task = {
                                 .type = MOVE,
                                 .srcDirFd = open(cwdBuf, O_DIRECTORY),
-                                .srcName = selected_file
-                                // ... 대상 정보 설정
-                            });
+                                .srcName = selected_file,
+                                .dstDirFd = open(cwdBuf, O_DIRECTORY),
+                                .dstName = basename(dst_path)
+                            };
+                            moveFileOperation(&task);
+                            
+                            if (task.srcDirFd >= 0) close(task.srcDirFd);
+                            if (task.dstDirFd >= 0) close(task.dstDirFd);
                         }
                     }
                     break;
@@ -192,11 +202,14 @@ void mainLoop(void) {
                     {
                         const char *selected_file = getCurrentSelection();
                         if (selected_file) {
-                            deleteFileOperation(&(FileTask){
+                            FileTask task = {
                                 .type = DELETE,
                                 .srcDirFd = open(cwdBuf, O_DIRECTORY),
                                 .srcName = selected_file
-                            });
+                            };
+                            deleteFileOperation(&task);
+                            
+                            if (task.srcDirFd >= 0) close(task.srcDirFd);
                         }
                     }
                     break;
@@ -237,7 +250,7 @@ void cleanup(void) {
 }
 
 // FileTask 구조체 초기화 및 실행 예시
-void executeFileOperation(FileOpration op) {
+void executeFileOperation(FileOperation op) {
     FileTask task;
     memset(&task, 0, sizeof(FileTask));
     
