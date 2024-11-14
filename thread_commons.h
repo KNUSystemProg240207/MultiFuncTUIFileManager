@@ -36,7 +36,7 @@ typedef struct _ThreadArgs {
  * @param loopInterval 1회 반복 간 간격 (다음 시작 시간 - 이전 시작 시간) [단위: μs]
  * @param threadArgs 새 Thread의 공유 변수
  * @param targetFuncArgs 'onInit', 'loop', 'onFinish' 3개의 각 함수에 전달할 인자 (참고: 구조체 형태로 전달)
- * @return 성공: 0, 실패: -1
+ * @return 성공: 0, 실패: (오류 코드: pthread_create 참조)
  */
 int startThread(
     pthread_t *newThread,

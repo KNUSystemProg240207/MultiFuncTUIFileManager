@@ -20,13 +20,7 @@ WINDOW *titleBar, *bottomBox;
 
 // 각 (폴더의 내용 가져오는) Directory Listener Thread별 저장 공간:
 static pthread_t threadListDir[MAX_DIRWINS];
-static pthread_mutex_t statMutex[MAX_DIRWINS];
-static struct stat statEntries[MAX_DIRWINS][MAX_STAT_ENTRIES];
-static char entryNames[MAX_DIRWINS][MAX_STAT_ENTRIES][MAX_NAME_LEN + 1];
-static pthread_cond_t condStopTrd[MAX_DIRWINS];
-static bool stopRequested[MAX_DIRWINS];
-static pthread_mutex_t stopTrdMutex[MAX_DIRWINS];
-static size_t totalReadItems[MAX_DIRWINS] = { 0 };
+DirListenerArgs dirListenerArgs[MAX_DIRWINS];
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
@@ -47,14 +41,20 @@ int main(int argc, char **argv) {
 
     // Thread들 정지 요청
     for (int i = 0; i < dirWinCnt; i++) {
-        pthread_mutex_lock(&stopTrdMutex[i]);
-        stopRequested[i] = true;
-        pthread_cond_signal(&condStopTrd[i]);
-        pthread_mutex_unlock(&stopTrdMutex[i]);
+        pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
+        dirListenerArgs[i].commonArgs.statusFlags |= THREAD_FLAG_STOP;
+        pthread_cond_signal(&dirListenerArgs[i].commonArgs.resumeThread);
+        pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
     }
     // 각 Thread들 대기
     for (int i = 0; i < dirWinCnt; i++) {
-        pthread_join(threadListDir[i], NULL);
+        pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
+        if (dirListenerArgs[i].commonArgs.statusFlags & THREAD_FLAG_RUNNING) {
+            pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
+            pthread_join(threadListDir[i], NULL);
+        } else {
+            pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
+        }
     }
 
     // 창 '지움' (자원 해제)
@@ -67,9 +67,9 @@ int main(int argc, char **argv) {
 void initVariables(void) {
     // 변수들 기본값으로 초기화
     for (int i = 0; i < MAX_DIRWINS; i++) {
-        pthread_mutex_init(statMutex + i, NULL);
-        pthread_cond_init(condStopTrd + i, NULL);
-        pthread_mutex_init(stopTrdMutex + i, NULL);
+        pthread_mutex_init(&dirListenerArgs[i].bufMutex, NULL);
+        pthread_cond_init(&dirListenerArgs[i].commonArgs.resumeThread, NULL);
+        pthread_mutex_init(&dirListenerArgs[i].commonArgs.statusMutex, NULL);
     }
 }
 
@@ -100,16 +100,18 @@ void initScreen(void) {
     CHECK_CURSES(mvhline(1, 0, ACS_HLINE, w));  // 제목 창 아래로 가로줄 그림
     CHECK_CURSES(mvhline(h - 3, 0, ACS_HLINE, w));  // 단축키 창 위로 가로줄 그림
 
-    initDirWin(&statMutex[0], statEntries[0], entryNames[0], &totalReadItems[0]);  // 폴더 내용 표시 창 생성
+    // 폴더 내용 표시 창 생성
+    initDirWin(
+        &dirListenerArgs[0].bufMutex,
+        dirListenerArgs[0].statBuf,
+        dirListenerArgs[0].nameBuf,
+        &dirListenerArgs[0].totalReadItems
+    );
     dirWinCnt = 1;
 }
 
 void initThreads(void) {
-    startDirListender(
-        &threadListDir[0], &statMutex[0],
-        statEntries[0], entryNames[0], MAX_STAT_ENTRIES,
-        &totalReadItems[0], &condStopTrd[0], &stopRequested[0], &stopTrdMutex[0]
-    );  // Directory Listener Thread 시작
+    startDirListender(&threadListDir[0], &dirListenerArgs[0]);  // Directory Listener Thread 시작
 }
 
 void mainLoop(void) {

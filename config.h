@@ -11,7 +11,7 @@
 
 #define MAX_DIRWINS 1  // 최대 가능한 '탭' 수
 // #define MAX_DIRWINS 3
-#define MAX_STAT_ENTRIES 100  // 한 폴더에 표시 가능한 최대 Item 수
+#define MAX_DIR_ENTRIES 1000  // 한 폴더에 표시 가능한 최대 Item 수
 #define MAX_NAME_LEN 255  // 표시할 최대 이름 길이 (Limit보다 더 길면: 잘림)
 #define MAX_CWD_LEN 2048  // 최대 '현재 경로' 길이
 

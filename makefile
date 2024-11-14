@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -fdiagnostics-color=always -std=gnu99 -Wall -fanalyzer -g
 LFLAGS = -lncurses
-OBJS = main.o dir_window.o commons.o title_bar.o bottom_area.o dir_listener.o
+OBJS = main.o commons.o dir_window.o title_bar.o bottom_area.o thread_commons.o dir_listener.o
 TARGET = demo.out
 
 all: $(TARGET)

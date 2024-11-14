@@ -56,7 +56,7 @@ int startThread(
     argument->threadArgs = threadArgs;
     argument->targetFuncArgs = targetFuncArgs;
 
-    pthread_create(newThread, NULL, runner, argument);
+    return pthread_create(newThread, NULL, runner, argument);
 }
 
 void *runner(void *runnerArgument) {
@@ -66,7 +66,7 @@ void *runner(void *runnerArgument) {
     int (*loop)(void *) = argument->loop;
     int (*onFinish)(void *) = argument->onFinish;
     uint64_t loopInterval = argument->loopInterval;
-    ThreadArgs threadArgs = *(argument->threadArgs);
+    ThreadArgs *threadArgs = argument->threadArgs;
     void *targetFuncArgs = argument->targetFuncArgs;
     free(runnerArgument);  // 메모리 해제
 
@@ -77,9 +77,9 @@ void *runner(void *runnerArgument) {
         onInit(targetFuncArgs);
 
     // 'Thread 작동 중' Flag 설정
-    pthread_mutex_lock(&threadArgs.statusMutex);  // 상태 보호 Mutex 획득
-    threadArgs.statusFlags = THREAD_FLAG_RUNNING;
-    pthread_mutex_unlock(&threadArgs.statusMutex);  // 상태 보호 Mutex 해제
+    pthread_mutex_lock(&threadArgs->statusMutex);  // 상태 보호 Mutex 획득
+    threadArgs->statusFlags = THREAD_FLAG_RUNNING;
+    pthread_mutex_unlock(&threadArgs->statusMutex);  // 상태 보호 Mutex 해제
 
     // Main Loop
     struct timespec startTime;  // Loop 시작 시간
@@ -90,37 +90,38 @@ void *runner(void *runnerArgument) {
         CHECK_FAIL(clock_gettime(CLOCK_REALTIME, &startTime));  // iteration 시작 시간 저장
 
         // loop 함수 실행 전 정지 요청 확인
-        pthread_mutex_lock(&threadArgs.statusMutex);  // 상태 Flag 보호 Mutex 획득
-        if (threadArgs.statusFlags & THREAD_FLAG_STOP) {  // 종료 요청되었으면: 중지
+        pthread_mutex_lock(&threadArgs->statusMutex);  // 상태 Flag 보호 Mutex 획득
+        if (threadArgs->statusFlags & THREAD_FLAG_STOP) {  // 종료 요청되었으면: 중지
             goto EXIT_LOOP;
         }
-        pthread_mutex_unlock(&threadArgs.statusMutex);  // 상태 Flag 보호 Mutex 해제
+        pthread_mutex_unlock(&threadArgs->statusMutex);  // 상태 Flag 보호 Mutex 해제
 
         loop(targetFuncArgs);  // Thread loop 함수 호출
 
         // 설정된 간격만큼 지연 및 종료 요청 처리
-        pthread_mutex_lock(&threadArgs.statusMutex);  // 상태 보호 Mutex 획득
+        pthread_mutex_lock(&threadArgs->statusMutex);  // 상태 보호 Mutex 획득
 
         // 지연 전 종료 확인
-        if (threadArgs.statusFlags & THREAD_FLAG_STOP) {  // 종료 요청되었으면: 중지
+        if (threadArgs->statusFlags & THREAD_FLAG_STOP) {  // 종료 요청되었으면: 중지
             goto EXIT_LOOP;
         }
 
         elapsedUSec = getElapsedTime(startTime);  // 실제 지연 시간 계산
-        if (elapsedUSec > DIR_INTERVAL_USEC) {  // 지연 필요하면
-            wakeupTime = getWakeupTime(DIR_INTERVAL_USEC - elapsedUSec);  // 재개할 '절대 시간' 계산
-            ret = pthread_cond_timedwait(&threadArgs.resumeThread, &threadArgs.statusMutex, &wakeupTime);  // 정지 요청 기다리며, 대기
+        if (elapsedUSec > loopInterval) {  // 지연 필요하면
+            wakeupTime = getWakeupTime(loopInterval - elapsedUSec);  // 재개할 '절대 시간' 계산
+            ret = pthread_cond_timedwait(&threadArgs->resumeThread, &threadArgs->statusMutex, &wakeupTime);  // 정지 요청 기다리며, 대기
             // 주의: 현재 statusMutex 획득된 상태 -> 코드 작성 시 유의
             switch (ret) {
+                case 0:  // 재개 요청됨
                 case ETIMEDOUT:  // 대기 완료
-                case EINTR:  // 재개 요청됨
-                    pthread_mutex_unlock(&threadArgs.statusMutex);  // 상태 보호 Mutex 해제
+                case EINTR:  // 대기 중 Interrupt 발생
+                    pthread_mutex_unlock(&threadArgs->statusMutex);  // 상태 보호 Mutex 해제
                     break;  // 실행 재개
                 default:
                     goto HALT;  // 오류: 쓰레드 정지
             }
         } else {
-            pthread_mutex_unlock(&threadArgs.statusMutex);  // 상태 보호 Mutex 해제
+            pthread_mutex_unlock(&threadArgs->statusMutex);  // 상태 보호 Mutex 해제
         }
     }
 
@@ -130,20 +131,20 @@ EXIT_LOOP:
         // 상태 보호 Mutex 해제:
         // 항상 Loop 내부에서 획득된 상태로 빠져나오며,
         // onFinish 함수 오래 걸릴 수도 있음
-        pthread_mutex_unlock(&threadArgs.statusMutex);
+        pthread_mutex_unlock(&threadArgs->statusMutex);
         onFinish(targetFuncArgs);
         // 상태 보호 Mutex 다시 획득: statusFlags 초기화 위해
-        pthread_mutex_lock(&threadArgs.statusMutex);
+        pthread_mutex_lock(&threadArgs->statusMutex);
     }
 
 HALT:
     // Thread Flag 초기화 (정지된 것으로 Marking 포함)
     // 상태 보호 Mutex 획득 불필요:
     // 획득된 상태로 Loop 빠져나옴 or 윗쪽 코드에서 이미 획득
-    // pthread_mutex_lock(&threadArgs.statusMutex);
-    threadArgs.statusFlags = 0;
+    // pthread_mutex_lock(&threadArgs->statusMutex);
+    threadArgs->statusFlags = 0;
     // 상태 보호 Mutex 해제
-    pthread_mutex_unlock(&threadArgs.statusMutex);
+    pthread_mutex_unlock(&threadArgs->statusMutex);
 
     return NULL;
 }
