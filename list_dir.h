@@ -28,7 +28,8 @@ int startDirListender(
     size_t *totalReadItems,
     pthread_cond_t *stopTrd,
     bool *stopRequested,
-    pthread_mutex_t *stopMutex
+    pthread_mutex_t *stopMutex,
+    char (*entryTimes)[DATETIME_LEN + 1]
 );
 
 #endif

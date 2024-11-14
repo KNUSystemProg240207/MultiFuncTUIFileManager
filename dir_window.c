@@ -34,6 +34,7 @@ struct _DirWin {
     char (*entryNames)[MAX_NAME_LEN + 1];
     size_t *totalReadItems;
     uint64_t lineMovementEvent;
+    char (*entryTimes)[DATETIME_LEN + 1];
 };
 typedef struct _DirWin DirWin;
 
@@ -43,7 +44,6 @@ static unsigned int winCnt;  // 창 개수
 static unsigned int currentWin;  // 현재 창의 Index
 
 void printFileHeader(DirWin *win, int winH, int winW);
-
 void printFileInfo(DirWin *win, int startIdx, int line, int winW);
 
 /**
@@ -63,7 +63,8 @@ int initDirWin(
     pthread_mutex_t *statMutex,
     struct stat *statEntries,
     char (*entryNames)[MAX_NAME_LEN + 1],
-    size_t *totalReadItems
+    size_t *totalReadItems,
+    char (*entryTimes)[DATETIME_LEN + 1]
 ) {
     int y, x, h, w;
     winCnt++;
@@ -86,6 +87,7 @@ int initDirWin(
         .statEntries = statEntries,
         .entryNames = entryNames,
         .totalReadItems = totalReadItems,
+        .entryTimes = entryTimes
     };
     return winCnt;
 }
@@ -93,6 +95,15 @@ int compareByName(const void *a, const void *b) {
     return strcmp((const char *)a, (const char *)b);
 }
 int compareBySize(const void *a, const void *b) {
+    struct stat statA = *((struct stat *)a);
+    struct stat statB = *((struct stat *)b);
+
+    if (statA.st_size < statB.st_size) return -1;  // a가 b보다 작으면 음수 반환
+    if (statA.st_size > statB.st_size) return 1;  // a가 b보다 크면 양수 반환
+    return 0;  // a와 b가 같으면 0 반환
+}
+
+int compareByDate(const void *a, const void *b) {
     struct stat statA = *((struct stat *)a);
     struct stat statB = *((struct stat *)b);
 
@@ -145,7 +156,7 @@ int updateDirWins(void) {
         // 최상단에 출력될 항목의 index 계산
         getmaxyx(win->win, winH, winW);
         winH -= 2;  // 최대 출력 가능한 라인 넘버 -2
-        // winW = 60;
+        // winW = 60; // 윈도우 크기 확인용
 
         // Sort the entryNames array
         // qsort(win->entryNames, *win->totalReadItems, sizeof(win->entryNames[0]), compareByName);
@@ -198,14 +209,39 @@ const char *getFileExtension(const char *fileName) {
     return dot + 1;  // 확장자 반환
 }
 
+void printFileHeader(DirWin *win, int winH, int winW) {
+    wattron(win->win, COLOR_PAIR(HEADER));
+    // winW 값에 따라 헤더를 결정
+    if (winW < 30) {
+        // 창이 3개일 때: 간단한 헤더
+        mvwaddstr(win->win, 0, 0, "   FILE NAME   |   FILE TYPE   |");
+    } else if (winW < 60) {
+        // 창이 2개일 때: 파일 이름, 파일 타입, 날짜만 포함된 헤더
+        mvwaddstr(win->win, 0, 0, "   FILE NAME   |   FILE TYPE   |   LAST DATE   |");
+    } else {
+        // 창이 1개일 때: 모든 정보가 포함된 상세 헤더
+        mvwaddstr(win->win, 0, 0, "   FILE NAME   |   FILE TYPE   |   FILE SIZE   |   LAST DATE   |   LAST TIME   |");
+    }
+    wattroff(win->win, COLOR_PAIR(HEADER));
+    mvhline(3, 0, 0, COLS);  // 구분선
+}
+
 
 void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     struct stat *fileStat = win->statEntries + (startIdx + line);
     char *fileName = win->entryNames[startIdx + line];
     size_t fileSize = fileStat->st_size;
+    char *fileTime = win->entryTimes[startIdx + line];
     char fileType[20];
     char lastModDate[20];
     char lastModTime[20];
+
+    // 시간 분리
+    size_t size = sizeof("%y-%m-%d") / sizeof(char);
+    strncpy(lastModDate, fileTime, size);
+    strncpy(lastModTime, (fileTime + size), size);
+    lastModDate[size] = '\0';
+    lastModTime[size] = '\0';
 
 
     if (S_ISDIR(fileStat->st_mode)) {
@@ -230,12 +266,6 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
         strcpy(fileType, "OTHER");
     }
 
-    // 파일 마지막 수정 시간 출력 (날짜와 시간 분리)
-    struct tm tm;
-    localtime_r(&fileStat->st_mtime, &tm);  // thread-safe한 localtime_r 사용
-    strftime(lastModDate, sizeof(lastModDate), "%y-%m-%d", &tm);
-    strftime(lastModTime, sizeof(lastModTime), "%H:%M:%S", &tm);
-
     // 창 너비에 따라 출력할 항목을 결정
     if (winW < 30) {
         // 창 너비가 매우 좁으면 파일 이름과 타입만 출력
@@ -248,25 +278,6 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
         mvwprintw(win->win, line + 2, 0, "%-15s %15s %15zu %15s %15s", fileName, fileType, fileSize, lastModDate, lastModTime);
     }
 }
-
-
-void printFileHeader(DirWin *win, int winH, int winW) {
-    wattron(win->win, COLOR_PAIR(HEADER));
-    // winW 값에 따라 헤더를 결정
-    if (winW < 30) {
-        // 창이 3개일 때: 간단한 헤더
-        mvwaddstr(win->win, 0, 0, "   FILE NAME   |   FILE TYPE   |");
-    } else if (winW < 60) {
-        // 창이 2개일 때: 파일 이름, 파일 타입, 날짜만 포함된 헤더
-        mvwaddstr(win->win, 0, 0, "   FILE NAME   |   FILE TYPE   |   LAST DATE   |");
-    } else {
-        // 창이 1개일 때: 모든 정보가 포함된 상세 헤더
-        mvwaddstr(win->win, 0, 0, "   FILE NAME   |   FILE TYPE   |   FILE SIZE   |   LAST DATE   |   LAST TIME   |");
-    }
-    wattroff(win->win, COLOR_PAIR(HEADER));
-    mvhline(3, 0, 0, COLS);  // 구분선
-}
-
 
 int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w) {
     int screenW, screenH;

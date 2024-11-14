@@ -18,7 +18,8 @@ int initDirWin(
     pthread_mutex_t *statMutex,
     struct stat *statEntries,
     char (*entryNames)[MAX_NAME_LEN + 1],
-    size_t *totalReadItems
+    size_t *totalReadItems,
+    char (*entryTimes)[DATETIME_LEN + 1]
 );
 
 /**

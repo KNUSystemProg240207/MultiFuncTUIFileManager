@@ -27,6 +27,7 @@ static pthread_cond_t condStopTrd[MAX_DIRWINS];
 static bool stopRequested[MAX_DIRWINS];
 static pthread_mutex_t stopTrdMutex[MAX_DIRWINS];
 static size_t totalReadItems[MAX_DIRWINS] = { 0 };
+static char entryTimes[MAX_DIRWINS][MAX_STAT_ENTRIES][DATETIME_LEN + 1];
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
@@ -43,7 +44,6 @@ int main(int argc, char **argv) {
     initVariables();
     initScreen();
     initThreads();
-    init_colorSet();
     mainLoop();
 
     // Thread들 정지 요청
@@ -91,6 +91,7 @@ void initScreen(void) {
     if (can_change_color() == TRUE) {
         CHECK_CURSES(init_color(COLOR_WHITE, 1000, 1000, 1000));  // 흰색을 '진짜' 흰색으로: 일부 환경에서, COLOR_WHITE가 회색인 경우 있음
     }
+    init_colorSet();
 
     // 창 크기 가져옴
     int h, w;
@@ -101,7 +102,7 @@ void initScreen(void) {
     CHECK_CURSES(mvhline(1, 0, ACS_HLINE, w));  // 제목 창 아래로 가로줄 그림
     CHECK_CURSES(mvhline(h - 3, 0, ACS_HLINE, w));  // 단축키 창 위로 가로줄 그림
 
-    initDirWin(&statMutex[0], statEntries[0], entryNames[0], &totalReadItems[0]);  // 폴더 내용 표시 창 생성
+    initDirWin(&statMutex[0], statEntries[0], entryNames[0], &totalReadItems[0], entryTimes[0]);  // 폴더 내용 표시 창 생성
     dirWinCnt = 1;
 }
 
@@ -109,7 +110,7 @@ void initThreads(void) {
     startDirListender(
         &threadListDir[0], &statMutex[0],
         statEntries[0], entryNames[0], MAX_STAT_ENTRIES,
-        &totalReadItems[0], &condStopTrd[0], &stopRequested[0], &stopTrdMutex[0]
+        &totalReadItems[0], &condStopTrd[0], &stopRequested[0], &stopTrdMutex[0], entryTimes[0]
     );  // Directory Listener Thread 시작
 }
 

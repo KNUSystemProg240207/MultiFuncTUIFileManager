@@ -2,16 +2,15 @@
 #define __COLORS_H_INCLUDED__
 #include <ncurses.h>
 
-
 typedef enum {
     NONE__,
-    DEFAULT,  // 1
+    DEFAULT,
     REVERSE_NORMAL,
     DIRECTORY,
     SYMBOLIC,
     EXE,
     TXT,
-    IMG,  // 7
+    IMG,
     HIDDEN,
     HEADER
 } FILE_COLOR;

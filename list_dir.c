@@ -34,6 +34,7 @@ struct _DirListenerArgs {
     pthread_cond_t *stopTrd;
     bool *stopRequested;
     pthread_mutex_t *stopMutex;
+    char (*timeBuf)[DATETIME_LEN + 1];
 };
 typedef struct _DirListenerArgs DirListenerArgs;
 
@@ -56,7 +57,7 @@ static void *dirListener(void *argsPtr);
  * @param bufLen 최대 읽어올 항목 수
  * @return 성공: (읽은 항목 수), 실패: -1
  */
-static ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], size_t bufLen);
+static ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], size_t bufLen, char (*timeBuf)[DATETIME_LEN + 1]);
 
 /**
  * 깨어날 시간 계산
@@ -76,7 +77,8 @@ int startDirListender(
     size_t *totalReadItems,
     pthread_cond_t *stopTrd,
     bool *stopRequested,
-    pthread_mutex_t *stopMutex
+    pthread_mutex_t *stopMutex,
+    char (*entryTimes)[DATETIME_LEN + 1]
 ) {
     // 설정 초기화
     DirListenerArgs *newWinArg = argsArr + threadCnt;
@@ -88,6 +90,7 @@ int startDirListender(
     newWinArg->stopTrd = stopTrd;
     newWinArg->stopRequested = stopRequested;
     newWinArg->stopMutex = stopMutex;
+    newWinArg->timeBuf = entryTimes;
 
     // 새 쓰레드 생성
     if (pthread_create(newThread, NULL, dirListener, newWinArg) == -1) {
@@ -107,7 +110,7 @@ void *dirListener(void *argsPtr) {
 
         // 현재 폴더 내용 가져옴
         pthread_mutex_lock(args.bufMutex);  // 결과값 보호 Mutex 획득
-        readItems = listEntries(args.buf, args.nameBuf, args.bufLen);  // 내용 가져오기
+        readItems = listEntries(args.buf, args.nameBuf, args.bufLen, args.timeBuf);  // 내용 가져오기
         if (readItems == -1)
             CHECK_FAIL(-1);
         *args.totalReadItems = readItems;
@@ -138,7 +141,7 @@ EXIT:
     return NULL;
 }
 
-ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], size_t bufLen) {
+ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], size_t bufLen, char (*timeBuf)[DATETIME_LEN + 1]) {
     // TODO: scandirat & versionsort 이용 구현
     // (해당 함수 사용 시, 별도 정렬 불필요)
     // (자동으로 malloc()됨 -> 현재 static buffer 관련 수정 필요, 구현 시 free() 유의하여 구현)
@@ -162,6 +165,11 @@ ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], s
         if (stat(ent->d_name, resultBuf + readItems) == -1) {  // stat 읽어들임
             return -1;
         }
+        // 파일 마지막 수정 시간 출력 (날짜와 시간 분리)
+        struct tm tm;
+        localtime_r(&(resultBuf + readItems)->st_mtime, &tm);  // thread-safe한 localtime_r 사용
+        strftime(timeBuf[readItems], DATETIME_LEN, "%y-%m-%d %H:%M:%S", &tm);
+
         errno = 0;
         readItems++;
     }
