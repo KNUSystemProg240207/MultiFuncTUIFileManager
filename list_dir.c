@@ -165,10 +165,11 @@ ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], s
         if (stat(ent->d_name, resultBuf + readItems) == -1) {  // stat 읽어들임
             return -1;
         }
-        // 파일 마지막 수정 시간 출력 (날짜와 시간 분리)
+        // 파일 마지막 수정 시간 출력
         struct tm tm;
         localtime_r(&(resultBuf + readItems)->st_mtime, &tm);  // thread-safe한 localtime_r 사용
-        strftime(timeBuf[readItems], DATETIME_LEN, "%y-%m-%d %H:%M:%S", &tm);
+        // strftime(timeBuf[readItems], DATETIME_LEN, "%b %d %I:%M%p", &tm);
+        strftime(timeBuf[readItems], DATETIME_LEN + 2, "%Y-%m-%d %H:%M:%S", &tm);
 
         errno = 0;
         readItems++;

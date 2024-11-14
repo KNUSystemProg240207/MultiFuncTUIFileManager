@@ -91,7 +91,15 @@ int initDirWin(
     };
     return winCnt;
 }
+
 int compareByName(const void *a, const void *b) {
+    return strcmp((const char *)a, (const char *)b);
+}
+int compareByType(const void *a, const void *b) {
+    return strcmp((const char *)a, (const char *)b);
+}
+
+int compareByDate(const void *a, const void *b) {
     return strcmp((const char *)a, (const char *)b);
 }
 int compareBySize(const void *a, const void *b) {
@@ -103,14 +111,6 @@ int compareBySize(const void *a, const void *b) {
     return 0;  // a와 b가 같으면 0 반환
 }
 
-int compareByDate(const void *a, const void *b) {
-    struct stat statA = *((struct stat *)a);
-    struct stat statB = *((struct stat *)b);
-
-    if (statA.st_size < statB.st_size) return -1;  // a가 b보다 작으면 음수 반환
-    if (statA.st_size > statB.st_size) return 1;  // a가 b보다 크면 양수 반환
-    return 0;  // a와 b가 같으면 0 반환
-}
 
 int updateDirWins(void) {
     int ret, winH, winW;
@@ -156,14 +156,17 @@ int updateDirWins(void) {
         // 최상단에 출력될 항목의 index 계산
         getmaxyx(win->win, winH, winW);
         winH -= 2;  // 최대 출력 가능한 라인 넘버 -2
-        // winW = 60; // 윈도우 크기 확인용
+        // winW = 70;  // 윈도우 크기 확인용
 
-        // Sort the entryNames array
-        // qsort(win->entryNames, *win->totalReadItems, sizeof(win->entryNames[0]), compareByName);
-        qsort(win->statEntries, *win->totalReadItems, sizeof(*win->statEntries), compareBySize);
+        // 정렬 부분, 아직 정리 x
+        qsort(win->entryNames, *win->totalReadItems, sizeof(win->entryNames[0]), compareByName);  // 이름 정렬
+        // qsort(win->statEntries, *win->totalReadItems, sizeof(*win->statEntries), compareBySize);
+        // qsort(win->entryTimes, *win->totalReadItems, sizeof(win->entryTimes[0]), compareByName);
 
 
-        printFileHeader(win, winH, winW);
+        printFileHeader(win, winH, winW);  // 헤더 부분 출력
+
+        /* 라인 스크롤 */
         centerLine = (winH - 1) / 2;  // 가운데 줄의 줄 번호 ( [0, winH) )
         if (itemsCnt <= winH) {  // 항목 개수 적음 -> 빠르게 처리
             startIdx = 0;
@@ -180,19 +183,20 @@ int updateDirWins(void) {
         }
 
         currentLine = win->currentPos - startIdx;  // 역상으로 출력할, 현재 선택된 줄
+
+        /* 디렉토리 출력 */
         for (line = 0; line < itemsToPrint; line++) {  // 항목 있는 공간: 출력
             if (winNo == currentWin && line == currentLine)  // 선택된 것 역상으로 출력
                 wattron(win->win, A_REVERSE);
-            // mvwaddstr(win->win, line + 2, 0, win->entryNames[startIdx + line]);  // 항목 이름 출력, 2행씩 밀려씀
             printFileInfo(win, startIdx, line, winW);
-            // mvwprintw(win->win, line + 2, 0, "%-15s%13ld ", win->entryNames[startIdx + line], (win->statEntries + (startIdx + line))->st_size);
-            whline(win->win, ' ', winW - getcurx(win->win));  // 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
             if (winNo == currentWin && line == currentLine)
                 wattroff(win->win, A_REVERSE);
         }
-        wclrtobot(win->win);  // 아래 남는 공간: 지움
-        wrefresh(win->win);  // 창 새로 그림
 
+        /* 버그 나서(마지막 줄만 whline 미적용) 임시로 주석 달아놓음 */
+        // wclrtobot(win->win);  // 아래 남는 공간: 지움
+
+        wrefresh(win->win);  // 창 새로 그림
         pthread_mutex_unlock(win->statMutex);
     }
 
@@ -212,20 +216,87 @@ const char *getFileExtension(const char *fileName) {
 void printFileHeader(DirWin *win, int winH, int winW) {
     wattron(win->win, COLOR_PAIR(HEADER));
     // winW 값에 따라 헤더를 결정
-    if (winW < 30) {
+    if (winW < 40) {
         // 창이 3개일 때: 간단한 헤더
-        mvwaddstr(win->win, 0, 0, "   FILE NAME   |   FILE TYPE   |");
-    } else if (winW < 60) {
+        mvwaddstr(win->win, 0, 0, "      FILE NAME      |   LAST MODIFIED   |");
+    } else if (winW < 50) {
         // 창이 2개일 때: 파일 이름, 파일 타입, 날짜만 포함된 헤더
-        mvwaddstr(win->win, 0, 0, "   FILE NAME   |   FILE TYPE   |   LAST DATE   |");
+        mvwaddstr(win->win, 0, 0, "      FILE NAME      |   TYPE   |   LAST MODIFIED   |");
     } else {
         // 창이 1개일 때: 모든 정보가 포함된 상세 헤더
-        mvwaddstr(win->win, 0, 0, "   FILE NAME   |   FILE TYPE   |   FILE SIZE   |   LAST DATE   |   LAST TIME   |");
+        mvwaddstr(win->win, 0, 0, "      FILE NAME      |   TYPE   |  SIZE  |    LAST MODIFIED    |");
     }
+    whline(win->win, ' ', winW - getcurx(win->win));  // 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
     wattroff(win->win, COLOR_PAIR(HEADER));
     mvhline(3, 0, 0, COLS);  // 구분선
 }
+// 주어진 텍스트를 주어진 너비에 맞게 가운데 정렬한 문자열을 반환하는 함수
+char *centerText(const char *text, int width) {
+    static char centeredText[256];  // 정렬된 텍스트를 저장할 배열 (길이를 충분히 크게 설정)
 
+    int textLength = strlen(text);  // 텍스트의 길이 계산
+    int padding = (width - textLength) / 2;  // 텍스트 양 옆에 넣을 여백 계산
+
+    // 여백이 음수일 수 없으므로 최소값을 0으로 설정
+    if (padding < 0) padding = 0;
+
+    // 텍스트를 배열의 가운데에 배치
+    // sprintf를 사용하여 텍스트를 가운데로 배치하고 나머지는 공백으로 채운다.
+    snprintf(centeredText, width + 1, "%*s%s%*s", padding, "", text, padding, "");
+
+    return centeredText;  // 가운데 정렬된 텍스트 반환
+}
+
+
+void getFileType(DirWin *win, struct stat *fileStat, char *fileType, char *fileName) {
+    const char *extension = getFileExtension(fileName);
+    if (S_ISDIR(fileStat->st_mode)) {  // 디렉토리
+        wattron(win->win, COLOR_PAIR(DIRECTORY));
+        strcpy(fileType, "DIR");
+    } else if (S_ISLNK(fileStat->st_mode)) {  // 링크
+        wattron(win->win, COLOR_PAIR(SYMBOLIC));
+        strcpy(fileType, "LNK");
+    } else if (S_ISREG(fileStat->st_mode)) {  // 일반 파일
+        if (extension) {
+            switch (extension[0]) {  // 체크
+                case 'e':  // 실행파일
+                case 'o':
+                    wattron(win->win, COLOR_PAIR(EXE));
+                    if (strcmp(extension, "exe") == 0 || strcmp(extension, "out") == 0 || strcmp(extension, "bin") == 0)
+                        strcpy(fileType, "EXE");
+                    break;
+                case 't':  // 텍스트
+                case 'l':  // 텍스트
+                    wattron(win->win, COLOR_PAIR(TXT));
+                    if (strcmp(extension, "txt") == 0 || strcmp(extension, "log") == 0)
+                        strcpy(fileType, "TXT");
+                    break;
+                case 'c':  // 소스코드
+                case 'h':
+                    wattron(win->win, COLOR_PAIR(SRC));
+                    if (strcmp(extension, "c") == 0 || strcmp(extension, "cpp") == 0 || strcmp(extension, "h") == 0)
+                        strcpy(fileType, "SRC");
+                    break;
+                case 'j':  // 이미지
+                case 'p':
+                    wattron(win->win, COLOR_PAIR(IMG));
+                    if (strcmp(extension, "jpg") == 0 || strcmp(extension, "png") == 0)
+                        strcpy(fileType, "IMG");
+                    break;
+                    // 필요하면 더 추가
+                default:
+                    wattron(win->win, COLOR_PAIR(DEFAULT));
+                    strcpy(fileType, "FILE");
+            }
+        } else {
+            wattron(win->win, COLOR_PAIR(DEFAULT));
+            strcpy(fileType, "FILE");
+        }
+    } else {
+        wattron(win->win, COLOR_PAIR(OTHER));
+        strcpy(fileType, "OTHER");
+    }
+}
 
 void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     struct stat *fileStat = win->statEntries + (startIdx + line);
@@ -237,46 +308,31 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     char lastModTime[20];
 
     // 시간 분리
-    size_t size = sizeof("%y-%m-%d") / sizeof(char);
-    strncpy(lastModDate, fileTime, size);
-    strncpy(lastModTime, (fileTime + size), size);
-    lastModDate[size] = '\0';
-    lastModTime[size] = '\0';
+    // size_t date_size = sizeof("%b %d") / sizeof(char);
+    // size_t time_size = sizeof("%h:%M%p") / sizeof(char);
+    size_t date_size = sizeof("0000-00-00") / sizeof(char);
+    size_t time_size = sizeof("00:00:00") / sizeof(char);
 
+    strncpy(lastModDate, fileTime, date_size);
+    strncpy(lastModTime, (fileTime + date_size), time_size);
+    lastModDate[date_size] = '\0';
+    lastModTime[time_size] = '\0';
 
-    if (S_ISDIR(fileStat->st_mode)) {
-        strcpy(fileType, "DIR");
-    } else if (S_ISLNK(fileStat->st_mode)) {
-        strcpy(fileType, "LINK");
-    } else if (S_ISREG(fileStat->st_mode)) {
-        const char *extension = getFileExtension(fileName);
-        // 추후 상세 설정
-        if (strcmp(extension, "exe") == 0) {
-            strcpy(fileType, "EXE");
-        } else if (strcmp(extension, "txt") == 0) {
-            strcpy(fileType, "TXT");
-        } else if (strcmp(extension, "o") == 0) {
-            strcpy(fileType, "OUT");
-        } else if (strcmp(extension, "c") == 0) {
-            strcpy(fileType, "SRC");
-        } else {
-            strcpy(fileType, "FILE");
-        }
-    } else {
-        strcpy(fileType, "OTHER");
-    }
+    getFileType(win, fileStat, fileType, fileName);
 
     // 창 너비에 따라 출력할 항목을 결정
-    if (winW < 30) {
+    if (winW < 40) {
         // 창 너비가 매우 좁으면 파일 이름과 타입만 출력
-        mvwprintw(win->win, line + 2, 0, "%-15s %15s", fileName, fileType);
-    } else if (winW < 60) {
+        mvwprintw(win->win, line + 2, 0, "%-21s %10s %s", fileName, lastModDate, lastModTime);
+    } else if (winW < 50) {
         // 창 너비가 중간일 경우 파일 이름, 타입, 마지막 수정 날짜만 출력
-        mvwprintw(win->win, line + 2, 0, "%-15s %15s %15s", fileName, fileType, lastModDate);
+        mvwprintw(win->win, line + 2, 0, "%-21s %10s %10s %s", fileName, fileType, lastModDate, lastModTime);
     } else {
         // 창 너비가 넓을 경우 모든 정보를 출력
-        mvwprintw(win->win, line + 2, 0, "%-15s %15s %15zu %15s %15s", fileName, fileType, fileSize, lastModDate, lastModTime);
+        mvwprintw(win->win, line + 2, 0, "%-21s %10s %8zu %12s %s", fileName, centerText(fileType, 10), fileSize, lastModDate, lastModTime);
     }
+    whline(win->win, ' ', winW - getcurx(win->win));  // 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
+    wattron(win->win, COLOR_PAIR(DEFAULT));
 }
 
 int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w) {
@@ -345,3 +401,13 @@ void selectNextWindow(void) {
     else
         currentWin++;
 }
+
+/*
+TODO
+1. 파일 타입 정렬(DirWin 구조체에 따로 저장해둬야 할 수 있음)
+2. 타입별로 색깔 다르게 하는 거 좀 가시성 좋게,
+3. 타입별로 출력 다르게 하는 거, 윈도우 크기마다 출력 다르게 하는 거 좀 정리해서
+좀 보기 좋게 바꾸기 윈도우 크기를 먼저 체크해보던가, 잘
+4. midnight commander처럼 window에 박스를 친다던가?
+5. 윈도우 패널화 시키기
+*/

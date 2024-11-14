@@ -4,16 +4,22 @@
 
 typedef enum {
     NONE__,
-    DEFAULT,
-    REVERSE_NORMAL,
+    BASIC,
+    REVERSE_BASIC,
     DIRECTORY,
     SYMBOLIC,
     EXE,
     TXT,
     IMG,
+    SRC,
     HIDDEN,
-    HEADER
+    BGRND,
+    HEADER,
+    OTHER,
+    DEFAULT
 } FILE_COLOR;
+
+#define COLOR_SKY 1
 
 void init_colorSet();
 
