@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include "config.h"  // MAX_PATH_LEN, MAX_NAME_LEN 사용
 
-#define MAX_NAME_LEN 256
+//MAX_Name_LEN 중복 정의 문제 수정 - 11/14  이미 config.h에 추가함.
 #define COPY_BUFFER_SIZE 8192
 
 typedef enum {  // _FileOperation 대신 간단히

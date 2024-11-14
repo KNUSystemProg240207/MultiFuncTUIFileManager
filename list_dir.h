@@ -19,7 +19,7 @@
  * @param stopMutex 정지 요청 관련 Mutex
  * @return 성공: 0, 실패: -1
  */
-int startDirListender(
+int startDirListener(
     pthread_t *newThread,
     pthread_mutex_t *bufMutex,
     struct stat *buf,

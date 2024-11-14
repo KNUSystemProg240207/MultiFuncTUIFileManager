@@ -4,6 +4,7 @@
 #include <libgen.h>     // basename 함수용
 #include <fcntl.h>      // O_DIRECTORY 등 파일 옵션용
 #include <unistd.h>     // 파일 작업용
+#include <libgen.h>  // basename 함수용
 
 #include "config.h"
 #include "commons.h"
@@ -11,6 +12,8 @@
 #include "title_bar.h"
 #include "bottom_area.h"
 #include "file_ops.h"   // FileTask 구조체와 파일 작업 함수들
+#include "file_manager.h"  // getPathInput 함수용
+
 
 // MAX_PATH_LEN 정의 추가 
 #ifndef MAX_PATH_LEN
@@ -159,11 +162,14 @@ void mainLoop(void) {
                             snprintf(dst_path, MAX_CWD_LEN, "%s/%s_copy", cwdBuf, selected_file);
                             FileTask task = {
                                 .type = COPY,
-                                .srcDirFd = open(cwdBuf, O_DIRECTORY),
-                                .srcName = selected_file,
-                                .dstDirFd = open(cwdBuf, O_DIRECTORY),
-                                .dstName = basename(dst_path)
+                                .srcDirFd = open(".", O_DIRECTORY),
+                                .srcDevNo = 0,
+                                .fileSize = 0,
+                                .dstDirFd = -1,
+                                .dstDevNo = 0
                             };
+                            strncpy(task.srcName, selected_file, MAX_NAME_LEN);
+                            snprintf(task.dstName, MAX_NAME_LEN, "%s_copy", selected_file);
                             copyFileOperation(&task, 0, task.fileSize);
                             
                             if (task.srcDirFd >= 0) close(task.srcDirFd);
@@ -184,11 +190,14 @@ void mainLoop(void) {
                             snprintf(dst_path, MAX_CWD_LEN, "%s/%s_moved", cwdBuf, selected_file);
                             FileTask task = {
                                 .type = MOVE,
-                                .srcDirFd = open(cwdBuf, O_DIRECTORY),
-                                .srcName = selected_file,
-                                .dstDirFd = open(cwdBuf, O_DIRECTORY),
-                                .dstName = basename(dst_path)
+                                .srcDirFd = open(".", O_DIRECTORY),
+                                .srcDevNo = 0,
+                                .fileSize = 0,
+                                .dstDirFd = -1,
+                                .dstDevNo = 0
                             };
+                            strncpy(task.srcName, selected_file, MAX_NAME_LEN);
+                            snprintf(task.dstName, MAX_NAME_LEN, "%s_moved", selected_file);
                             moveFileOperation(&task);
                             
                             if (task.srcDirFd >= 0) close(task.srcDirFd);
@@ -250,7 +259,7 @@ void cleanup(void) {
 }
 
 // FileTask 구조체 초기화 및 실행 예시
-void executeFileOperation(FileOperation op) {
+int executeFileOperation(FileOperation op) {
     FileTask task;
     memset(&task, 0, sizeof(FileTask));
     
@@ -281,9 +290,15 @@ void executeFileOperation(FileOperation op) {
                     
                     if (op == COPY) {
                         ssize_t result = copyFileOperation(&task, 0, task.fileSize);
+                        if(result<0){
+                            return -1;
+                        }
                         // 결과 처리
                     } else {
                         int result = moveFileOperation(&task);
+                        if (result<0){
+                            return -1;
+                        }
                         // 결과 처리
                     }
                 }
@@ -305,6 +320,8 @@ void executeFileOperation(FileOperation op) {
     // 정리
     if (task.srcDirFd >= 0) close(task.srcDirFd);
     if (task.dstDirFd >= 0) close(task.dstDirFd);
+
+    return 0;
 }
 
 void showOperationResult(const char* operation, int result) {

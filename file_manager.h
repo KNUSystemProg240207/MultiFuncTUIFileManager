@@ -30,5 +30,6 @@ typedef enum {
 int initFileManager(void);
 void cleanupFileManager(void);
 int executeFileOperation(FileOperation op);
+int getPathInput(const char* prompt, char* buffer, size_t buflen);
 
 #endif
