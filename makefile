@@ -12,11 +12,12 @@ $(TARGET): $(OBJS)
 main.o: config.h commons.h dir_window.h title_bar.h bottom_area.h main.c
 	$(CC) $(CFLAGS) -c main.c
 
-dir_window.o: config.h commons.h dir_window.h dir_window.c
-	$(CC) $(CFLAGS) -c dir_window.c
-
 commons.o: commons.h commons.c
 	$(CC) $(CFLAGS) -c commons.c
+
+# ncurses windows
+dir_window.o: config.h commons.h dir_window.h dir_window.c
+	$(CC) $(CFLAGS) -c dir_window.c
 
 title_bar.o: config.h commons.h title_bar.h title_bar.c
 	$(CC) $(CFLAGS) -c title_bar.c
@@ -24,9 +25,14 @@ title_bar.o: config.h commons.h title_bar.h title_bar.c
 bottom_area.o: config.h commons.h bottom_area.h bottom_area.c
 	$(CC) $(CFLAGS) -c bottom_area.c
 
+# Threads
+thread_commons.o: config.h thread_commons.h thread_commons.c
+	$(CC) $(CFLAGS) -c thread_commons.c
+
 dir_listener.o: config.h commons.h dir_listener.h dir_listener.c
 	$(CC) $(CFLAGS) -c dir_listener.c
 
+# misc
 clean:
 	rm $(OBJS)
 	rm $(TARGET)
