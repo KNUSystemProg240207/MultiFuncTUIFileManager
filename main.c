@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <libgen.h>
+#include <fcntl.h> 
 
 #include "config.h"
 #include "commons.h"
@@ -146,36 +148,56 @@ void mainLoop(void) {
                 case KEY_RIGHT:
                     selectPreviousWindow();
                     break;
-                case 'c':  // 복사
+                case 'c':
                 case 'C':
-                    // 현재 선택된 파일 경로 가져오기 (TODO: 구현 필요)
-                    // strncpy(src_path, selected_file_path, MAX_CWD_LEN);
-                    
-                    // 대상 경로 입력받기
-                    if (getPathInput("Copy to", dst_path, MAX_CWD_LEN) == 0) {
-                        copyFile(src_path, dst_path);
+                    {
+                        char src_path[MAX_CWD_LEN];
+                        char dst_path[MAX_CWD_LEN];
+                        const char *selected_file = getCurrentSelection();
+                        
+                        if (selected_file) {
+                            snprintf(src_path, MAX_CWD_LEN, "%s/%s", cwdBuf, selected_file);
+                            // TODO: 대상 경로 입력 받기 (UI 팀과 협의 필요)
+                            snprintf(dst_path, MAX_CWD_LEN, "%s/%s_copy", cwdBuf, selected_file);
+                            copyFileOperation(&(FileTask){
+                                .type = COPY,
+                                .srcDirFd = open(cwdBuf, O_DIRECTORY),
+                                .srcName = selected_file,
+                                .dstDirFd = open(cwdBuf, O_DIRECTORY),
+                                .dstName = basename(dst_path)
+                            });
+                        }
                     }
                     break;
 
-                case 'm':  // 이동
+                case 'm':
                 case 'M':
-                    // 현재 선택된 파일 경로 가져오기 (TODO: 구현 필요)
-                    // strncpy(src_path, selected_file_path, MAX_CWD_LEN);
-                    
-                    // 대상 경로 입력받기
-                    if (getPathInput("Move to", dst_path, MAX_CWD_LEN) == 0) {
-                        moveFile(src_path, dst_path);
+                    {
+                        // Move 작업 구현 (Copy와 유사)
+                        const char *selected_file = getCurrentSelection();
+                        if (selected_file) {
+                            // TODO: 대상 경로 입력 받기
+                            moveFileOperation(&(FileTask){
+                                .type = MOVE,
+                                .srcDirFd = open(cwdBuf, O_DIRECTORY),
+                                .srcName = selected_file
+                                // ... 대상 정보 설정
+                            });
+                        }
                     }
                     break;
 
-                case 'd':  // 삭제
+                case 'd':
                 case 'D':
-                    // 현재 선택된 파일 경로 가져오기 (TODO: 구현 필요)
-                    // strncpy(selected_path, selected_file_path, MAX_CWD_LEN);
-                    
-                    // 확인 메시지
-                    if (getPathInput("Delete? (y/n)", dst_path, 2) == 0 && (dst_path[0] == 'y' || dst_path[0] == 'Y')) {
-                        removeFile(selected_path);
+                    {
+                        const char *selected_file = getCurrentSelection();
+                        if (selected_file) {
+                            deleteFileOperation(&(FileTask){
+                                .type = DELETE,
+                                .srcDirFd = open(cwdBuf, O_DIRECTORY),
+                                .srcName = selected_file
+                            });
+                        }
                     }
                     break;
                 case 'q':
@@ -212,4 +234,72 @@ CLEANUP:
 
 void cleanup(void) {
     endwin();
+}
+
+// FileTask 구조체 초기화 및 실행 예시
+void executeFileOperation(FileOpration op) {
+    FileTask task;
+    memset(&task, 0, sizeof(FileTask));
+    
+    // 현재 선택된 파일 정보 가져오기
+    const char* currentDir = getCurrentDirectory();  // 구현 필요
+    const char* selectedFile = getCurrentSelection();  // 구현 필요
+    
+    // 기본 정보 설정
+    task.type = op;
+    task.srcDirFd = open(currentDir, O_DIRECTORY);
+    strncpy(task.srcName, selectedFile, MAX_NAME_LEN);
+    struct stat st;
+    if (fstatat(task.srcDirFd, task.srcName, &st, 0) == 0) {
+        task.srcDevNo = st.st_dev;
+        task.fileSize = st.st_size;
+    }
+
+    switch(op) {
+        case COPY:
+        case MOVE:
+            {
+                char dstPath[MAX_NAME_LEN];
+                if (getPathInput("Enter destination", dstPath, MAX_NAME_LEN) == 0) {
+                    // 목적지 디렉토리 설정
+                    char* dstDir = dirname(strdup(dstPath));  // 구현 필요
+                    task.dstDirFd = open(dstDir, O_DIRECTORY);
+                    strncpy(task.dstName, basename(dstPath), MAX_NAME_LEN);
+                    
+                    if (op == COPY) {
+                        ssize_t result = copyFileOperation(&task, 0, task.fileSize);
+                        // 결과 처리
+                    } else {
+                        int result = moveFileOperation(&task);
+                        // 결과 처리
+                    }
+                }
+            }
+            break;
+            
+        case DELETE:
+            {
+                char confirm[2];
+                if (getPathInput("Delete? (y/n)", confirm, 2) == 0 && 
+                    (confirm[0] == 'y' || confirm[0] == 'Y')) {
+                    int result = deleteFileOperation(&task);
+                    // 결과 처리
+                }
+            }
+            break;
+    }
+
+    // 정리
+    if (task.srcDirFd >= 0) close(task.srcDirFd);
+    if (task.dstDirFd >= 0) close(task.dstDirFd);
+}
+
+void showOperationResult(const char* operation, int result) {
+    char message[100];
+    if (result >= 0) {
+        snprintf(message, sizeof(message), "%s completed successfully", operation);
+    } else {
+        snprintf(message, sizeof(message), "%s failed: %s", operation, strerror(errno));
+    }
+    // 메시지 표시 (구현 필요)
 }

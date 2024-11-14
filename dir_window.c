@@ -42,6 +42,12 @@ static DirWin windows[MAX_DIRWINS];  // 각 창의 runtime 정보 저장
 static unsigned int winCnt;  // 창 개수
 static unsigned int currentWin;  // 현재 창의 Index
 
+//현재 디렉토리 정보 관리
+static char current_directory[MAX_PATH_LEN];
+static DirEntry* file_list = NULL;
+static int selected_index = 0;
+static int total_files = 0;
+
 
 /**
  * 창 위치 계산
@@ -217,3 +223,40 @@ void selectNextWindow(void) {
     else
         currentWin++;
 }
+
+// 현재 디렉토리 내용 읽기
+int readDirectoryContents(void) {
+    DIR *dir;
+    struct dirent *entry;
+    
+    dir = opendir(current_directory);
+    if (!dir) return -1;
+    
+    // 기존 목록 정리
+    if (file_list) {
+        free(file_list);
+        file_list = NULL;
+    }
+    
+    // 새로운 목록 생성
+    while ((entry = readdir(dir)) != NULL) {
+        // 파일 목록에 추가
+        total_files++;
+        file_list = realloc(file_list, total_files * sizeof(DirEntry));
+        strncpy(file_list[total_files-1].name, entry->d_name, MAX_NAME_LEN);
+    }
+    
+    closedir(dir);
+    return 0;
+}
+
+// 현재 선택된 파일 명 반환
+const char* getCurrentSelection(void) {
+    if (!currentWin || !currentWin->entries || 
+        currentWin->selected < 0 || 
+        currentWin->selected >= currentWin->numEntries) {
+        return NULL;
+    }
+    return currentWin->entries[currentWin->selected].name;
+}
+

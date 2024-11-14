@@ -22,4 +22,16 @@
 // struct dt -> 문자열 변환: 형식 지정 (buf 최소 길이: DATETIME_LEN + 1)
 #define DT_TO_STR(buf, dt) sprintf((buf), DATETIME_FORMAT, (dt)->tm_year + 1900, (dt)->tm_mon + 1, (dt)->tm_mday, (dt)->tm_hour, (dt)->tm_min, (dt)->tm_sec)
 
+typedef struct {
+    int confirm_delete;
+    int show_hidden_files;
+    int preserve_attributes;
+    size_t buffer_size;
+    char default_copy_dir[MAX_PATH_LEN];
+} FileManagerConfig;
+
+// 설정 로드/저장
+int loadConfig(FileManagerConfig *config);
+int saveConfig(FileManagerConfig *config);
+
 #endif

@@ -1,40 +1,51 @@
 #ifndef __FILE_OPS_H_INCLUDED__
 #define __FILE_OPS_H_INCLUDED__
 
-/**
- * 선택된 파일/폴더 복사
- * 
- * @param src 원본 경로
- * @param dst 대상 경로
- * @return 성공: 0, 실패: -1
- */
-int copyFile(const char *src, const char *dst);
+#include <sys/types.h>
+
+#define MAX_NAME_LEN 256
+#define COPY_BUFFER_SIZE 8192
+
+typedef enum _FileOpration {
+    COPY,
+    MOVE,
+    DELETE
+} FileOpration;
+
+typedef struct FileTask {
+    FileOperation type;  // 오타 수정
+    int srcDirFd;
+    char srcName[MAX_NAME_LEN];
+    int dstDirFd;
+    char dstName[MAX_NAME_LEN];
+    size_t fileSize;
+    dev_t srcDevNo;
+    dev_t dstDevNo;
+} FileTask;
+
+int executeFileOperation(FileOperation op);
 
 /**
- * 선택된 파일/폴더 이동
- * 
- * @param src 원본 경로
- * @param dst 대상 경로
- * @return 성공: 0, 실패: -1
+ * 파일 복사 함수
+ * @param task 파일 작업 정보
+ * @param offset 복사 시작 위치
+ * @param size 복사할 크기
+ * @return 성공 시 복사된 바이트 수, 실패 시 -1
  */
-int moveFile(const char *src, const char *dst);
+ssize_t copyFileOperation(FileTask *task, off_t offset, size_t size);
 
 /**
- * 선택된 파일/폴더 삭제
- * 
- * @param path 삭제할 경로
- * @return 성공: 0, 실패: -1
+ * 파일 이동 함수
+ * @param task 파일 작업 정보
+ * @return 성공 시 0, 실패 시 -1
  */
-int removeFile(const char *path);
+int moveFileOperation(FileTask *task);
 
 /**
- * 사용자로부터 경로 입력받기
- * 
- * @param prompt 입력 프롬프트 메시지
- * @param result 입력받은 경로를 저장할 버퍼
- * @param maxlen 버퍼의 최대 길이
- * @return 성공: 0, 취소: -1
+ * 파일 삭제 함수
+ * @param task 파일 작업 정보
+ * @return 성공 시 0, 실패 시 -1
  */
-int getPathInput(const char *prompt, char *result, size_t maxlen);
+int deleteFileOperation(FileTask *task);
 
 #endif

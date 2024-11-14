@@ -48,4 +48,10 @@ void selectPreviousWindow(void);
  */
 void selectNextWindow(void);
 
+// 현재 디렉토리 경로 반환
+const char* getCurrentDirectory(void);
+
+// 현재 선택된 파일명 반환
+const char* getCurrentSelection(void);
+
 #endif
