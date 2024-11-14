@@ -5,17 +5,14 @@
 #include "config.h"
 #include "proc_win.h"
 
-#define MAX_PROCESSES 256  // 한 번에 표시 가능한 최대 프로세스 수
-#define MAX_NAME_LEN 256
-
 static ProcWin procWindow;  // 프로세스 관리 창 하나만 생성
-
+static bool ProcwinOpened = false;  // 프로세스 창 상태(열림/닫힘)
 
 int initProcWin(void) {
     int y, x, h, w;
 
     // 위치 계산
-    if (calculateWinPos(0, &y, &x, &h, &w) == -1) {
+    if (calculateProcWinPos(&y, &x, &h, &w) == -1) {
         return -1;
     }
 
@@ -31,7 +28,37 @@ int initProcWin(void) {
     procWindow.lineMovementEvent = 0;
     pthread_mutex_init(&procWindow.statMutex, NULL);
 
+    ProcwinOpened = true;
     return 0;
+}
+
+void closeProcWin(void) {
+    delwin(procWindow.win);  // 창 삭제
+    ProcwinOpened = false;
+}
+
+void toggleProcWin(void) {
+    if (ProcwinOpened) {
+        closeProcWin();
+    } else {
+        initProcWin();
+    }
+}
+
+bool checkProcWin(void){
+    return ProcwinOpened;
+}
+
+int calculateProcWinPos(int *y, int *x, int *h, int *w) {
+    int screenW, screenH;
+    getmaxyx(stdscr, screenH, screenW);
+
+    *y = 2;
+    *x = 0;
+    *h = screenH - 5;
+    *w = screenW;
+
+    return 0;                  
 }
 
 int updateProcWin(void) {

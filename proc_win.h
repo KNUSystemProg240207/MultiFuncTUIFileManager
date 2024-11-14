@@ -4,7 +4,7 @@
 #include <curses.h>
 
 #define MAX_PROCESSES 256  // 한 번에 표시 가능한 최대 프로세스 수
-#define MAX_NAME_LEN 256
+#include "config.h"
 
 typedef struct {
     pid_t pid;  // 프로세스 ID
@@ -24,4 +24,12 @@ struct _ProcWin {
     uint64_t lineMovementEvent;  // 라인 이동 이벤트
 };
 typedef struct _ProcWin ProcWin;
+
+int initProcWin(void);
+void closeProcWin(void);
+void toggleProcWin(void);
+bool checkProcWin(void);
+int updateProcWin(void);
+int calculateProcWinPos(int *y, int *x, int *h, int *w);
+
 #endif

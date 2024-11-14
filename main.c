@@ -14,6 +14,7 @@
 #include "bottom_area.h"
 #include "list_dir.h"
 #include "title_bar.h"
+#include "proc_win.h"
 
 
 WINDOW *titleBar, *bottomBox;
@@ -29,6 +30,7 @@ static pthread_mutex_t stopTrdMutex[MAX_DIRWINS];
 static size_t totalReadItems[MAX_DIRWINS] = { 0 };
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
+static bool isProcWinVisible = false;  // 프로세스 창이 열려 있는지 나타냄
 
 static void initVariables(void);  // 변수들 초기화
 static void initScreen(void);  // ncurses 관련 초기화 & subwindow들 생성
@@ -137,9 +139,12 @@ void mainLoop(void) {
                     selectPreviousWindow();
                     break;
                 case 'q':
+                case 'p':
+                    toggleProcWin();
+                    break;
                 case 'Q':
                     goto CLEANUP;  // Main Loop 빠져나감
-            }
+            }   
         }
 
         // 제목 영역 업데이트
@@ -149,9 +154,11 @@ void mainLoop(void) {
         if (cwd == NULL)
             printPath("-----");  // 경로 가져오기 실패 시
         else
-            printPath(cwd);  // 경로 업데이트
+            printPath(cwd);  // 경로 업데이트s
 
         updateDirWins();  // 폴더 표시 창들 업데이트
+        if (checkProcWin())  // ProcWin이 열려 있으면 업데이트
+            updateProcWin();  
 
         // 필요한 창들 refresh
         CHECK_CURSES(wrefresh(titleBar));
