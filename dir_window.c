@@ -226,9 +226,22 @@ void selectPreviousWindow(void) {
         currentWin--;
 }
 
-void selectNextWindow(void) {
+////
+
+void selectNextWindow(void){
     if (currentWin == winCnt - 1)
         currentWin = 0;
     else
         currentWin++;
+}
+
+//여기에 새 함수들 추가
+const char* getCurrentFileName(void){
+    //TODO: UI 구현 후 실제 선택된 파일 이름 반환하도록 수정
+    return windows[currentWin].entryNames[windows[currentWin].currentPos];
+}
+
+size_t getCurrentFileSize(void){
+    // TODO:UI 구현 후 실제 선택된 파일 크기 반환하도록 수정
+    return windows[currentWin].statEntries[windows[currentWin].currentPos].st_size;
 }

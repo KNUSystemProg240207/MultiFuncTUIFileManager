@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include "file_ops.h"
 
 #include "config.h"
 #include "commons.h"

@@ -45,4 +45,6 @@ int moveFile(FileTask *task);
  */
 int deleteFile(FileTask *task);
 
+int initFileOperation(FileOperation type);
+
 #endif
