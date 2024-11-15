@@ -1,0 +1,67 @@
+typedef enum _FileOpration {
+    COPY,
+    MOVE,
+    DELETE
+} FileOpration;
+
+typedef struct _SrcDstFile {
+    dev_t devNo;
+    int dirFd;
+    char name[MAX_NAME_LEN];
+    size_t fileSize; // 파일 사이즈와 name, 일부 기능에서 중요치 않음.
+} SrcDstInfo;
+
+typedef struct _FileTask {
+    FileOpration type;
+    SrcDstInfo src;
+    SrcDstInfo dst;  //src와 dst를 받아서 전달
+} FileTask; //파일 테스크 함수 
+
+/**
+ * 파일 복사 수행
+ * 
+ * @param src 원본 파일 정보
+ * @param dst 대상 폴더 정보
+ * @param progress 현재 진행 상황 ([7..0] 백분률 진행률 / [8] 복사중)
+ * @param progressMutex 대상 폴더 정보
+ */
+int copyFile(SrcDstInfo *src, SrcDstInfo *dst, uint16_t *progress, pthread_mutex_t progressMutex);
+// copy_file_range 이용해서 구현
+
+/**
+ * 파일 이동 수행
+ * 
+ * @param src 원본 파일 정보
+ * @param dst 대상 폴더 정보
+ * @param progress 현재 진행 상황 ([7..0] 백분률 진행률 / [9] 이동중)
+ * @param progressMutex 대상 폴더 정보
+ */
+int moveFile(SrcDstInfo *src, SrcDstInfo *dst, uint16_t *progress, pthread_mutex_t progressMutex);
+
+/**
+ * 파일 삭제 수행
+ * 
+ * @param src 원본 파일 정보
+ * @param dst 대상 폴더 정보
+ * @param progress 현재 진행 상황 ([7..0] 백분률 진행률 / [10] 삭제중)
+ * @param progressMutex 대상 폴더 정보
+ */
+int removeFile(SrcDstInfo *src, SrcDstInfo *dst, uint16_t *progress, pthread_mutex_t progressMutex);
+
+//copyfile, movefile, removefile 3개 함수의 구현.
+
+현 파일오퍼레이터 주신 함수 원형에 대한 함수 구현
+삭제 - 신경 쓸 필요가 없다, 언링크 하면 끝
+무브 디바이스 같으면 부므함수 호출
+move at 함수 호출
+다른 경우 카피 하고 언링크
+언링크도, unlink at 함수 존재. 이 함수를 사용
+copy의 경우, 파일 실제 복사해야 하는 경우가 있기에, 백분율을 표시하는 것이 필요.
+
+파일 사이즈에 따라서 조각을 내서, 진행률에 대해 업데이트 하게끔 유도.
+
+파일을 지나치게 잘게 쪼개서는 안됨
+파트가 나눠질 것이고, 그것을 한 파트가 처리될 때 마다 뮤텍스를 획득하고,
+진행상황을 공유변수에 써주는 식으로. 그래야 업데이트가 된다. 그렇게 함수 3개를 작성한다.
+
+이렇게 copyfile,movefile,removefile 3개를 구현한다.

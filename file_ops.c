@@ -9,6 +9,7 @@
 
 #define BUFFER_SIZE 8192
 
+//copy file range로 전부 교체
 static int copyFileContents(int srcFd, int dstFd, size_t fileSize) {
     char buffer[BUFFER_SIZE];
     ssize_t bytesRead, bytesWritten;
@@ -138,6 +139,7 @@ int initFileOperation(FileOperation type) {
     return 0;
 }
 
+// 이 부분, 윗단으로 옮기고 기존 부분은 삭제. 함수가 사용해놓을 이유가 없다.
 int executeFileOperation(void) {
     switch (currentTask.type) {
         case COPY:
