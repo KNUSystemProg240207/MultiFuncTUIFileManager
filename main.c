@@ -1,26 +1,30 @@
+#include <assert.h>
 #include <curses.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <fcntl.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <pthread.h>
-#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
-#include "config.h"
-#include "commons.h"
-#include "dir_window.h"
 #include "bottom_area.h"
+#include "commons.h"
+#include "config.h"
 #include "dir_listener.h"
+#include "dir_window.h"
 #include "title_bar.h"
 
 
 WINDOW *titleBar, *bottomBox;
 
+mode_t directoryOpenArgs;  // fdopendir()에 전달할 directory file descriptor를 open()할 때 쓸 argument: Thread 시작 전 저장되어야 함
+
 // 각 (폴더의 내용 가져오는) Directory Listener Thread별 저장 공간:
 static pthread_t threadListDir[MAX_DIRWINS];
-DirListenerArgs dirListenerArgs[MAX_DIRWINS];
+static DirListenerArgs dirListenerArgs[MAX_DIRWINS];
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
@@ -111,6 +115,10 @@ void initScreen(void) {
 }
 
 void initThreads(void) {
+    dirListenerArgs[0].currentDir = opendir(".");
+    assert(dirListenerArgs[0].currentDir != NULL);
+    directoryOpenArgs = fcntl(dirfd(dirListenerArgs[0].currentDir), F_GETFL);
+    assert(directoryOpenArgs != -1);
     startDirListender(&threadListDir[0], &dirListenerArgs[0]);  // Directory Listener Thread 시작
 }
 
@@ -118,6 +126,8 @@ void mainLoop(void) {
     struct timespec startTime;
     uint64_t elapsedUSec;
     char cwdBuf[MAX_CWD_LEN];
+    ssize_t currentSelection;
+    unsigned int currentWindow;
 
     char *cwd;
     while (1) {
@@ -137,6 +147,18 @@ void mainLoop(void) {
                     break;
                 case KEY_RIGHT:
                     selectPreviousWindow();
+                    break;
+                case '\n':
+                case KEY_ENTER:
+                    currentSelection = getCurrentSelectedDirectory();
+                    if (currentSelection >= 0) {
+                        currentWindow = getCurrentWindow();
+                        pthread_mutex_lock(&dirListenerArgs[currentWindow].bufMutex);
+                        dirListenerArgs[currentWindow].chdirIdx = currentSelection;
+                        dirListenerArgs[currentWindow].commonArgs.statusFlags |= DIRLISTENER_FLAG_CHANGE_DIR;
+                        pthread_mutex_unlock(&dirListenerArgs[currentWindow].bufMutex);
+                        setCurrentSelectedDirectory(0);
+                    }
                     break;
                 case 'q':
                 case 'Q':
