@@ -22,8 +22,6 @@
  * @var _DirListenerArgs::nameBuf 읽어들인 항목들의 이름
  * @var _DirListenerArgs::totalReadItems 총 읽어들인 개수
  * @var _DirListenerArgs::bufMutex 결과값 buffer 보호 Mutex
- *
- * @note `_`으로 시작하는 변수: 내부적으로 사용하는 변수, 외부에서 사용 금지!
  */
 typedef struct _DirListenerArgs {
     ThreadArgs commonArgs;  // Thread들 공통 공유 변수

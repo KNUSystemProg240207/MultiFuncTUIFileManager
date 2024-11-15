@@ -15,6 +15,9 @@
 #define MAX_NAME_LEN 255  // 표시할 최대 이름 길이 (Limit보다 더 길면: 잘림)
 #define MAX_CWD_LEN 2048  // 최대 '현재 경로' 길이
 
+#define MAX_FILE_OPERATORS 1
+// #define MAX_FILE_OPERATORS 4
+
 // 날짜 및 시간 출력 형식
 #define DATETIME_FORMAT "%2.2d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"  // 날짜-시간 문자열 형식 (printf 형식)
 #define DATETIME_LEN 19  // 날짜-시간 문자열 길이

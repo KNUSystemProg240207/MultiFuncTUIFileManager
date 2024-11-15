@@ -57,6 +57,8 @@ int startDirListender(
     pthread_t *newThread,
     DirListenerArgs *args
 ) {
+    if (threadCnt >= MAX_DIRWINS)
+        return -1;
     if (startThread(
             newThread, NULL, dirListener, closeCurrentDir,
             DIR_INTERVAL_USEC, &args->commonArgs, args
