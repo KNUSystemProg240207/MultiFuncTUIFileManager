@@ -136,9 +136,22 @@ void mainLoop(void) {
                 case KEY_RIGHT:
                     selectPreviousWindow();
                     break;
+                case 'c':  // 복사
+                case 'C':
+                    initFileOperation(COPY);
+                    break;
+                case 'm':  // 이동
+                case 'M':
+                    initFileOperation(MOVE);
+                    break;
+                case 'd':  // 삭제
+                case 'D':
+                    initFileOperation(DELETE);
+                    break;
                 case 'q':
                 case 'Q':
                     goto CLEANUP;  // Main Loop 빠져나감
+
             }
         }
 
