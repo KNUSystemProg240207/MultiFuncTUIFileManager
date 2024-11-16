@@ -4,9 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
 
 #include "commons.h"
 #include "config.h"
@@ -169,7 +169,7 @@ ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], s
         struct tm tm;
         localtime_r(&(resultBuf + readItems)->st_mtime, &tm);  // thread-safe한 localtime_r 사용
         // strftime(timeBuf[readItems], DATETIME_LEN, "%b %d %I:%M%p", &tm);
-        strftime(timeBuf[readItems], DATETIME_LEN + 2, "%Y-%m-%d %H:%M:%S", &tm);
+        strftime(timeBuf[readItems], DATETIME_LEN + 2, "%y-%m-%d %H:%M", &tm);
 
         errno = 0;
         readItems++;

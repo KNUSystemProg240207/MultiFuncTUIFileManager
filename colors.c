@@ -1,5 +1,6 @@
-#include "colors.h"
 #include <stdlib.h>
+
+#include "colors.h"
 #include "commons.h"
 
 void calcul255_color(short color_name, short r, short g, short b) {
@@ -9,7 +10,7 @@ void calcul255_color(short color_name, short r, short g, short b) {
     init_color(color_name, r, g, b);
 }
 void init_colorSet() {
-    bkgd(COLOR_PAIR(BGRND));  // 배경 전체를 해당 색깔로 만듦, 아직 확정x
+    // bkgd(COLOR_PAIR(BGRND));  // 배경 전체를 해당 색깔로 만듦, 아직 확정x
 
     calcul255_color(COLOR_SKY, 143, 217, 239);
 
@@ -27,4 +28,5 @@ void init_colorSet() {
     init_pair(HEADER, COLOR_YELLOW, COLOR_BLUE);  // 해더
     init_pair(BGRND, COLOR_SKY, COLOR_BLUE);  // 배경
     init_pair(DEFAULT, COLOR_SKY, COLOR_BLUE);  // 기본 출력
+    init_pair(SELECT, COLOR_WHITE, COLOR_SKY);
 }

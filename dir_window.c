@@ -2,12 +2,13 @@
 #include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
-#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+
+#include "colors.h"
 #include "config.h"
 #include "dir_window.h"
-#include "colors.h"
 /**
  * @struct _DirWin
  * Directory Window의 정보 저장
@@ -163,6 +164,7 @@ int updateDirWins(void) {
         // qsort(win->statEntries, *win->totalReadItems, sizeof(*win->statEntries), compareBySize);
         // qsort(win->entryTimes, *win->totalReadItems, sizeof(win->entryTimes[0]), compareByName);
 
+        wbkgd(win->win, COLOR_PAIR(BGRND));
 
         printFileHeader(win, winH, winW);  // 헤더 부분 출력
 
@@ -190,11 +192,11 @@ int updateDirWins(void) {
                 wattron(win->win, A_REVERSE);
             printFileInfo(win, startIdx, line, winW);
             if (winNo == currentWin && line == currentLine)
-                wattroff(win->win, A_REVERSE);
+                wattroff(win->win, A_REVERSE);  // 이걸 SELECT로 바꾸면 생기는 분제, 기존색깔로 바꿔줘야 하는데, 안바꾸잖아
         }
 
         /* 버그 나서(마지막 줄만 whline 미적용) 임시로 주석 달아놓음 */
-        // wclrtobot(win->win);  // 아래 남는 공간: 지움
+        wclrtobot(win->win);  // 아래 남는 공간: 지움
 
         wrefresh(win->win);  // 창 새로 그림
         pthread_mutex_unlock(win->statMutex);

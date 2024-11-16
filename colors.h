@@ -16,7 +16,8 @@ typedef enum {
     BGRND,
     HEADER,
     OTHER,
-    DEFAULT
+    DEFAULT,
+    SELECT
 } FILE_COLOR;
 
 #define COLOR_SKY 1
