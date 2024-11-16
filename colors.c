@@ -13,6 +13,7 @@ void init_colorSet() {
     // bkgd(COLOR_PAIR(BGRND));  // 배경 전체를 해당 색깔로 만듦, 아직 확정x
 
     calcul255_color(COLOR_SKY, 143, 217, 239);
+    calcul255_color(COLOR_ORANGE, 227, 142, 60);
 
     init_pair(BASIC, COLOR_WHITE, COLOR_BLACK);  // 흰검 기본
     init_pair(REVERSE_BASIC, COLOR_BLACK, COLOR_WHITE);  // 흰검 기본 역상

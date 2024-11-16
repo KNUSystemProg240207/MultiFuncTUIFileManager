@@ -77,8 +77,7 @@ int startDirListender(
     size_t *totalReadItems,
     pthread_cond_t *stopTrd,
     bool *stopRequested,
-    pthread_mutex_t *stopMutex,
-    char (*entryTimes)[DATETIME_LEN + 1]
+    pthread_mutex_t *stopMutex
 ) {
     // 설정 초기화
     DirListenerArgs *newWinArg = argsArr + threadCnt;
@@ -90,7 +89,6 @@ int startDirListender(
     newWinArg->stopTrd = stopTrd;
     newWinArg->stopRequested = stopRequested;
     newWinArg->stopMutex = stopMutex;
-    newWinArg->timeBuf = entryTimes;
 
     // 새 쓰레드 생성
     if (pthread_create(newThread, NULL, dirListener, newWinArg) == -1) {
@@ -165,12 +163,6 @@ ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], s
         if (stat(ent->d_name, resultBuf + readItems) == -1) {  // stat 읽어들임
             return -1;
         }
-        // 파일 마지막 수정 시간 출력
-        struct tm tm;
-        localtime_r(&(resultBuf + readItems)->st_mtime, &tm);  // thread-safe한 localtime_r 사용
-        // strftime(timeBuf[readItems], DATETIME_LEN, "%b %d %I:%M%p", &tm);
-        strftime(timeBuf[readItems], DATETIME_LEN + 2, "%y-%m-%d %H:%M", &tm);
-
         errno = 0;
         readItems++;
     }

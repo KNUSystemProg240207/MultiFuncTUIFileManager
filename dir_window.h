@@ -3,8 +3,8 @@
 
 #include <curses.h>
 #include <pthread.h>
-#include <sys/stat.h>
 #include <string.h>
+#include <sys/stat.h>
 /**
  * 새 폴더 표시 창 초기화 (생성)
  *
@@ -18,8 +18,7 @@ int initDirWin(
     pthread_mutex_t *statMutex,
     struct stat *statEntries,
     char (*entryNames)[MAX_NAME_LEN + 1],
-    size_t *totalReadItems,
-    char (*entryTimes)[DATETIME_LEN + 1]
+    size_t *totalReadItems
 );
 
 /**

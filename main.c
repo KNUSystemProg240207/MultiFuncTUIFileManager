@@ -1,20 +1,20 @@
 #include <curses.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <pthread.h>
-#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
-#include "config.h"
-#include "commons.h"
-#include "dir_window.h"
 #include "bottom_area.h"
+#include "colors.h"
+#include "commons.h"
+#include "config.h"
+#include "dir_window.h"
 #include "list_dir.h"
 #include "title_bar.h"
-#include "colors.h"
 
 WINDOW *titleBar, *bottomBox;
 
@@ -27,7 +27,6 @@ static pthread_cond_t condStopTrd[MAX_DIRWINS];
 static bool stopRequested[MAX_DIRWINS];
 static pthread_mutex_t stopTrdMutex[MAX_DIRWINS];
 static size_t totalReadItems[MAX_DIRWINS] = { 0 };
-static char entryTimes[MAX_DIRWINS][MAX_STAT_ENTRIES][DATETIME_LEN + 1];
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
@@ -102,7 +101,7 @@ void initScreen(void) {
     CHECK_CURSES(mvhline(1, 0, ACS_HLINE, w));  // 제목 창 아래로 가로줄 그림
     CHECK_CURSES(mvhline(h - 3, 0, ACS_HLINE, w));  // 단축키 창 위로 가로줄 그림
 
-    initDirWin(&statMutex[0], statEntries[0], entryNames[0], &totalReadItems[0], entryTimes[0]);  // 폴더 내용 표시 창 생성
+    initDirWin(&statMutex[0], statEntries[0], entryNames[0], &totalReadItems[0]);  // 폴더 내용 표시 창 생성
     dirWinCnt = 1;
 }
 
@@ -110,7 +109,7 @@ void initThreads(void) {
     startDirListender(
         &threadListDir[0], &statMutex[0],
         statEntries[0], entryNames[0], MAX_STAT_ENTRIES,
-        &totalReadItems[0], &condStopTrd[0], &stopRequested[0], &stopTrdMutex[0], entryTimes[0]
+        &totalReadItems[0], &condStopTrd[0], &stopRequested[0], &stopTrdMutex[0]
     );  // Directory Listener Thread 시작
 }
 

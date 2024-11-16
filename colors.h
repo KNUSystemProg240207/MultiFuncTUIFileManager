@@ -21,7 +21,7 @@ typedef enum {
 } FILE_COLOR;
 
 #define COLOR_SKY 1
-
+#define COLOR_ORANGE 2
 void init_colorSet();
 
 
