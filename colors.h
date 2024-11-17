@@ -22,6 +22,9 @@ typedef enum {
 
 #define COLOR_SKY 1
 #define COLOR_ORANGE 2
+#define COLOR_NAVY 3
+#define COLOR_DARKBROWN 4
+#define COLOR_OLIVEGREEN 5
 void init_colorSet();
 
 

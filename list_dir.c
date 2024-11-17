@@ -163,6 +163,7 @@ ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], s
         if (stat(ent->d_name, resultBuf + readItems) == -1) {  // stat 읽어들임
             return -1;
         }
+
         errno = 0;
         readItems++;
     }

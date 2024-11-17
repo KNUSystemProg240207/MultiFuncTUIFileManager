@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -fdiagnostics-color=always -std=gnu99 -Wall -fanalyzer -g
-LFLAGS = -lncurses
+LFLAGS = -lncurses -lpanel
 OBJS = main.o dir_window.o commons.o title_bar.o bottom_area.o list_dir.o colors.o
 TARGET = demo.out
 
