@@ -13,7 +13,7 @@ void init_colorSet() {
     // bkgd(COLOR_PAIR(BGRND));  // 배경 전체를 해당 색깔로 만듦, 아직 확정x
 
     calcul255_color(COLOR_SKY, 143, 217, 239);
-    calcul255_color(COLOR_ORANGE, 227, 142, 60);
+    calcul255_color(COLOR_ORANGE, 250, 182, 87);
     calcul255_color(COLOR_NAVY, 0x00, 0x1F, 0x3F);
     calcul255_color(COLOR_DARKBROWN, 0x4D, 0x2C, 0x2C);
     calcul255_color(COLOR_OLIVEGREEN, 49, 87, 22);
@@ -32,6 +32,6 @@ void init_colorSet() {
     init_pair(HIDDEN, COLOR_YELLOW, COLOR_ORANGE);  // 숨김파일: 노란색
     init_pair(HEADER, COLOR_WHITE, COLOR_ORANGE);  // 해더
     init_pair(BGRND, COLOR_WHITE, COLOR_ORANGE);  // 배경
-    init_pair(DEFAULT, COLOR_DARKBROWN, COLOR_ORANGE);  // 기본 출력
+    init_pair(DEFAULT, COLOR_NAVY, COLOR_ORANGE);  // 기본 출력
     init_pair(SELECT, COLOR_WHITE, COLOR_NAVY);
 }

@@ -11,42 +11,6 @@
 #include "config.h"
 #include "dir_window.h"
 
-
-/**
- * @struct _DirWin
- * Directory Window의 정보 저장
- *
- * @var _DirWin::win WINDOW 구조체
- * @var _DirWin::order Directory 창 순서 (가장 왼쪽=0) ( [0, MAX_DIRWINS) )
- * @var _DirWin::currentPos 현재 선택된 Element
- * @var _DirWin::statMutex 현 폴더 항목들의 Stat 및 이름 관련 Mutex
- * @var _DirWin::statEntries 항목들의 stat 정보
- * @var _DirWin::entryNames 항목들의 이름
- * @var _DirWin::totalReadItems 현 폴더에서 읽어들인 항목 수
- *   일반적으로, 디렉토리에 있는 파일, 폴더의 수와 같음
- *   단, buffer 공간 부족한 경우, 최대 buffer 길이
- * @var _DirWin::lineMovementEvent (bit field) 창별 줄 이동 Event 저장
- *   Event당 2bit (3종류 Event 존재: 이벤트 없음(0b00), 위로 이동(0b10), 아래로 이동(0b11)) -> 최대 32개 Event 저장
- *   (Mutex 잠그지 않고 이동 처리 가능하게 함)
- */
-struct _DirWin {
-    WINDOW *win;
-    unsigned int order;
-    size_t currentPos;
-    pthread_mutex_t *statMutex;
-    struct stat *statEntries;
-    char (*entryNames)[MAX_NAME_LEN + 1];
-    size_t *totalReadItems;
-    uint64_t lineMovementEvent;
-};
-typedef struct _DirWin DirWin;
-
-typedef struct {
-    struct stat statEntry;
-    char entryName[MAX_NAME_LEN + 1];
-} DirEntry;
-
-
 static DirWin windows[MAX_DIRWINS];  // 각 창의 runtime 정보 저장
 static PANEL *panels[MAX_DIRWINS];  // 패널 배열
 static unsigned int winCnt;  // 창 개수
@@ -55,6 +19,7 @@ static int panelCnt = 0;  // 패널의 개수
 
 void printFileHeader(DirWin *win, int winH, int winW);
 void printFileInfo(DirWin *win, int startIdx, int line, int winW);
+
 
 /**
  * 창 위치 계산
@@ -129,89 +94,11 @@ int initDirWin(
         .statMutex = statMutex,
         .statEntries = statEntries,
         .entryNames = entryNames,
-        .totalReadItems = totalReadItems
+        .totalReadItems = totalReadItems,
+        .sortFlag = 0x01
     };
     return winCnt;
 }
-
-
-int compareByDate_Asc(const void *a, const void *b) {
-    DirEntry entryA = *((DirEntry *)a);
-    DirEntry entryB = *((DirEntry *)b);
-
-    // 디렉토리는 상단
-    if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
-        return -1;
-    } else if (!S_ISDIR(entryA.statEntry.st_mode) && S_ISDIR(entryB.statEntry.st_mode)) {
-        return 1;
-    }
-
-
-    // 초 단위 비교
-    if (entryA.statEntry.st_mtim.tv_sec < entryB.statEntry.st_mtim.tv_sec)
-        return -1;
-    if (entryA.statEntry.st_mtim.tv_sec > entryB.statEntry.st_mtim.tv_sec)
-        return 1;
-
-    // 초 단위가 같으면 나노초 단위 비교
-    if (entryA.statEntry.st_mtim.tv_nsec < entryB.statEntry.st_mtim.tv_nsec)
-        return -1;
-    if (entryA.statEntry.st_mtim.tv_nsec > entryB.statEntry.st_mtim.tv_nsec)
-        return 1;
-
-    return 0;  // 완전히 같음
-}
-
-int compareByName_Asc(const void *a, const void *b) {
-    DirEntry entryA = *((DirEntry *)a);
-    DirEntry entryB = *((DirEntry *)b);
-    // 디렉토리는 상단
-    if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
-        return -1;
-    } else if (!S_ISDIR(entryA.statEntry.st_mode) && S_ISDIR(entryB.statEntry.st_mode)) {
-        return 1;
-    }
-    // 이름 순 정렬
-    return strcmp(entryA.entryName, entryB.entryName);
-}
-
-int compareBySize_Asc(const void *a, const void *b) {
-    DirEntry entryA = *((DirEntry *)a);
-    DirEntry entryB = *((DirEntry *)b);
-
-    // 디렉토리는 상단
-    if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
-        return -1;
-    } else if (!S_ISDIR(entryA.statEntry.st_mode) && S_ISDIR(entryB.statEntry.st_mode)) {
-        return 1;
-    }
-
-    if (entryA.statEntry.st_size < entryB.statEntry.st_size) return -1;  // a가 b보다 작으면 음수 반환
-    if (entryA.statEntry.st_size > entryB.statEntry.st_size) return 1;  // a가 b보다 크면 양수 반환
-    return 0;  // a와 b가 같으면 0 반환
-}
-
-// DirEntry 배열 정렬
-void sortDirEntries(DirWin *win, int (*compare)(const void *, const void *)) {
-    // DirEntry 배열을 만듬 (statEntries와 entryNames를 이용)
-    DirEntry entries[*win->totalReadItems];
-
-    for (size_t i = 0; i < *win->totalReadItems; ++i) {
-        // entryNames와 statEntries를 DirEntry 배열에 복사
-        strncpy(entries[i].entryName, win->entryNames[i], MAX_NAME_LEN);
-        entries[i].statEntry = win->statEntries[i];
-    }
-
-    // DirEntry 배열을 정렬
-    qsort(entries, *win->totalReadItems, sizeof(DirEntry), compare);
-
-    // 정렬된 데이터를 기존의 win->entryNames와 win->statEntries에 다시 복사
-    for (size_t i = 0; i < *win->totalReadItems; ++i) {
-        strncpy(win->entryNames[i], entries[i].entryName, MAX_NAME_LEN);
-        win->statEntries[i] = entries[i].statEntry;
-    }
-}
-
 
 int updateDirWins(void) {
     int ret, winH, winW;
@@ -256,10 +143,10 @@ int updateDirWins(void) {
 
         // 최상단에 출력될 항목의 index 계산
         getmaxyx(win->win, winH, winW);
-        winH -= 4;  // 최대 출력 가능한 라인 넘버 -2
+        winH -= 4;  // 최대 출력 가능한 라인 넘버 -4
         // winW = 51;  // 윈도우 크기 확인용
 
-        sortDirEntries(win, compareByName_Asc);
+        applySorting(win->sortFlag, win);  // 애초에 받아올 때, 정렬 안 된 상태로 받아오니까 계속 정렬을 해야 함
 
         wbkgd(win->win, COLOR_PAIR(BGRND));
         printFileHeader(win, winH, winW);  // 헤더 부분 출력
@@ -442,12 +329,192 @@ void selectNextWindow(void) {
         currentWin++;
 }
 
-/*
-TODO
-1. 파일 타입 정렬(DirWin 구조체에 따로 저장해둬야 할 수 있음)
-2. 타입별로 색깔 다르게 하는 거 좀 가시성 좋게,
-3. 타입별로 출력 다르게 하는 거, 윈도우 크기마다 출력 다르게 하는 거 좀 정리해서
-좀 보기 좋게 바꾸기 윈도우 크기를 먼저 체크해보던가, 잘
-4. midnight commander처럼 window에 박스를 친다던가?
-5. 윈도우 패널화 시키기
-*/
+
+// DirEntry 배열 정렬
+void sortDirEntries(DirWin *win, int (*compare)(const void *, const void *)) {
+    // DirEntry 배열을 만듬 (statEntries와 entryNames를 이용)
+    DirEntry entries[*win->totalReadItems];
+
+    for (size_t i = 0; i < *win->totalReadItems; ++i) {
+        // entryNames와 statEntries를 DirEntry 배열에 복사
+        strncpy(entries[i].entryName, win->entryNames[i], MAX_NAME_LEN);
+        entries[i].statEntry = win->statEntries[i];
+    }
+
+    // DirEntry 배열을 정렬
+    qsort(entries, *win->totalReadItems, sizeof(DirEntry), compare);
+
+    // 정렬된 데이터를 기존의 win->entryNames와 win->statEntries에 다시 복사
+    for (size_t i = 0; i < *win->totalReadItems; ++i) {
+        strncpy(win->entryNames[i], entries[i].entryName, MAX_NAME_LEN);
+        win->statEntries[i] = entries[i].statEntry;
+    }
+}
+
+void toggleSort(int mask, int shift) {
+    SortFlags *flags = &(windows[currentWin].sortFlag);
+
+    // 현재 상태를 추출
+    int state = (*flags & mask) >> shift;
+
+    // 만약, 현재 상태가 00이 아니면 이전의 다른 비트들을 모두 00으로 초기화
+    if (state == 0) {
+        // 다른 비트들은 모두 00으로 초기화
+        *flags &= ~SORT_NAME_MASK;  // 이름 기준 비트 초기화
+        *flags &= ~SORT_SIZE_MASK;  // 사이즈 기준 비트 초기화
+        *flags &= ~SORT_DATE_MASK;  // 날짜 기준 비트 초기화
+    }
+
+    // 상태 순환: 01 -> 10 -> 01 순으로 순환
+    if (state == 0) {
+        state = 2;  // 첫 번째 -> 두 번째 (오름차순)
+    } else if (state == 2) {
+        state = 1;  // 두 번째 -> 세 번째 (내림차순)
+    } else {
+        state = 2;  // 세 번째 -> 첫 번째 (오름차순)
+    }
+
+    // 해당 비트에 상태 반영
+    *flags = (*flags & ~mask) | (state << shift);
+}
+
+void applySorting(SortFlags flags, DirWin *win) {
+    int (*compareFunc)(const void *, const void *) = NULL;
+
+    if (flags & 0x00) {
+        compareFunc = compareByName_Asc;
+    }
+    // 이름 기준 정렬
+    else if ((flags & SORT_NAME_MASK) >> SORT_NAME_SHIFT == 1) {
+        compareFunc = compareByName_Asc;
+    } else if ((flags & SORT_NAME_MASK) >> SORT_NAME_SHIFT == 2) {
+        compareFunc = compareByName_Desc;
+    }
+    // 크기 기준 정렬
+    else if ((flags & SORT_SIZE_MASK) >> SORT_SIZE_SHIFT == 1) {
+        compareFunc = compareBySize_Asc;
+    } else if ((flags & SORT_SIZE_MASK) >> SORT_SIZE_SHIFT == 2) {
+        compareFunc = compareBySize_Desc;
+    }
+    // 날짜 기준 정렬
+    else if ((flags & SORT_DATE_MASK) >> SORT_DATE_SHIFT == 1) {
+        compareFunc = compareByDate_Asc;
+    } else if ((flags & SORT_DATE_MASK) >> SORT_DATE_SHIFT == 2) {
+        compareFunc = compareByDate_Desc;
+    }
+
+    // 정렬 함수가 설정되면, DirEntry 배열을 정렬
+    if (compareFunc != NULL) {
+        sortDirEntries(win, compareFunc);
+    }
+}
+
+
+int compareByDate_Asc(const void *a, const void *b) {
+    DirEntry entryA = *((DirEntry *)a);
+    DirEntry entryB = *((DirEntry *)b);
+
+    // 디렉토리는 상단
+    if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
+        return -1;
+    } else if (!S_ISDIR(entryA.statEntry.st_mode) && S_ISDIR(entryB.statEntry.st_mode)) {
+        return 1;
+    }
+
+
+    // 초 단위 비교
+    if (entryA.statEntry.st_mtim.tv_sec < entryB.statEntry.st_mtim.tv_sec)
+        return -1;
+    if (entryA.statEntry.st_mtim.tv_sec > entryB.statEntry.st_mtim.tv_sec)
+        return 1;
+
+    // 초 단위가 같으면 나노초 단위 비교
+    if (entryA.statEntry.st_mtim.tv_nsec < entryB.statEntry.st_mtim.tv_nsec)
+        return -1;
+    if (entryA.statEntry.st_mtim.tv_nsec > entryB.statEntry.st_mtim.tv_nsec)
+        return 1;
+
+    return 0;  // 완전히 같음
+}
+int compareByDate_Desc(const void *a, const void *b) {
+    DirEntry entryA = *((DirEntry *)a);
+    DirEntry entryB = *((DirEntry *)b);
+
+    // 디렉토리는 상단
+    if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
+        return -1;
+    } else if (!S_ISDIR(entryA.statEntry.st_mode) && S_ISDIR(entryB.statEntry.st_mode)) {
+        return 1;
+    }
+
+
+    // 초 단위 비교
+    if (entryA.statEntry.st_mtim.tv_sec < entryB.statEntry.st_mtim.tv_sec)
+        return 1;
+    if (entryA.statEntry.st_mtim.tv_sec > entryB.statEntry.st_mtim.tv_sec)
+        return -1;
+
+    // 초 단위가 같으면 나노초 단위 비교
+    if (entryA.statEntry.st_mtim.tv_nsec < entryB.statEntry.st_mtim.tv_nsec)
+        return 1;
+    if (entryA.statEntry.st_mtim.tv_nsec > entryB.statEntry.st_mtim.tv_nsec)
+        return -1;
+
+    return 0;  // 완전히 같음
+}
+
+int compareByName_Asc(const void *a, const void *b) {
+    DirEntry entryA = *((DirEntry *)a);
+    DirEntry entryB = *((DirEntry *)b);
+    // 디렉토리는 상단
+    if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
+        return -1;
+    } else if (!S_ISDIR(entryA.statEntry.st_mode) && S_ISDIR(entryB.statEntry.st_mode)) {
+        return 1;
+    }
+    // 이름 순 정렬
+    return strcmp(entryA.entryName, entryB.entryName);
+}
+int compareByName_Desc(const void *a, const void *b) {
+    DirEntry entryA = *((DirEntry *)a);
+    DirEntry entryB = *((DirEntry *)b);
+    // 디렉토리는 상단
+    if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
+        return -1;
+    } else if (!S_ISDIR(entryA.statEntry.st_mode) && S_ISDIR(entryB.statEntry.st_mode)) {
+        return 1;
+    }
+    // 이름 순 정렬
+    return -1 * (strcmp(entryA.entryName, entryB.entryName));
+}
+
+int compareBySize_Asc(const void *a, const void *b) {
+    DirEntry entryA = *((DirEntry *)a);
+    DirEntry entryB = *((DirEntry *)b);
+
+    // 디렉토리는 상단
+    if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
+        return -1;
+    } else if (!S_ISDIR(entryA.statEntry.st_mode) && S_ISDIR(entryB.statEntry.st_mode)) {
+        return 1;
+    }
+
+    if (entryA.statEntry.st_size < entryB.statEntry.st_size) return -1;  // a가 b보다 작으면 음수 반환
+    if (entryA.statEntry.st_size > entryB.statEntry.st_size) return 1;  // a가 b보다 크면 양수 반환
+    return 0;  // a와 b가 같으면 0 반환
+}
+int compareBySize_Desc(const void *a, const void *b) {
+    DirEntry entryA = *((DirEntry *)a);
+    DirEntry entryB = *((DirEntry *)b);
+
+    // 디렉토리는 상단
+    if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
+        return -1;
+    } else if (!S_ISDIR(entryA.statEntry.st_mode) && S_ISDIR(entryB.statEntry.st_mode)) {
+        return 1;
+    }
+
+    if (entryA.statEntry.st_size < entryB.statEntry.st_size) return 1;  // a가 b보다 작으면 음수 반환
+    if (entryA.statEntry.st_size > entryB.statEntry.st_size) return -1;  // a가 b보다 크면 양수 반환
+    return 0;  // a와 b가 같으면 0 반환
+}

@@ -137,6 +137,15 @@ void mainLoop(void) {
                 case KEY_RIGHT:
                     selectPreviousWindow();
                     break;
+                case 'w':  // F1 키 (이름 기준 오름차순)
+                    toggleSort(SORT_NAME_MASK, SORT_NAME_SHIFT);
+                    break;
+                case 'e':  // F2 키 (크기 기준 오름차순)
+                    toggleSort(SORT_SIZE_MASK, SORT_SIZE_SHIFT);
+                    break;
+                case 'r':  // F3 키 (날짜 기준 오름차순)
+                    toggleSort(SORT_DATE_MASK, SORT_DATE_SHIFT);
+                    break;
                 case 'q':
                 case 'Q':
                     goto CLEANUP;  // Main Loop 빠져나감
