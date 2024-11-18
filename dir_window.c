@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <curses.h>
 #include <limits.h>
 #include <panel.h>
@@ -19,7 +20,7 @@
  * @var _DirWin::win WINDOW 구조체
  * @var _DirWin::order Directory 창 순서 (가장 왼쪽=0) ( [0, MAX_DIRWINS) )
  * @var _DirWin::currentPos 현재 선택된 Element
- * @var _DirWin::statMutex 현 폴더 항목들의 Stat 및 이름 관련 Mutex
+ * @var _DirWin::bufMutex 현 폴더 항목들의 Stat 및 이름 관련 Mutex
  * @var _DirWin::statEntries 항목들의 stat 정보
  * @var _DirWin::entryNames 항목들의 이름
  * @var _DirWin::totalReadItems 현 폴더에서 읽어들인 항목 수
@@ -33,9 +34,9 @@ struct _DirWin {
     WINDOW *win;
     unsigned int order;
     size_t currentPos;
-    pthread_mutex_t *statMutex;
-    struct stat *statEntries;
-    char (*entryNames)[MAX_NAME_LEN + 1];
+    pthread_mutex_t *bufMutex;
+    struct stat *bufEntryStat;
+    char (*bufEntryNames)[MAX_NAME_LEN + 1];
     size_t *totalReadItems;
     uint64_t lineMovementEvent;
     SortFlags sortFlag;
@@ -90,8 +91,6 @@ int initPanelForWindow(WINDOW *win) {
     panels[panelCnt] = new_panel(win);
     panelCnt++;
 
-    box(win, 0, 0);
-
     // 패널 순서 업데이트 (이후 패널을 화면에 반영하려면 update_panels() 호출 필요)
     update_panels();
     doupdate();
@@ -112,9 +111,9 @@ void refreshPanels() {
 }
 
 int initDirWin(
-    pthread_mutex_t *statMutex,
-    struct stat *statEntries,
-    char (*entryNames)[MAX_NAME_LEN + 1],
+    pthread_mutex_t *bufMutex,
+    struct stat *bufEntryStat,
+    char (*bufEntryNames)[MAX_NAME_LEN + 1],
     size_t *totalReadItems
 ) {
     int y, x, h, w;
@@ -138,9 +137,9 @@ int initDirWin(
         .win = newWin,
         .order = winCnt - 1,
         .currentPos = 0,
-        .statMutex = statMutex,
-        .statEntries = statEntries,
-        .entryNames = entryNames,
+        .bufMutex = bufMutex,
+        .bufEntryStat = bufEntryStat,
+        .bufEntryNames = bufEntryNames,
         .totalReadItems = totalReadItems,
         .sortFlag = 0x01  // 기본 정렬 방식은 이름 오름차순
     };
@@ -164,7 +163,7 @@ int updateDirWins(void) {
         win = windows + winNo;
 
         // Mutex 획득 시도: 실패 시, 파일 정보 업데이트 중: 해당 창 업데이트 건너뜀
-        ret = pthread_mutex_trylock(win->statMutex);
+        ret = pthread_mutex_trylock(win->bufMutex);
         if (ret != 0)
             continue;
         itemsCnt = *win->totalReadItems;  // 읽어들인 개수 가져옴
@@ -180,10 +179,14 @@ int updateDirWins(void) {
                 case 0x02:  // '한 칸 위로 이동' Event
                     if (win->currentPos > 0)  // 위로 이동 가능하면
                         win->currentPos--;
+                    else
+                        win->currentPos = 0;  // Corner case 처리: 최소 Index
                     break;
                 case 0x03:  // '한 칸 아래로 이동' Event
                     if (win->currentPos < itemsCnt - 1)  // 아래로 이동 가능하면
                         win->currentPos++;
+                    else
+                        win->currentPos = itemsCnt - 1;  // Corner case 처리: 최대 Index
                     break;
             }
         }
@@ -221,7 +224,7 @@ int updateDirWins(void) {
         /* 디렉토리 출력 */
         for (line = 0, displayLine = 0; line < itemsToPrint; line++) {  // 항목 있는 공간: 출력
             // "." 항목은 출력하지 않음, line 값은 증가시키지 않음
-            if (strcmp(win->entryNames[startIdx + line], ".") == 0) {
+            if (strcmp(win->bufEntryNames[startIdx + line], ".") == 0) {
                 continue;  // "."은 건너뛰고 다음 항목으로 넘어감
             }
             if (winNo == currentWin && displayLine == currentLine)  // 선택된 것 역상으로 출력
@@ -231,9 +234,10 @@ int updateDirWins(void) {
                 wattroff(win->win, A_REVERSE);
             displayLine++;
         }
-        // wclrtobot(win->win);  // 아래 남는 공간: 지움, 버그 나서 임시로 주석
-
-        pthread_mutex_unlock(win->statMutex);
+        wmove(win->win, displayLine + 3, 0);
+        wclrtobot(win->win);  // 아래 남는 공간: 지움
+        box(win->win, 0, 0);
+        pthread_mutex_unlock(win->bufMutex);
     }
 
     return 0;
@@ -343,8 +347,8 @@ int isEXE(const char *fileName) {
 
 /* 파일 목록 출력 함수 */
 void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
-    struct stat *fileStat = win->statEntries + (startIdx + line);  // 파일 스테이터스
-    char *fileName = win->entryNames[startIdx + line];  // 파일 이름
+    struct stat *fileStat = win->bufEntryStat + (startIdx + line);  // 파일 스테이터스
+    char *fileName = win->bufEntryNames[startIdx + line];  // 파일 이름
     size_t fileSize = fileStat->st_size;  // 파일 사이즈
     char lastModDate[20];  // 날짜가 담기는 문자열
     char lastModTime[20];  // 시간이 담기는 문자열
@@ -459,6 +463,22 @@ void selectNextWindow(void) {
         currentWin++;
 }
 
+ssize_t getCurrentSelectedDirectory(void) {
+    bool isDirectory;
+    assert(pthread_mutex_lock(windows[currentWin].bufMutex) == 0);
+    isDirectory = (windows[currentWin].bufEntryStat[windows[currentWin].currentPos].st_mode & S_IFDIR) == S_IFDIR;
+    pthread_mutex_unlock(windows[currentWin].bufMutex);
+    return isDirectory ? windows[currentWin].currentPos : -1;
+}
+
+void setCurrentSelectedDirectory(size_t index) {
+    windows[currentWin].currentPos = index;
+}
+
+unsigned int getCurrentWindow(void) {
+    return currentWin;
+}
+
 
 // DirEntry 배열 정렬
 void sortDirEntries(DirWin *win, int (*compare)(const void *, const void *)) {
@@ -467,8 +487,8 @@ void sortDirEntries(DirWin *win, int (*compare)(const void *, const void *)) {
 
     for (size_t i = 0; i < *win->totalReadItems; ++i) {
         // entryNames와 statEntries를 DirEntry 배열에 복사
-        strncpy(entries[i].entryName, win->entryNames[i], MAX_NAME_LEN);
-        entries[i].statEntry = win->statEntries[i];
+        strncpy(entries[i].entryName, win->bufEntryNames[i], MAX_NAME_LEN);
+        entries[i].statEntry = win->bufEntryStat[i];
     }
 
     // DirEntry 배열을 정렬
@@ -476,8 +496,8 @@ void sortDirEntries(DirWin *win, int (*compare)(const void *, const void *)) {
 
     // 정렬된 데이터를 기존의 win->entryNames와 win->statEntries에 다시 복사
     for (size_t i = 0; i < *win->totalReadItems; ++i) {
-        strncpy(win->entryNames[i], entries[i].entryName, MAX_NAME_LEN);
-        win->statEntries[i] = entries[i].statEntry;
+        strncpy(win->bufEntryNames[i], entries[i].entryName, MAX_NAME_LEN);
+        win->bufEntryStat[i] = entries[i].statEntry;
     }
 }
 

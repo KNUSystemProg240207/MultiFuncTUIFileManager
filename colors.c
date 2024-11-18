@@ -12,7 +12,7 @@ void calcul255_color(short color_name, short r, short g, short b) {
 void init_colorSet() {
     calcul255_color(COLOR_ORANGE, 250, 182, 87);
     calcul255_color(COLOR_NAVY, 0x00, 0x1F, 0x3F);
-    calcul255_color(COLOR_DARKGRAY, 0xA9, 0xA9, 0xA9);
+    calcul255_color(COLOR_DARKGRAY, 115, 115, 115);
     calcul255_color(COLOR_LESS_WHITE, 255, 255, 255);
     calcul255_color(COLOR_HOT_PINK, 255, 46, 123);
     calcul255_color(COLOR_GREEN_BLUE, 0x00, 0xB3, 0xB3);
