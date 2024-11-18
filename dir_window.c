@@ -189,6 +189,7 @@ int updateDirWins(void) {
     return 0;
 }
 
+/* 윈도우 헤더 출력 함수*/
 void printFileHeader(DirWin *win, int winH, int winW) {
     wattron(win->win, COLOR_PAIR(HEADER));
 
@@ -218,7 +219,7 @@ void printFileHeader(DirWin *win, int winH, int winW) {
         strcat(dateHeader, "^");
     }
 
-    // 헤더 출력
+    /* 헤더 출력 파트 */
     if (winW >= 80) {
         // 최대 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-10s|%-19s|", nameHeader, sizeHeader, dateHeader);
@@ -230,64 +231,115 @@ void printFileHeader(DirWin *win, int winH, int winW) {
         mvwprintw(win->win, 1, 1, "%-20s|", nameHeader);
     }
 
-    whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
+    whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 채우기
     wattroff(win->win, COLOR_PAIR(HEADER));
-    mvwhline(win->win, 2, 1, 0, winW - 2);  // 구분선
+    mvwhline(win->win, 2, 1, 0, winW - 2);  // 구분선 출력
 }
 
-// 파일 정보를 출력하는 함수
-void drawFileLine(WINDOW *win, int y, int winW, const char *format, const char *fileName, size_t fileSize, const char *lastModDate, const char *lastModTime, int colorPair) {
-    wattron(win, COLOR_PAIR(colorPair));
-    if (winW < 50) {
-        // 좁은 화면: 파일 이름만 출력
-        mvwprintw(win, y, 1, format, fileName);
-    } else if (winW < 80) {
-        // 중간 화면: 파일 이름 + 날짜 + 시간 출력
-        mvwprintw(win, y, 1, format, fileName, lastModDate, lastModTime);
-    } else {
-        // 넓은 화면: 파일 이름 + 크기 + 날짜 + 시간 출력
-        mvwprintw(win, y, 1, format, fileName, fileSize, lastModDate, lastModTime);
+void truncateFileName(char *fileName) {
+    size_t len = strlen(fileName);
+
+    if (len > MAX_DISPLAY_LEN) {
+        const char *dot = strrchr(fileName, '.');  // 마지막 '.' 찾기
+        size_t extLen = dot ? strlen(dot) : 0;  // 확장자의 길이
+
+        // 확장자까지 포함해서 길이가 MAX_DISPLAY_LEN보다 길면 생략
+        if (extLen >= MAX_DISPLAY_LEN - 3) {
+            fileName[MAX_DISPLAY_LEN - 3] = '\0';
+            strcat(fileName, "...");
+            return;
+        }
+
+        // 확장자를 제외한 앞부분이 MAX_DISPLAY_LEN보다 길면 생략
+        size_t prefixLen = MAX_DISPLAY_LEN - extLen - 3;  // '...'을 포함한 앞부분 길이
+        fileName[prefixLen] = '\0';  // 그 지점에서 문자열을 잘라냄
+        strcat(fileName, "..");  // 생략 기호 추가
+        strcat(fileName, dot);  // 확장자 추가
     }
-    whline(win, ' ', getmaxx(win) - getcurx(win) - 1);  // 남은 공간 공백 처리
-    wattroff(win, COLOR_PAIR(colorPair));
 }
 
+int isHidden(const char *fileName) {
+    return fileName[0] == '.' && strcmp(fileName, ".") != 0 && strcmp(fileName, "..") != 0;
+}
+int isImageFile(const char *fileName) {
+    const char *extensions[] = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
+    size_t numExtensions = sizeof(extensions) / sizeof(extensions[0]);
 
-// 파일 목록 출력 함수
+    const char *dot = strrchr(fileName, '.');  // 마지막 '.' 위치 찾기
+    if (dot) {
+        for (size_t i = 0; i < numExtensions; i++) {
+            if (strcasecmp(dot, extensions[i]) == 0) {  // 대소문자 구분 없이 비교
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+int isEXE(const char *fileName) {
+    const char *extensions[] = { ".exe", ".out" };
+    size_t numExtensions = sizeof(extensions) / sizeof(extensions[0]);
+
+    const char *dot = strrchr(fileName, '.');  // 마지막 '.' 위치 찾기
+    if (dot) {
+        for (size_t i = 0; i < numExtensions; i++) {
+            if (strcasecmp(dot, extensions[i]) == 0) {  // 대소문자 구분 없이 비교
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+/* 파일 목록 출력 함수 */
 void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
-    struct stat *fileStat = win->statEntries + (startIdx + line);
-    char *fileName = win->entryNames[startIdx + line];
-    size_t fileSize = fileStat->st_size;
-    char lastModDate[20];
-    char lastModTime[20];
+    struct stat *fileStat = win->statEntries + (startIdx + line);  // 파일 스테이터스
+    char *fileName = win->entryNames[startIdx + line];  // 파일 이름
+    size_t fileSize = fileStat->st_size;  // 파일 사이즈
+    char lastModDate[20];  // 날짜가 담기는 문자열
+    char lastModTime[20];  // 시간이 담기는 문자열
+    int displayLine = line + 3;  // 출력되는 실제 라인 넘버
+    const char *format;  // 출력 포맷
 
-    // 파일 마지막 수정 시간 출력 (날짜와 시간 분리)
+
+    /* 마지막 수정 시간 */
     struct tm tm;
     localtime_r(&fileStat->st_mtime, &tm);
     strftime(lastModDate, sizeof(lastModDate), "%y/%m/%d", &tm);
     strftime(lastModTime, sizeof(lastModTime), "%H:%M", &tm);
 
-    // 파일 타입에 따른 색상 선택 및 출력
+    /* 색상 선택 */
     int colorPair = DEFAULT;
-    if (S_ISDIR(fileStat->st_mode)) {
+    if ((S_ISDIR(fileStat->st_mode)) && isHidden(fileName)) {
+        colorPair = HIDDEN_FOLDER;
+    } else if (S_ISDIR(fileStat->st_mode)) {
         colorPair = DIRECTORY;
+    } else if (isHidden(fileName)) {
+        colorPair = HIDDEN;
     } else if (S_ISLNK(fileStat->st_mode)) {
         colorPair = SYMBOLIC;
-    } else if (!S_ISREG(fileStat->st_mode)) {
-        colorPair = OTHER;
+    } else if (isImageFile(fileName)) {
+        colorPair = IMG;
+    } else if (isEXE(fileName)) {
+        colorPair = EXE;
     }
+    /* 파일 이름 너무 길면 자르기 */
+    truncateFileName(fileName);
 
-    // 출력 포맷과 색상 결정
-    const char *format;
-    if (winW >= 80) {  // 넓은 창 (파일 이름, 크기, 수정 날짜/시간)
+    /* 출력 파트 */
+    wattron(win->win, COLOR_PAIR(colorPair));
+    if (winW >= 80) {  // 최대 너비
         format = "%-20s %10zu %13s %s";
-    } else if (winW >= 40) {  // 중간 창 (파일 이름, 수정 날짜/시간)
-        format = "%-21s %11s %s";
-    } else {  // 좁은 창 (파일 이름만)
-        format = "%-21s";
+        mvwprintw(win->win, displayLine, 1, format, fileName, fileSize, lastModDate, lastModTime);
+    } else if (winW >= 40) {  // 중간 너비
+        format = "%-20s %13s %s";
+        mvwprintw(win->win, displayLine, 1, format, fileName, lastModDate, lastModTime);
+    } else {  // 최소 너비
+        format = "%-20s";
+        mvwprintw(win->win, displayLine, 1, format, fileName);
     }
-
-    drawFileLine(win->win, line + 3, winW, format, fileName, fileSize, lastModDate, lastModTime, colorPair);
+    whline(win->win, ' ', getmaxx(win->win) - getcurx(win->win) - 1);  // 남은 공간 공백 처리 (박스용 -1)
+    wattroff(win->win, COLOR_PAIR(colorPair));
 }
 
 int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w) {

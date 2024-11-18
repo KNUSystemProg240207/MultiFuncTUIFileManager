@@ -4,27 +4,25 @@
 
 typedef enum {
     NONE__,
-    BASIC,
-    REVERSE_BASIC,
     DIRECTORY,
     SYMBOLIC,
     EXE,
-    TXT,
     IMG,
-    SRC,
+    HIDDEN_FOLDER,
     HIDDEN,
     BGRND,
     HEADER,
-    OTHER,
-    DEFAULT,
-    SELECT
+    DEFAULT
 } FILE_COLOR;
 
-#define COLOR_SKY 1
-#define COLOR_ORANGE 2
-#define COLOR_NAVY 3
-#define COLOR_DARKBROWN 4
-#define COLOR_OLIVEGREEN 5
+#define COLOR_ORANGE 1
+#define COLOR_NAVY 2
+#define COLOR_DARKGRAY 3
+#define COLOR_LESS_WHITE 4
+#define COLOR_HOT_PINK 5
+#define COLOR_GREEN_BLUE 6
+#define COLOR_ALL_BLUE 8
+
 void init_colorSet();
 
 

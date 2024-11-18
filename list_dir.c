@@ -158,7 +158,7 @@ ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], s
             }
             return readItems;  // 오류 없음 -> 계속 진행
         }
-        if (strcmp(ent->d_name, ".") == 0) {  // 현재 디렉토리 "."는 받아오지 않음
+        if (strcmp(ent->d_name, ".") == 0) {  // 현재 디렉토리 "."는 받아오지 않음(정렬을 위함)
             continue;
         }
         strncpy(nameBuf[readItems], ent->d_name, MAX_NAME_LEN);  // 이름 복사
