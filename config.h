@@ -20,7 +20,7 @@
 #define DATETIME_LEN 19  // 날짜-시간 문자열 길이
 
 #define PRINTFILES_FORMAT_S "%-21s %11s %s"
-#define PRINTFILES_FORMAT_L "%-21s %8zu %11s %s"
+#define PRINTFILES_FORMAT_L "%-20s %10zu %13s %s"
 
 // struct dt -> 문자열 변환: 형식 지정 (buf 최소 길이: DATETIME_LEN + 1)
 #define DT_TO_STR(buf, dt) sprintf((buf), DATETIME_FORMAT, (dt)->tm_year + 1900, (dt)->tm_mon + 1, (dt)->tm_mday, (dt)->tm_hour, (dt)->tm_min, (dt)->tm_sec)

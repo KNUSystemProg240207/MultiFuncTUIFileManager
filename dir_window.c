@@ -188,18 +188,47 @@ int updateDirWins(void) {
 
 void printFileHeader(DirWin *win, int winH, int winW) {
     wattron(win->win, COLOR_PAIR(HEADER));
-    //  winW 값에 따라 헤더를 결정
-    if ((winW > 41) && (winW < 50)) {
-        // 창이 2개일 때: 파일 이름, 파일 타입, 날짜만 포함된 헤더
-        mvwaddstr(win->win, 1, 1, "      FILE NAME      |  LAST MODIFIED  |");
-    } else {
-        // 창이 1개일 때: 모든 정보가 포함된 상세 헤더
-        mvwaddstr(win->win, 1, 1, "      FILE NAME      |  SIZE  |  LAST MODIFIED  |");
+
+    // 정렬 상태에 따른 헤더 출력 준비
+    char nameHeader[30] = "    FILE NAME  ";
+    char sizeHeader[10] = "  SIZE  ";
+    char dateHeader[20] = "  LAST MODIFIED  ";
+
+    // 이름 정렬 상태 추가
+    if (((win->sortFlag & SORT_NAME_MASK) >> SORT_NAME_SHIFT) == 1) {
+        strcat(nameHeader, "v");
+    } else if (((win->sortFlag & SORT_NAME_MASK) >> SORT_NAME_SHIFT) == 2) {
+        strcat(nameHeader, "^");
     }
+
+    // 크기 정렬 상태 추가
+    if (((win->sortFlag & SORT_SIZE_MASK) >> SORT_SIZE_SHIFT) == 1) {
+        strcat(sizeHeader, "v");
+    } else if (((win->sortFlag & SORT_SIZE_MASK) >> SORT_SIZE_SHIFT) == 2) {
+        strcat(sizeHeader, "^");
+    }
+
+    // 날짜 정렬 상태 추가
+    if (((win->sortFlag & SORT_DATE_MASK) >> SORT_DATE_SHIFT) == 1) {
+        strcat(dateHeader, "v");
+    } else if (((win->sortFlag & SORT_DATE_MASK) >> SORT_DATE_SHIFT) == 2) {
+        strcat(dateHeader, "^");
+    }
+
+    // 헤더 출력
+    if ((winW > 50) && (winW < 60)) {
+        // 창이 2개일 때: 간략 헤더
+        mvwprintw(win->win, 1, 1, "%-22s|%-20s|", nameHeader, dateHeader);
+    } else {
+        // 창이 1개일 때: 상세 헤더
+        mvwprintw(win->win, 1, 1, "%-20s|%-10s|%-19s|", nameHeader, sizeHeader, dateHeader);
+    }
+
     whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
     wattroff(win->win, COLOR_PAIR(HEADER));
     mvwhline(win->win, 2, 1, 0, winW - 2);  // 구분선
 }
+
 
 void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     struct stat *fileStat = win->statEntries + (startIdx + line);
@@ -367,11 +396,11 @@ void toggleSort(int mask, int shift) {
 
     // 상태 순환: 01 -> 10 -> 01 순으로 순환
     if (state == 0) {
-        state = 2;  // 첫 번째 -> 두 번째 (오름차순)
-    } else if (state == 2) {
-        state = 1;  // 두 번째 -> 세 번째 (내림차순)
+        state = 1;  // 첫 번째 -> 두 번째 (오름차순)
+    } else if (state == 1) {
+        state = 2;  // 두 번째 -> 세 번째 (내림차순)
     } else {
-        state = 2;  // 세 번째 -> 첫 번째 (오름차순)
+        state = 1;  // 세 번째 -> 첫 번째 (오름차순)
     }
 
     // 해당 비트에 상태 반영
