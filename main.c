@@ -2,10 +2,12 @@
 #include <curses.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -15,6 +17,7 @@
 #include "config.h"
 #include "dir_listener.h"
 #include "dir_window.h"
+#include "file_operator.h"
 #include "title_bar.h"
 
 
@@ -24,7 +27,10 @@ mode_t directoryOpenArgs;  // fdopendir()에 전달할 directory file descriptor
 
 // 각 (폴더의 내용 가져오는) Directory Listener Thread별 저장 공간:
 static pthread_t threadListDir[MAX_DIRWINS];
+static pthread_t threadFileOperators[MAX_FILE_OPERATORS];
 static DirListenerArgs dirListenerArgs[MAX_DIRWINS];
+static FileOperatorArgs fileOpArgs[MAX_FILE_OPERATORS];
+static int pipeFileOpCmd;
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
@@ -36,6 +42,7 @@ static void cleanup(void);  // atexit()에 전달할 함수: 프로그램 종료
 
 
 int main(int argc, char **argv) {
+    signal(SIGINT, SIG_IGN);
     atexit(cleanup);
 
     initVariables();
@@ -61,6 +68,10 @@ int main(int argc, char **argv) {
         }
     }
 
+    // Linux에서: pthread_mutex_destroy, pthread_cond_destroy 반드시 필요한 것 아님 (manpage 참조)
+
+    close(fileOpArgs[0].pipeEnd);  // File Operator Thread용 pipe의 read end: close()
+
     // 창 '지움' (자원 해제)
     CHECK_CURSES(delwin(titleBar));
     CHECK_CURSES(delwin(bottomBox));
@@ -71,9 +82,15 @@ int main(int argc, char **argv) {
 void initVariables(void) {
     // 변수들 기본값으로 초기화
     for (int i = 0; i < MAX_DIRWINS; i++) {
-        pthread_mutex_init(&dirListenerArgs[i].bufMutex, NULL);
         pthread_cond_init(&dirListenerArgs[i].commonArgs.resumeThread, NULL);
         pthread_mutex_init(&dirListenerArgs[i].commonArgs.statusMutex, NULL);
+        pthread_mutex_init(&dirListenerArgs[i].bufMutex, NULL);
+        pthread_mutex_init(&dirListenerArgs[i].dirMutex, NULL);
+    }
+    for (int i = 0; i < MAX_FILE_OPERATORS; i++) {
+        pthread_cond_init(&fileOpArgs[i].commonArgs.resumeThread, NULL);
+        pthread_mutex_init(&fileOpArgs[i].commonArgs.statusMutex, NULL);
+        pthread_mutex_init(&fileOpArgs[i].pipeReadMutex, NULL);
     }
 }
 
@@ -115,23 +132,54 @@ void initScreen(void) {
 }
 
 void initThreads(void) {
+    // Directory Listener Thread 초기화, 실행
     dirListenerArgs[0].currentDir = opendir(".");
     assert(dirListenerArgs[0].currentDir != NULL);
     directoryOpenArgs = fcntl(dirfd(dirListenerArgs[0].currentDir), F_GETFL);
     assert(directoryOpenArgs != -1);
-    startDirListender(&threadListDir[0], &dirListenerArgs[0]);  // Directory Listener Thread 시작
+    startDirListender(&threadListDir[0], &dirListenerArgs[0]);
+
+    // File Operator Thread 초기화, 실행
+    int pipeEnds[2];
+    assert(pipe(pipeEnds) == 0);
+    pipeFileOpCmd = pipeEnds[1];
+    for (int i = 0; i < MAX_FILE_OPERATORS; i++) {
+        fileOpArgs[i].pipeEnd = pipeEnds[0];
+        startFileOperator(&threadFileOperators[i], &fileOpArgs[i]);
+    }
 }
 
 void mainLoop(void) {
-    struct timespec startTime;
-    uint64_t elapsedUSec;
-    char cwdBuf[MAX_CWD_LEN];
-    ssize_t currentSelection;
-    unsigned int currentWindow;
+    // clang-format off
+#define CHECK_FD_OPEN_CLOSE(fd) do {\
+    if ((fd) != -1) {\
+        close((fd));\
+        (fd) = -1;\
+    }\
+} while (0)
+#define RESET_FD(fd) do {\
+    close((fd));\
+    (fd) = -1;\
+} while (0)
+    // clang-format on
 
-    char *cwd;
+    struct timespec startTime;  // Iteration 시작 시간
+    uint64_t elapsedUSec;  // Iteration 걸린 시간
+
+    int cwdFd;  // 현재 선택된 창의 Working Directory File Descriptor
+    ssize_t cwdLen;
+    // char *cwd;  // 현재 선택된 창의 Working Directory
+    char fdPathBuf[MAX_CWD_LEN];  // Working Directory의 Buffer
+    char cwdBuf[MAX_CWD_LEN];  // Working Directory의 Buffer
+
+    unsigned int curWin;  // 현재 창
+    ssize_t currentSelection;  // 선택된 Item
+    FileTask fileTask = {
+        .src.dirFd = -1,
+    };  // File Task (copy/move 및 source 정보 등 저장)
+
     while (1) {
-        clock_gettime(CLOCK_MONOTONIC, &startTime);  // 시작 시간
+        clock_gettime(CLOCK_MONOTONIC, &startTime);  // 시작 시간 가져옴
 
         // 키 입력 처리
         for (int ch = wgetch(stdscr); ch != ERR; ch = wgetch(stdscr)) {
@@ -148,32 +196,78 @@ void mainLoop(void) {
                 case KEY_RIGHT:
                     selectPreviousWindow();
                     break;
-                case '\n':
+                case 'c':
+                case 'C':  // 복사
+                case 'x':
+                case 'X':  // 잘라내기
+                    // 파일 정보 저장
+                    CHECK_FD_OPEN_CLOSE(fileTask.src.dirFd);
+                    fileTask.type = (ch == 'c' || ch == 'C') ? COPY : MOVE;
+                    curWin = getCurrentWindow();
+                    fileTask.src = getCurrentSelectedItem();
+                    pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
+                    fileTask.src.dirFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
+                    pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
+                    break;
+                case 'v':
+                case 'V':  // 붙여넣기: 미리 복사/잘라내기 된 파일 있으면 수행, 없으면 오류 표시
+                    if (fileTask.src.dirFd == -1) {
+                        // TODO: 오류 표시
+                        break;
+                    }
+                    fileTask.dst = getCurrentSelectedItem();
+                    write(pipeFileOpCmd, &fileTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
+                    RESET_FD(fileTask.src.dirFd);
+                    RESET_FD(fileTask.dst.dirFd);
+                    break;
+                case KEY_DC:
+                    CHECK_FD_OPEN_CLOSE(fileTask.src.dirFd);
+                    fileTask.type = DELETE;
+                    fileTask.src = getCurrentSelectedItem();
+                    write(pipeFileOpCmd, &fileTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
+                    RESET_FD(fileTask.src.dirFd);
+                    break;
+                case '\n':  // 디렉터리 변경
                 case KEY_ENTER:
                     currentSelection = getCurrentSelectedDirectory();
                     if (currentSelection >= 0) {
-                        currentWindow = getCurrentWindow();
-                        pthread_mutex_lock(&dirListenerArgs[currentWindow].bufMutex);
-                        dirListenerArgs[currentWindow].chdirIdx = currentSelection;
-                        dirListenerArgs[currentWindow].commonArgs.statusFlags |= DIRLISTENER_FLAG_CHANGE_DIR;
-                        pthread_mutex_unlock(&dirListenerArgs[currentWindow].bufMutex);
+                        curWin = getCurrentWindow();
+                        pthread_mutex_lock(&dirListenerArgs[curWin].bufMutex);
+                        dirListenerArgs[curWin].chdirIdx = currentSelection;
+                        dirListenerArgs[curWin].commonArgs.statusFlags |= DIRLISTENER_FLAG_CHANGE_DIR;
+                        pthread_mutex_unlock(&dirListenerArgs[curWin].bufMutex);
                         setCurrentSelectedDirectory(0);
                     }
                     break;
                 case 'q':
                 case 'Q':
                     goto CLEANUP;  // Main Loop 빠져나감
+                default:
+                    mvwhline(stdscr, getmaxy(stdscr) - 3, 0, ACS_HLINE, getmaxy(stdscr));
+                    mvwprintw(stdscr, getmaxy(stdscr) - 3, 2, "0x%x 0x%lx 0x%lx", ch, ch & ~BUTTON_CTRL, ~BUTTON_CTRL);
             }
         }
 
         // 제목 영역 업데이트
         renderTime();  // 시간 업데이트
-        // TODO: get current window's cwd
-        cwd = getcwd(cwdBuf, MAX_CWD_LEN);  // 경로 가져옴
-        if (cwd == NULL)
-            printPath("-----");  // 경로 가져오기 실패 시
-        else
-            printPath(cwd);  // 경로 업데이트
+
+        // 현재 창의 Working Directory 가져옴
+        curWin = getCurrentWindow();
+        pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
+        cwdFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
+        pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
+        if (snprintf(fdPathBuf, MAX_CWD_LEN, "/proc/self/fd/%d", cwdFd) == MAX_CWD_LEN) {
+            cwdLen = -1;
+        } else {
+            cwdLen = readlink(fdPathBuf, cwdBuf, MAX_CWD_LEN);
+        }
+        close(cwdFd);
+        if (cwdLen == -1) {
+            printPath("-----", 5);
+        } else {
+            cwdBuf[MAX_CWD_LEN - 1] = '\0';
+            printPath(cwdBuf, (size_t)cwdLen);
+        }
 
         updateDirWins();  // 폴더 표시 창들 업데이트
 
@@ -189,6 +283,7 @@ void mainLoop(void) {
         }
     }
 CLEANUP:
+    CHECK_FD_OPEN_CLOSE(fileTask.src.dirFd);
     return;
 }
 

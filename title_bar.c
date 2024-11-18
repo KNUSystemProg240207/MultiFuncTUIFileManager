@@ -37,8 +37,10 @@ void renderTime() {
     mvwaddstr(titleBar, 0, barWidth - DATETIME_LEN, buf);  // 출력
 }
 
-void printPath(char *path) {
+void printPath(char *path, size_t pathLen) {
     int size = barWidth - margin * 2;  // 제목 영역 크기
-    int restSpace = size - strlen(path);  // 제목 표시된 후 남는 공간
-    mvwaddnstr(titleBar, 0, margin + (restSpace > 0 ? restSpace / 2 : 0), path, size);  // 제목 표시: 가운데 정렬 (공간 부족하면: 끝부분이 잘림)
+    int restSpace = size - pathLen;  // 제목 표시된 후 남는 공간
+    int start = margin + (restSpace > 0 ? restSpace / 2 : 0);
+    mvwhline(titleBar, 0, margin, ' ', size);  // 공백 출력 -> 기존 내용 삭제 (기존보다 더 짧은 문자열 고려)
+    mvwaddnstr(titleBar, 0, start, path, size < pathLen ? size : pathLen);  // 제목 표시: 가운데 정렬 (공간 부족하면: 끝부분이 잘림)
 }

@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/stat.h>
 
 #include "config.h"
@@ -16,7 +17,7 @@
  * @var _DirWin::win WINDOW 구조체
  * @var _DirWin::order Directory 창 순서 (가장 왼쪽=0) ( [0, MAX_DIRWINS) )
  * @var _DirWin::currentPos 현재 선택된 Element
- * @var _DirWin::bufMutex 현 폴더 항목들의 Stat 및 이름 관련 Mutex
+ * @var _DirWin::bufMutex bufEntryStat, bufEntryNames 보호 Mutex
  * @var _DirWin::statEntries 항목들의 stat 정보
  * @var _DirWin::entryNames 항목들의 이름
  * @var _DirWin::totalReadItems 현 폴더에서 읽어들인 항목 수
@@ -244,6 +245,20 @@ ssize_t getCurrentSelectedDirectory(void) {
     isDirectory = (windows[currentWin].bufEntryStat[windows[currentWin].currentPos].st_mode & S_IFDIR) == S_IFDIR;
     pthread_mutex_unlock(windows[currentWin].bufMutex);
     return isDirectory ? windows[currentWin].currentPos : -1;
+}
+
+SrcDstInfo getCurrentSelectedItem(void) {
+    DirWin *currentWinArgs = windows + currentWin;
+    size_t currentSelection = currentWinArgs->currentPos;
+    struct stat *curStat = currentWinArgs->bufEntryStat + currentSelection;
+    assert(pthread_mutex_lock(currentWinArgs->bufMutex) == 0);
+    SrcDstInfo result = {
+        .devNo = curStat->st_dev,
+        .fileSize = curStat->st_size
+    };
+    strcpy(result.name, currentWinArgs->bufEntryNames[currentSelection]);
+    pthread_mutex_unlock(currentWinArgs->bufMutex);
+    return result;
 }
 
 void setCurrentSelectedDirectory(size_t index) {

@@ -15,15 +15,17 @@ typedef enum _FileOpration {
     DELETE
 } FileOpration;
 
+typedef struct _SrcDstFile {
+    dev_t devNo;
+    int dirFd;
+    char name[MAX_NAME_LEN];
+    size_t fileSize;
+} SrcDstInfo;
+
 typedef struct _FileTask {
     FileOpration type;
-    int srcDirFd;
-    dev_t srcDevNo;
-    char srcName[MAX_NAME_LEN];
-    size_t fileSize;
-    int dstDirFd;
-    dev_t dstDevNo;
-    char dstName[MAX_NAME_LEN];
+    SrcDstInfo src;
+    SrcDstInfo dst;
 } FileTask;
 
 
@@ -33,15 +35,20 @@ typedef struct _FileTask {
  * @var _FileOperatorArgs::commonArgs Thread들 공통 공유 변수
  * @var _FileOperatorArgs::opearatingFile 작업 중인 파일명
  * @var _FileOperatorArgs::progress 진행률(백분률) & 진행 중인 작업 종류
+ * @var _FileOperatorArgs::progressMutex 진행 상태 보호 Mutex
  * @var _FileOperatorArgs::pipeEnd 명령 읽어올, pipe의 read용 끝단
+ * @var _FileOperatorArgs::pipeReadMutex 명령 읽기 보호 Mutex
  */
 typedef struct _FileOperatorArgs {
     ThreadArgs commonArgs;  // Thread들 공통 공유 변수
     // 상태 관련
-    char opearatingFile[MAX_NAME_LEN];
-    uint16_t progress;
-    // 명령 읽어올 곳
-    int pipeEnd;
+    char opearatingFile[MAX_NAME_LEN];  // 작업 중인 파일명
+    uint16_t progress;  // 진행률(백분률) & 진행 중인 작업 종류
+    pthread_mutex_t progressMutex;  // 진행 상태 보호 Mutex
+
+    // 명령 관련
+    int pipeEnd;  // 명령 읽어올, pipe의 read용 끝
+    pthread_mutex_t pipeReadMutex;  // 명령 읽기 보호 Mutex
 } FileOperatorArgs;
 
 

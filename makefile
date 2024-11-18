@@ -3,8 +3,8 @@ CFLAGS = -fdiagnostics-color=always -std=gnu99 -Wall -fanalyzer -g
 LFLAGS = -lncurses
 TARGET = demo.out
 # 주의: Source 추가 시 해당 object file, header file 추가
-OBJS = main.o commons.o dir_window.o title_bar.o bottom_area.o thread_commons.o dir_listener.o file_operator.o
-HEADERS = config.h commons.h dir_window.h title_bar.h bottom_area.h thread_commons.h dir_listener.h file_operator.h
+OBJS = main.o commons.o dir_window.o title_bar.o bottom_area.o thread_commons.o dir_listener.o file_operator.o file_functions.o
+HEADERS = config.h commons.h dir_window.h title_bar.h bottom_area.h thread_commons.h dir_listener.h file_operator.h file_functions.h
 
 
 all: $(TARGET)
@@ -35,8 +35,11 @@ thread_commons.o: config.h thread_commons.h thread_commons.c
 dir_listener.o: config.h commons.h thread_commons.h dir_listener.h dir_listener.c
 	$(CC) $(CFLAGS) -c dir_listener.c
 
-file_operator.o: config.h commons.h thread_commons.h file_operator.h file_operator.c
+file_operator.o: config.h commons.h thread_commons.h file_functions.h file_operator.h file_operator.c
 	$(CC) $(CFLAGS) -c file_operator.c
+
+file_functions.o: file_functions.h file_functions.c
+	$(CC) $(CFLAGS) -c file_functions.c
 
 # misc
 clean:
