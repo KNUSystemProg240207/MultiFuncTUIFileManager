@@ -2,8 +2,8 @@
 #define __THREAD_COMMONS_H_INCLUDED__
 
 #include <pthread.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "config.h"
 
