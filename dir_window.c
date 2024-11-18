@@ -17,9 +17,6 @@ static unsigned int winCnt;  // 창 개수
 static unsigned int currentWin;  // 현재 창의 Index
 static int panelCnt = 0;  // 패널의 개수
 
-void printFileHeader(DirWin *win, int winH, int winW);
-void printFileInfo(DirWin *win, int startIdx, int line, int winW);
-
 
 /**
  * 창 위치 계산
@@ -95,7 +92,7 @@ int initDirWin(
         .statEntries = statEntries,
         .entryNames = entryNames,
         .totalReadItems = totalReadItems,
-        .sortFlag = 0x01
+        .sortFlag = 0x01  // 기본 정렬 방식은 이름 오름차순
     };
     return winCnt;
 }
@@ -112,6 +109,7 @@ int updateDirWins(void) {
     // 각 창들 업데이트
     int eventStartPos;  // 이벤트 시작 위치
     int line;  // 내부 출력 for 문에서 사용할 변수
+    int displayLine;  // 실제 출력 라인 수
     for (int winNo = 0; winNo < winCnt; winNo++) {
         win = windows + winNo;
 
@@ -144,7 +142,7 @@ int updateDirWins(void) {
         // 최상단에 출력될 항목의 index 계산
         getmaxyx(win->win, winH, winW);
         winH -= 4;  // 최대 출력 가능한 라인 넘버 -4
-        // winW = 51;  // 윈도우 크기 확인용
+        // winW = 31;  // 윈도우 크기 확인용
 
         applySorting(win->sortFlag, win);  // 애초에 받아올 때, 정렬 안 된 상태로 받아오니까 계속 정렬을 해야 함
 
@@ -171,12 +169,17 @@ int updateDirWins(void) {
         currentLine = win->currentPos - startIdx;  // 역상으로 출력할, 현재 선택된 줄
 
         /* 디렉토리 출력 */
-        for (line = 0; line < itemsToPrint; line++) {  // 항목 있는 공간: 출력
-            if (winNo == currentWin && line == currentLine)  // 선택된 것 역상으로 출력
+        for (line = 0, displayLine = 0; line < itemsToPrint; line++) {  // 항목 있는 공간: 출력
+            // "." 항목은 출력하지 않음, line 값은 증가시키지 않음
+            if (strcmp(win->entryNames[startIdx + line], ".") == 0) {
+                continue;  // "."은 건너뛰고 다음 항목으로 넘어감
+            }
+            if (winNo == currentWin && displayLine == currentLine)  // 선택된 것 역상으로 출력
                 wattron(win->win, A_REVERSE);
             printFileInfo(win, startIdx, line, winW);
-            if (winNo == currentWin && line == currentLine)
+            if (winNo == currentWin && displayLine == currentLine)
                 wattroff(win->win, A_REVERSE);
+            displayLine++;
         }
         // wclrtobot(win->win);  // 아래 남는 공간: 지움, 버그 나서 임시로 주석
 
@@ -216,12 +219,15 @@ void printFileHeader(DirWin *win, int winH, int winW) {
     }
 
     // 헤더 출력
-    if ((winW > 50) && (winW < 60)) {
-        // 창이 2개일 때: 간략 헤더
-        mvwprintw(win->win, 1, 1, "%-22s|%-20s|", nameHeader, dateHeader);
-    } else {
-        // 창이 1개일 때: 상세 헤더
+    if (winW >= 80) {
+        // 최대 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-10s|%-19s|", nameHeader, sizeHeader, dateHeader);
+    } else if (winW >= 40) {
+        // 중간 너비
+        mvwprintw(win->win, 1, 1, "%-20s|%-19s|", nameHeader, dateHeader);
+    } else {
+        // 최소 너비
+        mvwprintw(win->win, 1, 1, "%-20s|", nameHeader);
     }
 
     whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
@@ -229,7 +235,25 @@ void printFileHeader(DirWin *win, int winH, int winW) {
     mvwhline(win->win, 2, 1, 0, winW - 2);  // 구분선
 }
 
+// 파일 정보를 출력하는 함수
+void drawFileLine(WINDOW *win, int y, int winW, const char *format, const char *fileName, size_t fileSize, const char *lastModDate, const char *lastModTime, int colorPair) {
+    wattron(win, COLOR_PAIR(colorPair));
+    if (winW < 50) {
+        // 좁은 화면: 파일 이름만 출력
+        mvwprintw(win, y, 1, format, fileName);
+    } else if (winW < 80) {
+        // 중간 화면: 파일 이름 + 날짜 + 시간 출력
+        mvwprintw(win, y, 1, format, fileName, lastModDate, lastModTime);
+    } else {
+        // 넓은 화면: 파일 이름 + 크기 + 날짜 + 시간 출력
+        mvwprintw(win, y, 1, format, fileName, fileSize, lastModDate, lastModTime);
+    }
+    whline(win, ' ', getmaxx(win) - getcurx(win) - 1);  // 남은 공간 공백 처리
+    wattroff(win, COLOR_PAIR(colorPair));
+}
 
+
+// 파일 목록 출력 함수
 void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     struct stat *fileStat = win->statEntries + (startIdx + line);
     char *fileName = win->entryNames[startIdx + line];
@@ -239,56 +263,31 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
 
     // 파일 마지막 수정 시간 출력 (날짜와 시간 분리)
     struct tm tm;
-    localtime_r(&fileStat->st_mtime, &tm);  // thread-safe한 localtime_r 사용
+    localtime_r(&fileStat->st_mtime, &tm);
     strftime(lastModDate, sizeof(lastModDate), "%y/%m/%d", &tm);
     strftime(lastModTime, sizeof(lastModTime), "%H:%M", &tm);
 
-    // 창 너비에 따라 출력할 항목을 결정
-    if ((winW > 41) && (winW < 50)) {  // 창 너비가 매우 좁으면 파일 이름과 타입만 출력
-        if (S_ISDIR(fileStat->st_mode)) {  // 디렉토리
-            wattron(win->win, COLOR_PAIR(DIRECTORY));
-            mvwprintw(win->win, line + 3, 1, PRINTFILES_FORMAT_S, fileName, lastModDate, lastModTime);
-            whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 출력
-            wattroff(win->win, COLOR_PAIR(DIRECTORY));
-        } else if (S_ISLNK(fileStat->st_mode)) {  // 링크
-            wattron(win->win, COLOR_PAIR(SYMBOLIC));
-            mvwprintw(win->win, line + 3, 1, PRINTFILES_FORMAT_S, fileName, lastModDate, lastModTime);
-            whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 출력
-            wattroff(win->win, COLOR_PAIR(SYMBOLIC));
-        } else if (S_ISREG(fileStat->st_mode)) {  // 일반 파일
-            wattron(win->win, COLOR_PAIR(DEFAULT));
-            mvwprintw(win->win, line + 3, 1, PRINTFILES_FORMAT_S, fileName, lastModDate, lastModTime);
-            whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 출력
-            wattroff(win->win, COLOR_PAIR(DEFAULT));
-        } else {  // 나머지
-            wattron(win->win, COLOR_PAIR(OTHER));
-            mvwprintw(win->win, line + 3, 1, PRINTFILES_FORMAT_S, fileName, lastModDate, lastModTime);
-            whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 출력
-            wattroff(win->win, COLOR_PAIR(OTHER));
-        }
-    } else {  // 창 너비가 넓을 경우 모든 정보를 출력
-        if (S_ISDIR(fileStat->st_mode)) {  // 디렉토리
-            wattron(win->win, COLOR_PAIR(DIRECTORY));
-            mvwprintw(win->win, line + 3, 1, PRINTFILES_FORMAT_L, fileName, fileSize, lastModDate, lastModTime);
-            whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 출력
-            wattroff(win->win, COLOR_PAIR(DIRECTORY));
-        } else if (S_ISLNK(fileStat->st_mode)) {  // 링크
-            wattron(win->win, COLOR_PAIR(SYMBOLIC));
-            mvwprintw(win->win, line + 3, 1, PRINTFILES_FORMAT_L, fileName, fileSize, lastModDate, lastModTime);
-            whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 출력
-            wattroff(win->win, COLOR_PAIR(SYMBOLIC));
-        } else if (S_ISREG(fileStat->st_mode)) {  // 일반 파일
-            wattron(win->win, COLOR_PAIR(DEFAULT));
-            mvwprintw(win->win, line + 3, 1, PRINTFILES_FORMAT_L, fileName, fileSize, lastModDate, lastModTime);
-            whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 출력
-            wattroff(win->win, COLOR_PAIR(DEFAULT));
-        } else {  // 나머지
-            wattron(win->win, COLOR_PAIR(OTHER));
-            mvwprintw(win->win, line + 3, 1, PRINTFILES_FORMAT_L, fileName, fileSize, lastModDate, lastModTime);
-            whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 출력
-            wattroff(win->win, COLOR_PAIR(OTHER));
-        }
+    // 파일 타입에 따른 색상 선택 및 출력
+    int colorPair = DEFAULT;
+    if (S_ISDIR(fileStat->st_mode)) {
+        colorPair = DIRECTORY;
+    } else if (S_ISLNK(fileStat->st_mode)) {
+        colorPair = SYMBOLIC;
+    } else if (!S_ISREG(fileStat->st_mode)) {
+        colorPair = OTHER;
     }
+
+    // 출력 포맷과 색상 결정
+    const char *format;
+    if (winW >= 80) {  // 넓은 창 (파일 이름, 크기, 수정 날짜/시간)
+        format = "%-20s %10zu %13s %s";
+    } else if (winW >= 40) {  // 중간 창 (파일 이름, 수정 날짜/시간)
+        format = "%-21s %11s %s";
+    } else {  // 좁은 창 (파일 이름만)
+        format = "%-21s";
+    }
+
+    drawFileLine(win->win, line + 3, winW, format, fileName, fileSize, lastModDate, lastModTime, colorPair);
 }
 
 int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w) {
@@ -438,10 +437,14 @@ void applySorting(SortFlags flags, DirWin *win) {
     }
 }
 
-
 int compareByDate_Asc(const void *a, const void *b) {
     DirEntry entryA = *((DirEntry *)a);
     DirEntry entryB = *((DirEntry *)b);
+
+    // ".."는 최상단
+    if (strcmp(entryA.entryName, "..") == 0) return -1;
+    if (strcmp(entryB.entryName, "..") == 0) return 1;
+
 
     // 디렉토리는 상단
     if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
@@ -469,6 +472,11 @@ int compareByDate_Desc(const void *a, const void *b) {
     DirEntry entryA = *((DirEntry *)a);
     DirEntry entryB = *((DirEntry *)b);
 
+    // ".."는 최상단
+    if (strcmp(entryA.entryName, "..") == 0) return -1;
+    if (strcmp(entryB.entryName, "..") == 0) return 1;
+
+
     // 디렉토리는 상단
     if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
         return -1;
@@ -495,6 +503,11 @@ int compareByDate_Desc(const void *a, const void *b) {
 int compareByName_Asc(const void *a, const void *b) {
     DirEntry entryA = *((DirEntry *)a);
     DirEntry entryB = *((DirEntry *)b);
+
+    // ".."는 최상단
+    if (strcmp(entryA.entryName, "..") == 0) return -1;
+    if (strcmp(entryB.entryName, "..") == 0) return 1;
+
     // 디렉토리는 상단
     if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
         return -1;
@@ -507,6 +520,11 @@ int compareByName_Asc(const void *a, const void *b) {
 int compareByName_Desc(const void *a, const void *b) {
     DirEntry entryA = *((DirEntry *)a);
     DirEntry entryB = *((DirEntry *)b);
+
+    // ".."는 최상단
+    if (strcmp(entryA.entryName, "..") == 0) return -1;
+    if (strcmp(entryB.entryName, "..") == 0) return 1;
+
     // 디렉토리는 상단
     if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
         return -1;
@@ -520,6 +538,10 @@ int compareByName_Desc(const void *a, const void *b) {
 int compareBySize_Asc(const void *a, const void *b) {
     DirEntry entryA = *((DirEntry *)a);
     DirEntry entryB = *((DirEntry *)b);
+
+    // ".."는 최상단
+    if (strcmp(entryA.entryName, "..") == 0) return -1;
+    if (strcmp(entryB.entryName, "..") == 0) return 1;
 
     // 디렉토리는 상단
     if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {
@@ -535,6 +557,10 @@ int compareBySize_Asc(const void *a, const void *b) {
 int compareBySize_Desc(const void *a, const void *b) {
     DirEntry entryA = *((DirEntry *)a);
     DirEntry entryB = *((DirEntry *)b);
+
+    // ".."는 최상단
+    if (strcmp(entryA.entryName, "..") == 0) return -1;
+    if (strcmp(entryB.entryName, "..") == 0) return 1;
 
     // 디렉토리는 상단
     if (S_ISDIR(entryA.statEntry.st_mode) && !S_ISDIR(entryB.statEntry.st_mode)) {

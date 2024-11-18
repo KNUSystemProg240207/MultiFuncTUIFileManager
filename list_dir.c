@@ -158,6 +158,9 @@ ssize_t listEntries(struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], s
             }
             return readItems;  // 오류 없음 -> 계속 진행
         }
+        if (strcmp(ent->d_name, ".") == 0) {  // 현재 디렉토리 "."는 받아오지 않음
+            continue;
+        }
         strncpy(nameBuf[readItems], ent->d_name, MAX_NAME_LEN);  // 이름 복사
         nameBuf[readItems][MAX_NAME_LEN] = '\0';  // 끝에 null 문자 추가: 파일 이름 매우 긴 경우, strncpy()는 끝에 null문자 쓰지 않을 수도 있음
         if (stat(ent->d_name, resultBuf + readItems) == -1) {  // stat 읽어들임

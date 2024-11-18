@@ -44,6 +44,8 @@ typedef struct {
     struct stat statEntry;  // stat 정보
 } DirEntry;
 
+void printFileHeader(DirWin *win, int winH, int winW);
+void printFileInfo(DirWin *win, int startIdx, int line, int winW);
 
 /**
  * 새 폴더 표시 창 초기화 (생성)
@@ -77,6 +79,8 @@ int compareByDate_Desc(const void *a, const void *b);
 void toggleSort(int mask, int shift);
 void applySorting(SortFlags flags, DirWin *win);
 void sortDirEntries(DirWin *win, int (*compare)(const void *, const void *));
+int compareDotEntries(const DirEntry *entryA, const DirEntry *entryB);
+
 /**
  * 폴더 표시 창들 업데이트
  *
