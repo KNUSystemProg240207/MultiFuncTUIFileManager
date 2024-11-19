@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <curses.h>
 #include <fcntl.h>
+#include <panel.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -19,6 +20,7 @@
 #include "title_bar.h"
 
 WINDOW *titleBar, *bottomBox;
+PANEL *titlePanel, *bottomPanel;
 
 mode_t directoryOpenArgs;  // fdopendir()에 전달할 directory file descriptor를 open()할 때 쓸 argument: Thread 시작 전 저장되어야 함
 
@@ -65,6 +67,10 @@ int main(int argc, char **argv) {
     CHECK_CURSES(delwin(titleBar));
     CHECK_CURSES(delwin(bottomBox));
 
+    // 패널 제거
+    del_panel(titlePanel);
+    del_panel(bottomPanel);
+
     return 0;
 }
 
@@ -93,8 +99,8 @@ void initScreen(void) {
     CHECK_CURSES(start_color());  // Color 시작
     if (can_change_color() == TRUE) {
         CHECK_CURSES(init_color(COLOR_WHITE, 1000, 1000, 1000));  // 흰색을 '진짜' 흰색으로: 일부 환경에서, COLOR_WHITE가 회색인 경우 있음
+        init_colorSet();
     }
-    init_colorSet();
 
     // 창 크기 가져옴
     int h, w;
@@ -104,6 +110,10 @@ void initScreen(void) {
     bottomBox = initBottomBox(w, h - 2);  // 아래쪽 단축키 창 생성
     CHECK_CURSES(mvhline(1, 0, ACS_HLINE, w));  // 제목 창 아래로 가로줄 그림
     CHECK_CURSES(mvhline(h - 3, 0, ACS_HLINE, w));  // 단축키 창 위로 가로줄 그림
+
+    // 패널 생성
+    titlePanel = new_panel(titleBar);
+    bottomPanel = new_panel(bottomBox);
 
     // 폴더 내용 표시 창 생성
     initDirWin(
@@ -187,10 +197,9 @@ void mainLoop(void) {
 
         updateDirWins();  // 폴더 표시 창들 업데이트
 
-        // 필요한 창들 refresh
-        CHECK_CURSES(wrefresh(titleBar));
-        CHECK_CURSES(wrefresh(bottomBox));
-        refresh();
+        // 패널 업데이트
+        update_panels();
+        doupdate();
 
         // Frame rate 제한: delay - 경과 time
         elapsedUSec = getElapsedTime(startTime);
@@ -203,5 +212,8 @@ CLEANUP:
 }
 
 void cleanup(void) {
+    // 패널들 정리
+    del_panel(titlePanel);
+    del_panel(bottomPanel);
     endwin();
 }
