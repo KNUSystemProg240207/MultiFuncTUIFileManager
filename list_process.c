@@ -1,10 +1,11 @@
-#include <unistd.h>
+#include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
+#include <unistd.h>
 #include <sys/types.h>
-#include <errno.h>
 
 #include "config.h"
 #include "list_process.h"
@@ -56,14 +57,14 @@ int readProcInfo(ProcWin *procWindow) {
     struct dirent *entry;
     size_t procCount = 0;
 
-    // 처음에만 초기화 
-    int isInitialized = 0;
-    if (!isInitialized) {
-    for (size_t i = 0; i < MAX_PROCESSES; i++) {
-        pointerArray[i] = &dataArray[i];
+    // static으로 만들어 처음에만 초기화
+    static int isInitialized = 0;
+    if (isInitialized == 0) {
+        for (size_t i = 0; i < MAX_PROCESSES; i++) {
+            pointerArray[i] = &dataArray[i];
+        }
+        isInitialized = 1;
     }
-    isInitialized = 1;
-}
 
     // /proc 디렉토리를 열기
     dir = opendir(PROC_DIR);
@@ -75,9 +76,15 @@ int readProcInfo(ProcWin *procWindow) {
     // /proc 디렉토리 내의 항목 읽기
     while ((entry = readdir(dir)) != NULL) {
         if (!isdigit(entry->d_name[0])) {
-        continue;  // 숫자로 시작하지 않으면 건너뜀
+            continue;  // 숫자로 시작하지 않으면 건너뜀
         }
         ProcInfo tempProc;
+
+        // 프로세스 수가 최대치를 초과하면 종료
+        if (procCount >= MAX_PROCESSES) {
+            fprintf(stderr, "procCount exceeded MAX_PROCESSES\n");
+            break;  // 루프를 중단하고 처리 종료
+        }
 
         // 프로세스 정보를 /proc/<PID>/stat 파일에서 읽음
         char statPath[PATH_MAX];
@@ -90,12 +97,17 @@ int readProcInfo(ProcWin *procWindow) {
         FILE *statFile = fopen(statPath, "r");
         if (statFile == NULL) {
             fprintf(stderr, "Failed to open file: %s\n", statPath);
+            continue;
+        }
+        if (fscanf(statFile, "%d (%255[^)]) %c %lu %lu %lu", &tempProc.pid, tempProc.name, &tempProc.state, &tempProc.utime, &tempProc.stime, &tempProc.vsize) != 6) {
+            fprintf(stderr, "Failed to parse file: %s\n", statPath);
+            fclose(statFile);
+            continue;
         }
         // /proc/<PID>/stat 파일에서 데이터 읽기
-        if (fscanf(statFile, "%d (%255[^)]) %c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %lu %lu %*ld %*ld %*ld %*ld %*ld %*ld %*llu %lu",
-           &tempProc.pid, tempProc.name, &tempProc.state, &tempProc.utime, &tempProc.stime, &tempProc.vsize) != 6)
-            fprintf(stderr, "Failed to parse file: %s\n", statPath);
-        
+        // if (fscanf(statFile, "%d (%255[^)]) %c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %lu %lu %*ld %*ld %*ld %*ld %*ld %*ld %*llu %lu", &tempProc.pid, tempProc.name, &tempProc.state, &tempProc.utime, &tempProc.stime, &tempProc.vsize) != 6)
+        //     fprintf(stderr, "Failed to parse file: %s\n", statPath);
+
         /*
         if (fscanf(statFile, "%d (%255[^)]) %c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %lu %lu %*ld %*ld %*ld %*ld %*ld %*ld %*llu %*lu",
            &tempProc.pid, tempProc.name, &tempProc.state, &tempProc.utime, &tempProc.stime) != 5)
@@ -109,6 +121,7 @@ int readProcInfo(ProcWin *procWindow) {
             dataArray[procCount] = tempProc;
             procWindow->procEntries[insertPos] = &dataArray[procCount];
             procCount++;
+
         } else if (tempProc.vsize > procWindow->procEntries[0]->vsize) {
             ProcInfo *minItem = procWindow->procEntries[0];
             size_t insertPos = findInsertPosition(procWindow->procEntries, MAX_PROCESSES, tempProc.vsize);
@@ -130,6 +143,10 @@ size_t findInsertPosition(ProcInfo *pointerArray[], size_t size, unsigned long v
     size_t low = 0, high = size;
     while (low < high) {
         size_t mid = low + (high - low) / 2;
+        if (pointerArray[mid] == NULL) {  // NULL 방어 코드
+            fprintf(stderr, "Null pointer detected at position %zu\n", mid);
+            return mid;  // NULL을 발견한 위치에 삽입
+        }
         if (pointerArray[mid]->vsize < vsize) {
             low = mid + 1;
         } else {

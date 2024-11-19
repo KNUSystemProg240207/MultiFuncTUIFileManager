@@ -1,10 +1,13 @@
 #include <limits.h>
+#include <panel.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <sys/stat.h>
+
 #include "config.h"
-#include "proc_win.h"
 #include "list_process.h"
+#include "proc_win.h"
+
 
 int initProcWin(ProcWin *procWindow) {
     int y, x, h, w;
@@ -20,6 +23,9 @@ int initProcWin(ProcWin *procWindow) {
         return -1;
     }
 
+    // 패널 생성
+    procWindow->panel = new_panel(procWindow->win);
+
     // 변수 설정
     procWindow->totalReadItems = 0;
 
@@ -30,6 +36,9 @@ int initProcWin(ProcWin *procWindow) {
 }
 
 void closeProcWin(ProcWin *procWindow) {
+    // 패널 삭제
+    del_panel(procWindow->panel);
+
     delwin(procWindow->win);  // 창 삭제
     pthread_mutex_lock(&procWindow->visibleMutex);
     procWindow->isWindowVisible = false;  // 프로세스 창 상태(닫힘)
@@ -63,6 +72,9 @@ int updateProcWin(ProcWin *procWindow) {
     int winH, winW;
     ssize_t itemsCnt;
     int maxItemsToPrint;
+    uint64_t elapsedUSec;
+    struct timespec startTime;
+
 
     // 프로세스 창 업데이트
     pthread_mutex_lock(&procWindow->statMutex);
@@ -75,11 +87,10 @@ int updateProcWin(ProcWin *procWindow) {
     if (maxItemsToPrint > itemsCnt)
         maxItemsToPrint = itemsCnt;
 
-    wclear(procWindow->win);
+    // wclear(procWindow->win);  // <- 여기 한번 주목
     box(procWindow->win, 0, 0);
 
-    mvwprintw(procWindow->win, 1, 1, "%-6s %-30s %-6s %-10s %-10s %-10s", 
-                  "PID", "Name", "State", "VSize", "UTime", "STime");
+    mvwprintw(procWindow->win, 1, 1, "%-6s %-30s %-6s %-10s %-10s %-10s", "PID", "Name", "State", "VSize", "UTime", "STime");
     // 가장 큰 메모리를 차지하는 항목부터 출력
     for (int i = 0; i < maxItemsToPrint; i++) {
         // pointerArray를 사용하여 메모리 크기 내림차순으로 접근
@@ -87,11 +98,17 @@ int updateProcWin(ProcWin *procWindow) {
         ProcInfo *proc = procWindow->procEntries[idx];
 
         // 프로세스 정보 출력
-        mvwprintw(procWindow->win, i + 2, 1, "%-6d %-30s %-6c %-10lu %-10lu %-10lu", 
-                  proc->pid, proc->name, proc->state, proc->vsize, proc->utime, proc->stime);
+        mvwprintw(procWindow->win, i + 2, 1, "%-6d %-30s %-6c %-10lu %-10lu %-10lu", proc->pid, proc->name, proc->state, proc->vsize, proc->utime, proc->stime);
     }
     // 창 새로고침
-    wrefresh(procWindow->win);
+    // wrefresh(procWindow->win);  // <- 주목
+
+    top_panel(procWindow->panel);
+
+    // 패널 업데이트
+    update_panels();
+    doupdate();
+
 
     pthread_mutex_unlock(&procWindow->statMutex);
     return 0;

@@ -2,6 +2,7 @@
 #define PROC_WIN_H
 
 #include <curses.h>
+#include <panel.h>
 
 #include "config.h"
 
@@ -21,6 +22,7 @@ struct _ProcWin {
     size_t totalReadItems;  // 읽어들인 총 프로세스 수
     pthread_mutex_t visibleMutex;
     bool isWindowVisible;
+    PANEL *panel;
 };
 typedef struct _ProcWin ProcWin;
 
