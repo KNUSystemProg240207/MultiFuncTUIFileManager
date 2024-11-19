@@ -1,8 +1,4 @@
 {
-  "makefile.configureOnOpen": true,
-  "files.associations": {
-    "list_process.h": "c"
-  },
   "C_Cpp_Runner.msvcBatchPath": "",
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",

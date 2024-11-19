@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <curses.h>
 #include <fcntl.h>
-#include <panel.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,6 +11,7 @@
 #include <sys/stat.h>
 
 #include "bottom_area.h"
+#include "colors.h"
 #include "commons.h"
 #include "config.h"
 #include "dir_listener.h"
@@ -19,7 +19,6 @@
 #include "list_process.h"
 #include "proc_win.h"
 #include "title_bar.h"
-
 
 WINDOW *titleBar, *bottomBox;
 PANEL *titlePanel, *bottomPanel;  // 패널 추가
@@ -134,6 +133,7 @@ void initScreen(void) {
     if (can_change_color() == TRUE) {
         CHECK_CURSES(init_color(COLOR_WHITE, 1000, 1000, 1000));  // 흰색을 '진짜' 흰색으로: 일부 환경에서, COLOR_WHITE가 회색인 경우 있음
     }
+    init_colorSet();
 
     // 창 크기 가져옴
     int h, w;
@@ -228,7 +228,7 @@ void mainLoop(void) {
         // 제목 영역 업데이트
         renderTime();  // 시간 업데이트
         // TODO: get current window's cwd
-        char *cwd = getcwd(cwdBuf, MAX_CWD_LEN);  // 경로 가져옴
+        cwd = getcwd(cwdBuf, MAX_CWD_LEN);  // 경로 가져옴
         if (cwd == NULL)
             printPath("-----");  // 경로 가져오기 실패 시
         else

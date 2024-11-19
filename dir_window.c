@@ -147,10 +147,10 @@ int initPanelForWindow(WINDOW *win) {
 
 // 윈도우에 패널 입히고 순서 조정
 void refreshPanels() {
-    for (int i = 0; i < panelCnt; i++) {
-        // 각 패널의 상태를 새로 고침
-        show_panel(panels[i]);
-    }
+    // for (int i = 0; i < panelCnt; i++) {
+    //     // 각 패널의 상태를 새로 고침
+    //     show_panel(panels[i]);
+    // }
 
     // 화면을 새로 고침하여 모든 패널을 업데이트
     update_panels();

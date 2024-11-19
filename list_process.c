@@ -99,10 +99,11 @@ int readProcInfo(ProcWin *procWindow) {
             fprintf(stderr, "Failed to open file: %s\n", statPath);
             continue;
         }
-        if (fscanf(statFile, "%d (%255[^)]) %c %lu %lu %lu", &tempProc.pid, tempProc.name, &tempProc.state, &tempProc.utime, &tempProc.stime, &tempProc.vsize) != 6) {
+        // fscanf로 데이터를 읽어서 구조체에 저장
+        if (fscanf(statFile, "%d (%255[^)]) %c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %lu %lu %*ld %*ld %*ld %*ld %*ld %*ld %*llu %lu", &tempProc.pid, tempProc.name, &tempProc.state, &tempProc.utime, &tempProc.stime, &tempProc.vsize) != 6) {
             fprintf(stderr, "Failed to parse file: %s\n", statPath);
             fclose(statFile);
-            continue;
+            return EXIT_FAILURE;
         }
         // /proc/<PID>/stat 파일에서 데이터 읽기
         // if (fscanf(statFile, "%d (%255[^)]) %c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %lu %lu %*ld %*ld %*ld %*ld %*ld %*ld %*llu %lu", &tempProc.pid, tempProc.name, &tempProc.state, &tempProc.utime, &tempProc.stime, &tempProc.vsize) != 6)
