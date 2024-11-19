@@ -3,7 +3,6 @@
 
 #include <curses.h>
 
-#define MAX_PROCESSES 256  // 한 번에 표시 가능한 최대 프로세스 수
 #include "config.h"
 
 typedef struct {
@@ -17,19 +16,18 @@ typedef struct {
 
 struct _ProcWin {
     WINDOW *win;
-    size_t currentPos;
     pthread_mutex_t statMutex;
-    ProcInfo procEntries[MAX_PROCESSES];  // 프로세스 정보 배열
+    ProcInfo *procEntries[MAX_PROCESSES];  // 프로세스 정보 배열
     size_t totalReadItems;  // 읽어들인 총 프로세스 수
-    uint64_t lineMovementEvent;  // 라인 이동 이벤트
+    pthread_mutex_t visibleMutex;
+    bool isWindowVisible;
 };
 typedef struct _ProcWin ProcWin;
 
-int initProcWin(void);
-void closeProcWin(void);
-void toggleProcWin(void);
-bool checkProcWin(void);
-int updateProcWin(void);
+int initProcWin(ProcWin *procWindow);
+void closeProcWin(ProcWin *procWindow);
+void toggleProcWin(ProcWin *procWindow);
+int updateProcWin(ProcWin *procWindow);
 int calculateProcWinPos(int *y, int *x, int *h, int *w);
 
 #endif
