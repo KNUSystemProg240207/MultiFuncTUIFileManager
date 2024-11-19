@@ -15,6 +15,7 @@
 #include "list_dir.h"
 #include "title_bar.h"
 #include "proc_win.h"
+#include "list_process.h"
 
 
 WINDOW *titleBar, *bottomBox;
@@ -29,14 +30,24 @@ static bool stopRequested[MAX_DIRWINS];
 static pthread_mutex_t stopTrdMutex[MAX_DIRWINS];
 static size_t totalReadItems[MAX_DIRWINS] = { 0 };
 
+static pthread_t threadProcess;  // 프로세스 스레드
+static ProcWin proc_Win;
+pthread_mutex_t proc_Win_Mutex;
+static ProcThreadArgs procThreadArgs;  // 프로세스 스레드 시작을 위한 인자
+WINDOW p_win;
+pthread_mutex_t p_statMutex;
+ProcInfo p_Entries[MAX_PROCESSES];  // 프로세스 정보 배열
+pthread_mutex_t p_visibleMutex;
+
+
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
-static bool isProcWinVisible = false;  // 프로세스 창이 열려 있는지 나타냄
 
 static void initVariables(void);  // 변수들 초기화
 static void initScreen(void);  // ncurses 관련 초기화 & subwindow들 생성
 static void initThreads(void);  // thread 관련 초기화
 static void mainLoop(void);  // 프로그램 Main Loop
 static void cleanup(void);  // atexit()에 전달할 함수: 프로그램 종료 직전, main() 반환 직후에 수행됨
+
 
 
 int main(int argc, char **argv) {
@@ -73,6 +84,20 @@ void initVariables(void) {
         pthread_cond_init(condStopTrd + i, NULL);
         pthread_mutex_init(stopTrdMutex + i, NULL);
     }
+
+    procThreadArgs.procWin = &proc_Win;
+    procThreadArgs.procWinMutex = &proc_Win_Mutex;
+    proc_Win.win = &p_win;
+    proc_Win.statMutex = p_statMutex;
+    for (size_t i = 0; i < MAX_PROCESSES; i++) {
+    proc_Win.procEntries[i] = &p_Entries[i]; // 각 요소의 주소를 포인터 배열에 저장
+    }
+    proc_Win.totalReadItems = 0;
+    proc_Win.visibleMutex = p_visibleMutex;
+    proc_Win.isWindowVisible = false;
+
+    pthread_mutex_init(&proc_Win.statMutex, NULL);
+    pthread_mutex_init(&proc_Win.visibleMutex, NULL);
 }
 
 void initScreen(void) {
@@ -112,6 +137,8 @@ void initThreads(void) {
         statEntries[0], entryNames[0], MAX_STAT_ENTRIES,
         &totalReadItems[0], &condStopTrd[0], &stopRequested[0], &stopTrdMutex[0]
     );  // Directory Listener Thread 시작
+
+    startProcThread(&threadProcess, &procThreadArgs);  // 프로세스 스레드 시작
 }
 
 void mainLoop(void) {
@@ -140,13 +167,13 @@ void mainLoop(void) {
                     break;
                 case 'q':
                 case 'p':
-                    toggleProcWin();
+                    toggleProcWin(&proc_Win);
                     break;
                 case 'Q':
                     goto CLEANUP;  // Main Loop 빠져나감
             }   
         }
-
+        
         // 제목 영역 업데이트
         renderTime();  // 시간 업데이트
         // TODO: get current window's cwd
@@ -156,9 +183,15 @@ void mainLoop(void) {
         else
             printPath(cwd);  // 경로 업데이트s
 
-        updateDirWins();  // 폴더 표시 창들 업데이트
-        if (checkProcWin())  // ProcWin이 열려 있으면 업데이트
-            updateProcWin();  
+        updateDirWins();  // 폴더 표시 창들 업데이트 
+
+        pthread_mutex_lock(&proc_Win.visibleMutex);
+        if (proc_Win.isWindowVisible) {
+            pthread_mutex_unlock(&proc_Win.visibleMutex); // Unlock before update
+            updateProcWin(&proc_Win);
+        } else {
+            pthread_mutex_unlock(&proc_Win.visibleMutex); // Unlock if not visible
+        }
 
         // 필요한 창들 refresh
         CHECK_CURSES(wrefresh(titleBar));
