@@ -3,6 +3,7 @@
 #include "config.h"
 #include "dir_entry_utils.h"
 #include "dir_window.h"
+#include "thread_commons.h"
 
 void truncateFileName(char *fileName) {
     size_t len = strlen(fileName);
@@ -59,62 +60,43 @@ int isEXE(const char *fileName) {
     return 0;
 }
 
-// DirEntry 배열 정렬
-void sortDirEntries(DirWin *win, int (*compare)(const void *, const void *)) {
-    // DirEntry 배열을 만듬 (statEntries와 entryNames를 이용)
-    DirEntry entries[*win->totalReadItems];
-
-    for (size_t i = 0; i < *win->totalReadItems; ++i) {
-        // entryNames와 statEntries를 DirEntry 배열에 복사
-        strncpy(entries[i].entryName, win->bufEntryNames[i], MAX_NAME_LEN);
-        entries[i].statEntry = win->bufEntryStat[i];
-    }
-
-    // DirEntry 배열을 정렬
-    qsort(entries, *win->totalReadItems, sizeof(DirEntry), compare);
-
-    // 정렬된 데이터를 기존의 win->entryNames와 win->statEntries에 다시 복사
-    for (size_t i = 0; i < *win->totalReadItems; ++i) {
-        strncpy(win->bufEntryNames[i], entries[i].entryName, MAX_NAME_LEN);
-        win->bufEntryStat[i] = entries[i].statEntry;
-    }
-}
-
 /* 정렬 적용 함수 */
-void applySorting(SortFlags flags, DirWin *win) {
+void applySorting_list(DirEntry2 *dirEntries, uint16_t flags, size_t totalReadItems) {
+    if (!dirEntries || totalReadItems == 0) {
+        fprintf(stderr, "Invalid input to applySorting_list: dirEntries=%p, totalReadItems=%zu\n", dirEntries, totalReadItems);
+        return;
+    }
+
     int (*compareFunc)(const void *, const void *) = NULL;
 
-    if (flags & 0x00) {  // 디폴트는 이름 오름차순
-        compareFunc = compareByName_Asc;
-    }
+    // 정렬 기준과 방향을 결정하는 비트 추출
+    uint16_t criterion = flags & SORT_CRITERION_MASK;  // 정렬 기준
+    uint16_t direction = flags & SORT_DIRECTION_BIT;  // 정렬 방향
+
     // 이름 기준 정렬
-    else if ((flags & SORT_NAME_MASK) >> SORT_NAME_SHIFT == 1) {
-        compareFunc = compareByName_Asc;
-    } else if ((flags & SORT_NAME_MASK) >> SORT_NAME_SHIFT == 2) {
-        compareFunc = compareByName_Desc;
+    if (criterion == SORT_NAME) {
+        compareFunc = (direction == 0) ? compareByName_Asc : compareByName_Desc;
     }
     // 크기 기준 정렬
-    else if ((flags & SORT_SIZE_MASK) >> SORT_SIZE_SHIFT == 1) {
-        compareFunc = compareBySize_Asc;
-    } else if ((flags & SORT_SIZE_MASK) >> SORT_SIZE_SHIFT == 2) {
-        compareFunc = compareBySize_Desc;
+    else if (criterion == SORT_SIZE) {
+        compareFunc = (direction == 0) ? compareBySize_Asc : compareBySize_Desc;
     }
     // 날짜 기준 정렬
-    else if ((flags & SORT_DATE_MASK) >> SORT_DATE_SHIFT == 1) {
-        compareFunc = compareByDate_Asc;
-    } else if ((flags & SORT_DATE_MASK) >> SORT_DATE_SHIFT == 2) {
-        compareFunc = compareByDate_Desc;
+    else if (criterion == SORT_DATE) {
+        compareFunc = (direction == 0) ? compareByDate_Asc : compareByDate_Desc;
     }
 
-    // 정렬 함수가 설정되면, DirEntry 배열을 정렬
+    // 정렬 함수가 설정되었으면, DirEntry 배열을 정렬
     if (compareFunc != NULL) {
-        sortDirEntries(win, compareFunc);
+        qsort(dirEntries, totalReadItems, sizeof(DirEntry2), compareFunc);
+    } else {
+        fprintf(stderr, "Invalid sorting flags: flags=%u (criterion=%u, direction=%u)\n", flags, criterion, direction);
     }
 }
 
 int compareByDate_Asc(const void *a, const void *b) {
-    DirEntry *entryA = ((DirEntry *)a);
-    DirEntry *entryB = ((DirEntry *)b);
+    DirEntry2 *entryA = ((DirEntry2 *)a);
+    DirEntry2 *entryB = ((DirEntry2 *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;
@@ -144,8 +126,8 @@ int compareByDate_Asc(const void *a, const void *b) {
     return strcmp(entryA->entryName, entryB->entryName);  // 완전히 같으면 이름 비교
 }
 int compareByDate_Desc(const void *a, const void *b) {
-    DirEntry *entryA = ((DirEntry *)a);
-    DirEntry *entryB = ((DirEntry *)b);
+    DirEntry2 *entryA = ((DirEntry2 *)a);
+    DirEntry2 *entryB = ((DirEntry2 *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;
@@ -176,8 +158,8 @@ int compareByDate_Desc(const void *a, const void *b) {
 }
 
 int compareByName_Asc(const void *a, const void *b) {
-    DirEntry *entryA = ((DirEntry *)a);
-    DirEntry *entryB = ((DirEntry *)b);
+    DirEntry2 *entryA = ((DirEntry2 *)a);
+    DirEntry2 *entryB = ((DirEntry2 *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;
@@ -193,8 +175,8 @@ int compareByName_Asc(const void *a, const void *b) {
     return strcmp(entryA->entryName, entryB->entryName);
 }
 int compareByName_Desc(const void *a, const void *b) {
-    DirEntry *entryA = ((DirEntry *)a);
-    DirEntry *entryB = ((DirEntry *)b);
+    DirEntry2 *entryA = ((DirEntry2 *)a);
+    DirEntry2 *entryB = ((DirEntry2 *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;
@@ -211,8 +193,8 @@ int compareByName_Desc(const void *a, const void *b) {
 }
 
 int compareBySize_Asc(const void *a, const void *b) {
-    DirEntry *entryA = ((DirEntry *)a);
-    DirEntry *entryB = ((DirEntry *)b);
+    DirEntry2 *entryA = ((DirEntry2 *)a);
+    DirEntry2 *entryB = ((DirEntry2 *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;
@@ -230,8 +212,8 @@ int compareBySize_Asc(const void *a, const void *b) {
     return (strcmp(entryA->entryName, entryB->entryName));  // a와 b가 같으면 이름 비교
 }
 int compareBySize_Desc(const void *a, const void *b) {
-    DirEntry *entryA = ((DirEntry *)a);
-    DirEntry *entryB = ((DirEntry *)b);
+    DirEntry2 *entryA = ((DirEntry2 *)a);
+    DirEntry2 *entryB = ((DirEntry2 *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;

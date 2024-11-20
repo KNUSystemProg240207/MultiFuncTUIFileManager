@@ -28,14 +28,14 @@ title_bar.o: config.h commons.h title_bar.h title_bar.c
 bottom_area.o: config.h commons.h bottom_area.h bottom_area.c
 	$(CC) $(CFLAGS) -c bottom_area.c
 
-dir_entry_utils.o: config.h dir_window.h dir_entry_utils.h dir_entry_utils.c
+dir_entry_utils.o: config.h dir_window.h thread_commons.h dir_entry_utils.h dir_entry_utils.c 
 	$(CC) $(CFLAGS) -c dir_entry_utils.c
 
 # Threads
 thread_commons.o: config.h thread_commons.h thread_commons.c
 	$(CC) $(CFLAGS) -c thread_commons.c
 
-dir_listener.o: config.h commons.h thread_commons.h dir_listener.h dir_listener.c
+dir_listener.o: config.h commons.h thread_commons.h dir_entry_utils.h dir_listener.h dir_listener.c
 	$(CC) $(CFLAGS) -c dir_listener.c
 
 file_operator.o: config.h commons.h thread_commons.h file_operator.h file_operator.c

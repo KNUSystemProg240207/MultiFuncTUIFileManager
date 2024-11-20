@@ -49,6 +49,8 @@ int main(int argc, char **argv) {
     for (int i = 0; i < dirWinCnt; i++) {
         pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
         dirListenerArgs[i].commonArgs.statusFlags |= THREAD_FLAG_STOP;
+        // 여기에 SortFlag 지우고
+        // dirListenerArgs[i].commonArgs.statusFlags |= 정렬 방식 플래그
         pthread_cond_signal(&dirListenerArgs[i].commonArgs.resumeThread);
         pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
     }
@@ -63,13 +65,20 @@ int main(int argc, char **argv) {
         }
     }
 
+
+    // 패널들 정리
+    if (titlePanel != NULL) {
+        del_panel(titlePanel);
+        titlePanel = NULL;
+    }
+    if (bottomPanel != NULL) {
+        del_panel(bottomPanel);
+        bottomPanel = NULL;
+    }
+
     // 창 '지움' (자원 해제)
     CHECK_CURSES(delwin(titleBar));
     CHECK_CURSES(delwin(bottomBox));
-
-    // 패널 제거
-    del_panel(titlePanel);
-    del_panel(bottomPanel);
 
     return 0;
 }
@@ -118,9 +127,10 @@ void initScreen(void) {
     // 폴더 내용 표시 창 생성
     initDirWin(
         &dirListenerArgs[0].bufMutex,
-        dirListenerArgs[0].statBuf,
-        dirListenerArgs[0].nameBuf,
-        &dirListenerArgs[0].totalReadItems
+        // dirListenerArgs[0].statBuf,
+        // dirListenerArgs[0].nameBuf,
+        &dirListenerArgs[0].totalReadItems,
+        dirListenerArgs[0].dirEntries
     );
     dirWinCnt = 1;
 }
@@ -161,12 +171,67 @@ void mainLoop(void) {
                     break;
                 case 'w':  // F1 키 (이름 기준 오름차순)
                     toggleSort(SORT_NAME_MASK, SORT_NAME_SHIFT);
+                    currentSelection = getCurrentSelectedDirectory();
+                    if (currentSelection >= 0) {
+                        currentWindow = getCurrentWindow();
+                        pthread_mutex_lock(&dirListenerArgs[currentWindow].bufMutex);
+
+                        // 현재 기준이 이름인지 확인
+                        if ((dirListenerArgs[currentWindow].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_NAME) {
+                            // 기준이 같다면 방향 토글
+                            dirListenerArgs[currentWindow].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
+                        } else {
+                            // 기준이 다르면 기준 초기화 및 오름차순 설정
+                            dirListenerArgs[currentWindow].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
+                            dirListenerArgs[currentWindow].commonArgs.statusFlags |= SORT_NAME;
+                        }
+
+                        pthread_mutex_unlock(&dirListenerArgs[currentWindow].bufMutex);
+                        setCurrentSelectedDirectory(0);
+                    }
                     break;
                 case 'e':  // F2 키 (크기 기준 오름차순)
                     toggleSort(SORT_SIZE_MASK, SORT_SIZE_SHIFT);
+                    currentSelection = getCurrentSelectedDirectory();
+                    if (currentSelection >= 0) {
+                        currentWindow = getCurrentWindow();
+                        pthread_mutex_lock(&dirListenerArgs[currentWindow].bufMutex);
+
+                        // 현재 기준이 이름인지 확인
+                        if ((dirListenerArgs[currentWindow].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_SIZE) {
+                            // 기준이 같다면 방향 토글
+                            dirListenerArgs[currentWindow].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
+                        } else {
+                            // 기준이 다르면 기준 초기화 및 오름차순 설정
+                            dirListenerArgs[currentWindow].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
+                            dirListenerArgs[currentWindow].commonArgs.statusFlags |= SORT_SIZE;
+                        }
+
+                        pthread_mutex_unlock(&dirListenerArgs[currentWindow].bufMutex);
+                        setCurrentSelectedDirectory(0);
+                    }
                     break;
+
                 case 'r':  // F3 키 (날짜 기준 오름차순)
                     toggleSort(SORT_DATE_MASK, SORT_DATE_SHIFT);
+                    currentSelection = getCurrentSelectedDirectory();
+                    if (currentSelection >= 0) {
+                        currentWindow = getCurrentWindow();
+                        pthread_mutex_lock(&dirListenerArgs[currentWindow].bufMutex);
+
+                        // 현재 기준이 이름인지 확인
+                        if ((dirListenerArgs[currentWindow].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_DATE) {
+                            // 기준이 같다면 방향 토글
+                            dirListenerArgs[currentWindow].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
+                        } else {
+                            // 기준이 다르면 기준 초기화 및 오름차순 설정
+                            dirListenerArgs[currentWindow].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
+                            dirListenerArgs[currentWindow].commonArgs.statusFlags |= SORT_DATE;
+                        }
+
+                        pthread_mutex_unlock(&dirListenerArgs[currentWindow].bufMutex);
+                        setCurrentSelectedDirectory(0);
+                    }
                     break;
                 case '\n':
                 case KEY_ENTER:
@@ -212,8 +277,5 @@ CLEANUP:
 }
 
 void cleanup(void) {
-    // 패널들 정리
-    del_panel(titlePanel);
-    del_panel(bottomPanel);
     endwin();
 }

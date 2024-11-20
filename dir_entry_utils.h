@@ -2,22 +2,7 @@
 #define __DIR_ENTRY_UTILS_H_INCLUDED__
 #include "dir_window.h"
 
-
-/**
- * 디렉토리 항목을 주어진 비교 함수에 따라 정렬합니다.
- *
- * @param win 디렉토리 표시 창
- * @param compare 비교 함수 포인터 (예: compareByName_Asc)
- */
-void sortDirEntries(DirWin *win, int (*compare)(const void *, const void *));
-
-/**
- * 정렬 플래그에 따라 디렉토리 항목의 정렬을 적용합니다.
- *
- * @param flags 정렬 상태 플래그 (SortFlags)
- * @param win 디렉토리 표시 창
- */
-void applySorting(SortFlags flags, DirWin *win);
+void applySorting_list(DirEntry2 *dirEntries, uint16_t flags, size_t totalReadItems);
 
 /**
  * 파일 이름을 지정된 최대 표시 길이에 맞게 줄입니다.

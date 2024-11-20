@@ -7,8 +7,8 @@
 #include <sys/stat.h>
 
 #include "config.h"
+#include "dir_entry_utils.h"
 #include "thread_commons.h"
-
 
 #define DIRLISTENER_FLAG_CHANGE_DIR (1 << 2)  // 디렉터리 변경 요청
 
@@ -29,11 +29,13 @@ typedef struct _DirListenerArgs {
     size_t chdirIdx;  // 새 working directory의 index
     DIR *currentDir;  // 현재 working directory (경고: 초기 Directory 설정 용도로만 접근, 이외 용도로 접근 금지!)
     // 결과 Buffer
-    struct stat statBuf[MAX_DIR_ENTRIES];  // 읽어들인 항목들의 stat 결과
-    char nameBuf[MAX_DIR_ENTRIES][MAX_NAME_LEN + 1];  // 읽어들인 항목들의 이름
+    // struct stat statBuf[MAX_DIR_ENTRIES];  // 읽어들인 항목들의 stat 결과
+    // char nameBuf[MAX_DIR_ENTRIES][MAX_NAME_LEN + 1];  // 읽어들인 항목들의 이름
     size_t totalReadItems;  // 총 읽어들인 개수
     // Mutexes
     pthread_mutex_t bufMutex;  // 결과값 buffer 보호 Mutex
+    DirEntry2 dirEntries[MAX_DIR_ENTRIES];
+
 } DirListenerArgs;
 
 /**

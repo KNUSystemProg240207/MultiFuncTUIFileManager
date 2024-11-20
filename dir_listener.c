@@ -9,9 +9,9 @@
 
 #include "commons.h"
 #include "config.h"
+#include "dir_entry_utils.h"
 #include "dir_listener.h"
 #include "thread_commons.h"
-
 
 static unsigned int threadCnt = 0;  // 생성된 Thread 개수
 extern mode_t directoryOpenArgs;  // main.c 참조
@@ -33,7 +33,7 @@ static int dirListener(void *argsPtr);
  * @param bufLen 최대 읽어올 항목 수
  * @return 성공: (읽은 항목 수), 실패: -1
  */
-static ssize_t listEntries(DIR *dirToList, struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], size_t bufLen);
+static ssize_t listEntries(DIR *dirToList, DirEntry2 *dirEntry, size_t bufLen);
 
 /**
  * 디렉터리 변경
@@ -83,21 +83,25 @@ int dirListener(void *argsPtr) {
 
     // 폴더 변경 처리
     if (changeDirRequested)
-        changeDir(&args->currentDir, args->nameBuf[args->chdirIdx]);
+        changeDir(&args->currentDir, args->dirEntries[args->chdirIdx].entryName);
 
     // 현재 폴더 내용 가져옴
     pthread_mutex_lock(&args->bufMutex);  // 결과값 보호 Mutex 획득
-    readItems = listEntries(args->currentDir, args->statBuf, args->nameBuf, MAX_DIR_ENTRIES);  // 내용 가져오기
+    readItems = listEntries(args->currentDir, args->dirEntries, MAX_DIR_ENTRIES);  // 내용 가져오기
     if (readItems == -1) {
         pthread_mutex_unlock(&args->bufMutex);  // 결과값 보호 Mutex 해제
         return -1;
     }
     args->totalReadItems = readItems;
+
+    //	여기에 정렬 플래그 보고 확인해서 정렬
+    applySorting_list(args->dirEntries, args->commonArgs.statusFlags, readItems);
+
     pthread_mutex_unlock(&args->bufMutex);  // 결과값 보호 Mutex 해제
     return readItems;
 }
 
-ssize_t listEntries(DIR *dirToList, struct stat *resultBuf, char (*nameBuf)[MAX_NAME_LEN + 1], size_t bufLen) {
+ssize_t listEntries(DIR *dirToList, DirEntry2 *dirEntries, size_t bufLen) {
     // TODO: 정렬 구현
 
     size_t readItems = 0;
@@ -105,7 +109,7 @@ ssize_t listEntries(DIR *dirToList, struct stat *resultBuf, char (*nameBuf)[MAX_
     errno = 0;  // errno 변수는 각 Thread별로 존재 -> Race Condition 없음
 
     rewinddir(dirToList);
-    for (struct dirent *ent = readdir(dirToList); readItems < bufLen; ent = readdir(dirToList)) {  // 최대 buffer 길이 만큼의 항목들 읽어들임
+    for (struct dirent *ent = readdir(dirToList); ent != NULL && readItems < bufLen; ent = readdir(dirToList)) {  // 최대 buffer 길이 만큼의 항목들 읽어들임
         if (ent == NULL) {  // 읽기 끝
             if (errno != 0) {  // 오류 시
                 return -1;
@@ -115,9 +119,9 @@ ssize_t listEntries(DIR *dirToList, struct stat *resultBuf, char (*nameBuf)[MAX_
         if (strcmp(ent->d_name, ".") == 0) {  // 현재 디렉토리 "."는 받아오지 않음(정렬을 위함)
             continue;
         }
-        strncpy(nameBuf[readItems], ent->d_name, MAX_NAME_LEN);  // 이름 복사
-        nameBuf[readItems][MAX_NAME_LEN] = '\0';  // 끝에 null 문자 추가: 파일 이름 매우 긴 경우, strncpy()는 끝에 null문자 쓰지 않을 수도 있음
-        if (fstatat(fdDir, ent->d_name, resultBuf + readItems, AT_SYMLINK_NOFOLLOW) == -1) {  // stat 읽어들임
+        strncpy(dirEntries[readItems].entryName, ent->d_name, MAX_NAME_LEN);  // 이름 복사
+        dirEntries[readItems].entryName[MAX_NAME_LEN] = '\0';  // 끝에 null 문자 추가: 파일 이름 매우 긴 경우, strncpy()는 끝에 null문자 쓰지 않을 수도 있음
+        if (fstatat(fdDir, ent->d_name, &(dirEntries[readItems].statEntry), AT_SYMLINK_NOFOLLOW) == -1) {  // stat 읽어들임
             return -1;
         }
         errno = 0;

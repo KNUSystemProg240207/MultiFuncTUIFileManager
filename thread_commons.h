@@ -2,14 +2,21 @@
 #define __THREAD_COMMONS_H_INCLUDED__
 
 #include <pthread.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "config.h"
 
 
 #define THREAD_FLAG_RUNNING (1 << 0)  // 쓰레드 실행 여부
 #define THREAD_FLAG_STOP (1 << 8)  // 쓰레드 정지 요청
+
+
+#define SORT_DIRECTION_BIT (1 << 11)  // 정렬 방향 비트
+#define SORT_CRITERION_MASK (0b11 << 9)  // 정렬 기준 마스크
+#define SORT_NAME (0b00 << 9)  // 이름 기준
+#define SORT_SIZE (0b01 << 9)  // 크기 기준
+#define SORT_DATE (0b10 << 9)  // 날짜 기준
 
 
 /**
@@ -28,7 +35,7 @@ typedef struct _ThreadArgs {
 
 /**
  * 새 Thread 시작
- *
+ *`
  * @param newThread (반환) 새 쓰레드
  * @param onInit Thread의 Main Loop 진입 직전 실행될 함수 (NULL = 호출할 함수 없음)
  * @param loop Thread의 Main Loop에서, Loop 1회 실행 될때마다 호출될 함수

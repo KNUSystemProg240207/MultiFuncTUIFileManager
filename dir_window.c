@@ -82,7 +82,7 @@ int updateDirWins(void) {
         winH -= 4;  // 최대 출력 가능한 라인 넘버 -4
         // winW = 31;  // 윈도우 크기 확인용
 
-        applySorting(win->sortFlag, win);  // 애초에 받아올 때, 정렬 안 된 상태로 받아오니까 계속 정렬을 해야 함
+        // applySorting(win->sortFlag, win);  // 애초에 받아올 때, 정렬 안 된 상태로 받아오니까 계속 정렬을 해야 함
 
         wbkgd(win->win, COLOR_PAIR(BGRND));
         printFileHeader(win, winH, winW);  // 헤더 부분 출력
@@ -109,7 +109,7 @@ int updateDirWins(void) {
         /* 디렉토리 출력 */
         for (line = 0, displayLine = 0; line < itemsToPrint; line++) {  // 항목 있는 공간: 출력
             // "." 항목은 출력하지 않음, line 값은 증가시키지 않음
-            if (strcmp(win->bufEntryNames[startIdx + line], ".") == 0) {
+            if (strcmp(win->dirEntry[startIdx + line].entryName, ".") == 0) {
                 continue;  // "."은 건너뛰고 다음 항목으로 넘어감
             }
             if (winNo == currentWin && displayLine == currentLine)  // 선택된 것 역상으로 출력
@@ -159,9 +159,10 @@ void refreshPanels() {
 
 int initDirWin(
     pthread_mutex_t *bufMutex,
-    struct stat *bufEntryStat,
-    char (*bufEntryNames)[MAX_NAME_LEN + 1],
-    size_t *totalReadItems
+    // struct stat *bufEntryStat,
+    // char (*bufEntryNames)[MAX_NAME_LEN + 1],
+    size_t *totalReadItems,
+    DirEntry2 *dirEntry
 ) {
     int y, x, h, w;
     winCnt++;
@@ -185,10 +186,11 @@ int initDirWin(
         .order = winCnt - 1,
         .currentPos = 0,
         .bufMutex = bufMutex,
-        .bufEntryStat = bufEntryStat,
-        .bufEntryNames = bufEntryNames,
+        // .bufEntryStat = &dirEntry->statEntry,
+        // .bufEntryNames = dirEntry->entryName,
         .totalReadItems = totalReadItems,
-        .sortFlag = 0x01  // 기본 정렬 방식은 이름 오름차순
+        .sortFlag = 0x01,  // 기본 정렬 방식은 이름 오름차순
+        .dirEntry = dirEntry
     };
     return winCnt;
 }
@@ -243,8 +245,8 @@ void printFileHeader(DirWin *win, int winH, int winW) {
 
 /* 파일 목록 출력 함수 */
 void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
-    struct stat *fileStat = win->bufEntryStat + (startIdx + line);  // 파일 스테이터스
-    char *fileName = win->bufEntryNames[startIdx + line];  // 파일 이름
+    struct stat *fileStat = &(win->dirEntry[startIdx + line].statEntry);  // 파일 스테이터스
+    char *fileName = win->dirEntry[startIdx + line].entryName;  // 파일 이름
     size_t fileSize = fileStat->st_size;  // 파일 사이즈
     char lastModDate[20];  // 날짜가 담기는 문자열
     char lastModTime[20];  // 시간이 담기는 문자열
@@ -391,7 +393,7 @@ void selectNextWindow(void) {
 ssize_t getCurrentSelectedDirectory(void) {
     bool isDirectory;
     assert(pthread_mutex_lock(windows[currentWin].bufMutex) == 0);
-    isDirectory = (windows[currentWin].bufEntryStat[windows[currentWin].currentPos].st_mode & S_IFDIR) == S_IFDIR;
+    isDirectory = (windows[currentWin].dirEntry[windows[currentWin].currentPos].statEntry.st_mode & S_IFDIR) == S_IFDIR;
     pthread_mutex_unlock(windows[currentWin].bufMutex);
     return isDirectory ? windows[currentWin].currentPos : -1;
 }

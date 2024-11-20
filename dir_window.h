@@ -6,6 +6,12 @@
 #include <string.h>
 #include <sys/stat.h>
 
+typedef struct DirEntry2 {
+    char entryName[MAX_NAME_LEN + 1];  // 파일/디렉토리 이름
+    struct stat statEntry;  // stat 정보
+} DirEntry2;
+
+
 /* SortFlags 정의 */
 /**
  * @typedef SortFlags
@@ -36,11 +42,12 @@ struct _DirWin {
     unsigned int order;
     size_t currentPos;
     pthread_mutex_t *bufMutex;
-    struct stat *bufEntryStat;
-    char (*bufEntryNames)[MAX_NAME_LEN + 1];
+    // struct stat *bufEntryStat;
+    // char (*bufEntryNames)[MAX_NAME_LEN + 1];
     size_t *totalReadItems;
     uint64_t lineMovementEvent;
     SortFlags sortFlag;
+    DirEntry2 *dirEntry;
 };
 typedef struct _DirWin DirWin;
 
@@ -53,10 +60,10 @@ typedef struct _DirWin DirWin;
  * @member entryName 파일/디렉토리 이름 (최대 MAX_NAME_LEN 길이)
  * @member statEntry 파일/디렉토리의 stat 정보
  */
-typedef struct {
-    char entryName[MAX_NAME_LEN];  // 파일/디렉토리 이름
-    struct stat statEntry;  // stat 정보
-} DirEntry;
+// typedef struct {
+//     char entryName[MAX_NAME_LEN];  // 파일/디렉토리 이름
+//     struct stat statEntry;  // stat 정보
+// } DirEntry;
 
 /** 이름 정렬 상태를 나타내는 비트마스크 */
 #define SORT_NAME_MASK 0x03  // 00000011
@@ -83,9 +90,10 @@ typedef struct {
  */
 int initDirWin(
     pthread_mutex_t *bufMutex,
-    struct stat *bufEntryStat,
-    char (*bufEntryNames)[MAX_NAME_LEN + 1],
-    size_t *totalReadItems
+    // struct stat *bufEntryStat,
+    // char (*bufEntryNames)[MAX_NAME_LEN + 1],
+    size_t *totalReadItems,
+    DirEntry2 *dirEntry
 );
 
 /**
