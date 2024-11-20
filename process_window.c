@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "list_process.h"
@@ -70,7 +71,7 @@ int calculateProcWinPos(int *y, int *x, int *h, int *w) {
 
 int updateProcWin(ProcWin *procWindow) {
     int winH, winW;
-    ssize_t itemsCnt;
+    ssize_t itemsCnt = 0;
     int maxItemsToPrint;
     uint64_t elapsedUSec;
     struct timespec startTime;

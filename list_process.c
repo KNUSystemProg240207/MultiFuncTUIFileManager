@@ -81,10 +81,12 @@ int readProcInfo(ProcWin *procWindow) {
         ProcInfo tempProc;
 
         // 프로세스 수가 최대치를 초과하면 종료
+        /*
         if (procCount >= MAX_PROCESSES) {
             fprintf(stderr, "procCount exceeded MAX_PROCESSES\n");
             break;  // 루프를 중단하고 처리 종료
         }
+        */
 
         // 프로세스 정보를 /proc/<PID>/stat 파일에서 읽음
         char statPath[PATH_MAX];
@@ -101,9 +103,8 @@ int readProcInfo(ProcWin *procWindow) {
         }
         // fscanf로 데이터를 읽어서 구조체에 저장
         if (fscanf(statFile, "%d (%255[^)]) %c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %lu %lu %*ld %*ld %*ld %*ld %*ld %*ld %*llu %lu", &tempProc.pid, tempProc.name, &tempProc.state, &tempProc.utime, &tempProc.stime, &tempProc.vsize) != 6) {
-            fprintf(stderr, "Failed to parse file: %s\n", statPath);
             fclose(statFile);
-            return EXIT_FAILURE;
+            continue;
         }
         // /proc/<PID>/stat 파일에서 데이터 읽기
         // if (fscanf(statFile, "%d (%255[^)]) %c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %lu %lu %*ld %*ld %*ld %*ld %*ld %*ld %*llu %lu", &tempProc.pid, tempProc.name, &tempProc.state, &tempProc.utime, &tempProc.stime, &tempProc.vsize) != 6)
@@ -153,6 +154,9 @@ size_t findInsertPosition(ProcInfo *pointerArray[], size_t size, unsigned long v
         } else {
             high = mid;
         }
+    }
+     if (low > size - 1) {
+        return size - 1;
     }
     return low;  // 삽입 위치 반환
 }
