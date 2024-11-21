@@ -143,13 +143,7 @@ int initPanelForWindow(WINDOW *win) {
     return 0;
 }
 
-// 윈도우에 패널 입히고 순서 조정
 void refreshPanels() {
-    // for (int i = 0; i < panelCnt; i++) { // 프로세스 창 띄우는 거때문에 이는 잠시 보류
-    //     // 각 패널의 상태를 새로 고침
-    //     show_panel(panels[i]);
-    // }
-
     // 화면을 새로 고침하여 모든 패널을 업데이트
     update_panels();
     doupdate();
@@ -157,8 +151,6 @@ void refreshPanels() {
 
 int initDirWin(
     pthread_mutex_t *bufMutex,
-    // struct stat *bufEntryStat,
-    // char (*bufEntryNames)[MAX_NAME_LEN + 1],
     size_t *totalReadItems,
     DirEntry *dirEntry
 ) {
@@ -184,8 +176,6 @@ int initDirWin(
         .order = winCnt - 1,
         .currentPos = 0,
         .bufMutex = bufMutex,
-        // .bufEntryStat = &dirEntry->statEntry,
-        // .bufEntryNames = dirEntry->entryName,
         .totalReadItems = totalReadItems,
         .sortFlag = 0x01,  // 기본 정렬 방식은 이름 오름차순
         .dirEntry = dirEntry

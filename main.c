@@ -127,8 +127,6 @@ void initScreen(void) {
     // 폴더 내용 표시 창 생성
     initDirWin(
         &dirListenerArgs[0].bufMutex,
-        // dirListenerArgs[0].statBuf,
-        // dirListenerArgs[0].nameBuf,
         &dirListenerArgs[0].totalReadItems,
         dirListenerArgs[0].dirEntries
     );

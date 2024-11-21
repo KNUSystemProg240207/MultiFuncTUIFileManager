@@ -50,8 +50,6 @@ struct _DirWin {
     unsigned int order;
     size_t currentPos;
     pthread_mutex_t *bufMutex;
-    // struct stat *bufEntryStat;
-    // char (*bufEntryNames)[MAX_NAME_LEN + 1];
     size_t *totalReadItems;
     uint64_t lineMovementEvent;
     SortFlags sortFlag;
@@ -84,8 +82,6 @@ typedef struct _DirWin DirWin;
  */
 int initDirWin(
     pthread_mutex_t *bufMutex,
-    // struct stat *bufEntryStat,
-    // char (*bufEntryNames)[MAX_NAME_LEN + 1],
     size_t *totalReadItems,
     DirEntry *dirEntry
 );
