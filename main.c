@@ -74,13 +74,14 @@ int main(int argc, char **argv) {
         }
     }
 
+    // 패널들 정리
+    del_panel(titlePanel);
+    del_panel(bottomPanel);
+
     // 창 '지움' (자원 해제)
     CHECK_CURSES(delwin(titleBar));
     CHECK_CURSES(delwin(bottomBox));
 
-    // 패널 제거
-    del_panel(titlePanel);
-    del_panel(bottomPanel);
 
     return 0;
 }
@@ -259,11 +260,8 @@ CLEANUP:
 }
 
 void cleanup(void) {
-    // 패널들 정리
-    del_panel(titlePanel);
-    del_panel(bottomPanel);
-
     endwin();
+
     pthread_mutex_destroy(&proc_Win.statMutex);
     pthread_mutex_destroy(&proc_Win.visibleMutex);
     pthread_mutex_destroy(&proc_Win_Mutex);
