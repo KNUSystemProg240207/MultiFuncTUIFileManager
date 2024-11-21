@@ -169,67 +169,51 @@ void mainLoop(void) {
                     break;
                 case 'w':  // F1 키 (이름 기준 오름차순)
                     toggleSort(SORT_NAME_MASK, SORT_NAME_SHIFT);
-                    currentSelection = getCurrentSelectedDirectory();
-                    if (currentSelection >= 0) {
-                        currentWindow = getCurrentWindow();
-                        pthread_mutex_lock(&dirListenerArgs[currentWindow].bufMutex);
-
-                        // 현재 기준이 이름인지 확인
-                        if ((dirListenerArgs[currentWindow].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_NAME) {
-                            // 기준이 같다면 방향 토글
-                            dirListenerArgs[currentWindow].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
-                        } else {
-                            // 기준이 다르면 기준 초기화 및 오름차순 설정
-                            dirListenerArgs[currentWindow].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
-                            dirListenerArgs[currentWindow].commonArgs.statusFlags |= SORT_NAME;
-                        }
-
-                        pthread_mutex_unlock(&dirListenerArgs[currentWindow].bufMutex);
-                        setCurrentSelectedDirectory(0);
+                    currentWindow = getCurrentWindow();
+                    pthread_mutex_lock(&dirListenerArgs[currentWindow].commonArgs.statusMutex);
+                    // 현재 기준이 이름순인지 확인
+                    if ((dirListenerArgs[currentWindow].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_NAME) {
+                        // 기준이 같다면 방향 토글
+                        dirListenerArgs[currentWindow].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
+                    } else {
+                        // 기준이 다르면 기준 초기화 및 오름차순 설정
+                        dirListenerArgs[currentWindow].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
+                        dirListenerArgs[currentWindow].commonArgs.statusFlags |= SORT_NAME;
                     }
+                    pthread_cond_signal(&dirListenerArgs[currentWindow].commonArgs.resumeThread);
+                    pthread_mutex_unlock(&dirListenerArgs[currentWindow].commonArgs.statusMutex);
                     break;
                 case 'e':  // F2 키 (크기 기준 오름차순)
                     toggleSort(SORT_SIZE_MASK, SORT_SIZE_SHIFT);
-                    currentSelection = getCurrentSelectedDirectory();
-                    if (currentSelection >= 0) {
-                        currentWindow = getCurrentWindow();
-                        pthread_mutex_lock(&dirListenerArgs[currentWindow].bufMutex);
-
-                        // 현재 기준이 이름인지 확인
-                        if ((dirListenerArgs[currentWindow].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_SIZE) {
-                            // 기준이 같다면 방향 토글
-                            dirListenerArgs[currentWindow].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
-                        } else {
-                            // 기준이 다르면 기준 초기화 및 오름차순 설정
-                            dirListenerArgs[currentWindow].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
-                            dirListenerArgs[currentWindow].commonArgs.statusFlags |= SORT_SIZE;
-                        }
-
-                        pthread_mutex_unlock(&dirListenerArgs[currentWindow].bufMutex);
-                        setCurrentSelectedDirectory(0);
+                    currentWindow = getCurrentWindow();
+                    pthread_mutex_lock(&dirListenerArgs[currentWindow].commonArgs.statusMutex);
+                    // 현재 기준이 크기순인지 확인
+                    if ((dirListenerArgs[currentWindow].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_SIZE) {
+                        // 기준이 같다면 방향 토글
+                        dirListenerArgs[currentWindow].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
+                    } else {
+                        // 기준이 다르면 기준 초기화 및 오름차순 설정
+                        dirListenerArgs[currentWindow].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
+                        dirListenerArgs[currentWindow].commonArgs.statusFlags |= SORT_SIZE;
                     }
+                    pthread_cond_signal(&dirListenerArgs[currentWindow].commonArgs.resumeThread);
+                    pthread_mutex_unlock(&dirListenerArgs[currentWindow].commonArgs.statusMutex);
                     break;
-
                 case 'r':  // F3 키 (날짜 기준 오름차순)
                     toggleSort(SORT_DATE_MASK, SORT_DATE_SHIFT);
-                    currentSelection = getCurrentSelectedDirectory();
-                    if (currentSelection >= 0) {
-                        currentWindow = getCurrentWindow();
-                        pthread_mutex_lock(&dirListenerArgs[currentWindow].bufMutex);
-
-                        // 현재 기준이 이름인지 확인
-                        if ((dirListenerArgs[currentWindow].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_DATE) {
-                            // 기준이 같다면 방향 토글
-                            dirListenerArgs[currentWindow].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
-                        } else {
-                            // 기준이 다르면 기준 초기화 및 오름차순 설정
-                            dirListenerArgs[currentWindow].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
-                            dirListenerArgs[currentWindow].commonArgs.statusFlags |= SORT_DATE;
-                        }
-
-                        pthread_mutex_unlock(&dirListenerArgs[currentWindow].bufMutex);
-                        setCurrentSelectedDirectory(0);
+                    currentWindow = getCurrentWindow();
+                    pthread_mutex_lock(&dirListenerArgs[currentWindow].commonArgs.statusMutex);
+                    // 현재 기준이 날짜순인지 확인
+                    if ((dirListenerArgs[currentWindow].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_DATE) {
+                        // 기준이 같다면 방향 토글
+                        dirListenerArgs[currentWindow].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
+                    } else {
+                        // 기준이 다르면 기준 초기화 및 오름차순 설정
+                        dirListenerArgs[currentWindow].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
+                        dirListenerArgs[currentWindow].commonArgs.statusFlags |= SORT_DATE;
                     }
+                    pthread_cond_signal(&dirListenerArgs[currentWindow].commonArgs.resumeThread);
+                    pthread_mutex_unlock(&dirListenerArgs[currentWindow].commonArgs.statusMutex);
                     break;
                 case '\n':
                 case KEY_ENTER:
@@ -240,7 +224,7 @@ void mainLoop(void) {
                         dirListenerArgs[currentWindow].chdirIdx = currentSelection;
                         dirListenerArgs[currentWindow].commonArgs.statusFlags |= DIRLISTENER_FLAG_CHANGE_DIR;
                         pthread_mutex_unlock(&dirListenerArgs[currentWindow].bufMutex);
-                        setCurrentSelectedDirectory(0);
+                        setCurrentSelection(0);
                     }
                     break;
                 case 'q':

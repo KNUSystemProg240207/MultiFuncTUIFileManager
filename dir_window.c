@@ -386,7 +386,7 @@ ssize_t getCurrentSelectedDirectory(void) {
     return isDirectory ? windows[currentWin].currentPos : -1;
 }
 
-void setCurrentSelectedDirectory(size_t index) {
+void setCurrentSelection(size_t index) {
     windows[currentWin].currentPos = index;
 }
 

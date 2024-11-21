@@ -121,9 +121,9 @@ void selectNextWindow(void);
 ssize_t getCurrentSelectedDirectory(void);
 
 /**
- * 현재 창의 선택된 폴더 Index 변경
+ * 현재 창의 선택 Index 변경
  */
-void setCurrentSelectedDirectory(size_t index);
+void setCurrentSelection(size_t index);
 
 /**
  * 현재 선택된 창 번호 리턴
