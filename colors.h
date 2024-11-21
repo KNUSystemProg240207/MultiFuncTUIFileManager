@@ -23,7 +23,7 @@ typedef enum {
 #define COLOR_GREEN_BLUE 6
 #define COLOR_ALL_BLUE 8
 
-void init_colorSet();
+void initColorSet();
 
 
 #endif

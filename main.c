@@ -108,7 +108,7 @@ void initScreen(void) {
     CHECK_CURSES(start_color());  // Color 시작
     if (can_change_color() == TRUE) {
         CHECK_CURSES(init_color(COLOR_WHITE, 1000, 1000, 1000));  // 흰색을 '진짜' 흰색으로: 일부 환경에서, COLOR_WHITE가 회색인 경우 있음
-        init_colorSet();
+        initColorSet();
     }
 
     // 창 크기 가져옴

@@ -75,15 +75,15 @@ void applySorting(DirEntry *dirEntries, uint16_t flags, size_t totalReadItems) {
 
     // 이름 기준 정렬
     if (criterion == SORT_NAME) {
-        compareFunc = (direction == 0) ? compareByName_Asc : compareByName_Desc;
+        compareFunc = (direction == 0) ? cmpNameAsc : cmpNameDesc;
     }
     // 크기 기준 정렬
     else if (criterion == SORT_SIZE) {
-        compareFunc = (direction == 0) ? compareBySize_Asc : compareBySize_Desc;
+        compareFunc = (direction == 0) ? cmpSizeAsc : cmpSizeDesc;
     }
     // 날짜 기준 정렬
     else if (criterion == SORT_DATE) {
-        compareFunc = (direction == 0) ? compareByDate_Asc : compareByDate_Desc;
+        compareFunc = (direction == 0) ? cmpDateAsc : cmpDateDesc;
     }
 
     // 정렬 함수가 설정되었으면, DirEntry 배열을 정렬
@@ -94,7 +94,7 @@ void applySorting(DirEntry *dirEntries, uint16_t flags, size_t totalReadItems) {
     }
 }
 
-int compareByDate_Asc(const void *a, const void *b) {
+int cmpDateAsc(const void *a, const void *b) {
     DirEntry *entryA = ((DirEntry *)a);
     DirEntry *entryB = ((DirEntry *)b);
 
@@ -125,7 +125,7 @@ int compareByDate_Asc(const void *a, const void *b) {
 
     return strcmp(entryA->entryName, entryB->entryName);  // 완전히 같으면 이름 비교
 }
-int compareByDate_Desc(const void *a, const void *b) {
+int cmpDateDesc(const void *a, const void *b) {
     DirEntry *entryA = ((DirEntry *)a);
     DirEntry *entryB = ((DirEntry *)b);
 
@@ -157,7 +157,7 @@ int compareByDate_Desc(const void *a, const void *b) {
     return -1 * (strcmp(entryA->entryName, entryB->entryName));  // 완전히 같으면 이름 비교
 }
 
-int compareByName_Asc(const void *a, const void *b) {
+int cmpNameAsc(const void *a, const void *b) {
     DirEntry *entryA = ((DirEntry *)a);
     DirEntry *entryB = ((DirEntry *)b);
 
@@ -174,7 +174,7 @@ int compareByName_Asc(const void *a, const void *b) {
     // 이름 순 정렬
     return strcmp(entryA->entryName, entryB->entryName);
 }
-int compareByName_Desc(const void *a, const void *b) {
+int cmpNameDesc(const void *a, const void *b) {
     DirEntry *entryA = ((DirEntry *)a);
     DirEntry *entryB = ((DirEntry *)b);
 
@@ -192,7 +192,7 @@ int compareByName_Desc(const void *a, const void *b) {
     return -1 * (strcmp(entryA->entryName, entryB->entryName));
 }
 
-int compareBySize_Asc(const void *a, const void *b) {
+int cmpSizeAsc(const void *a, const void *b) {
     DirEntry *entryA = ((DirEntry *)a);
     DirEntry *entryB = ((DirEntry *)b);
 
@@ -211,7 +211,7 @@ int compareBySize_Asc(const void *a, const void *b) {
     if (entryA->statEntry.st_size > entryB->statEntry.st_size) return 1;  // a가 b보다 크면 양수 반환
     return (strcmp(entryA->entryName, entryB->entryName));  // a와 b가 같으면 이름 비교
 }
-int compareBySize_Desc(const void *a, const void *b) {
+int cmpSizeDesc(const void *a, const void *b) {
     DirEntry *entryA = ((DirEntry *)a);
     DirEntry *entryB = ((DirEntry *)b);
 

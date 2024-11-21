@@ -72,7 +72,7 @@ void applySorting(DirEntry *dirEntries, uint16_t flags, size_t totalReadItems);
  * @param b 두 번째 DirEntry의 포인터
  * @return a가 b보다 작으면 음수, 크면 양수, 같으면 0
  */
-int compareByName_Asc(const void *a, const void *b);
+int cmpNameAsc(const void *a, const void *b);
 
 /**
  * 이름 기준 내림차순으로 비교합니다.
@@ -81,7 +81,7 @@ int compareByName_Asc(const void *a, const void *b);
  * @param b 두 번째 DirEntry의 포인터
  * @return a가 b보다 크면 음수, 작으면 양수, 같으면 0
  */
-int compareByName_Desc(const void *a, const void *b);
+int cmpNameDesc(const void *a, const void *b);
 
 /**
  * 크기 기준 오름차순으로 비교합니다.
@@ -90,7 +90,7 @@ int compareByName_Desc(const void *a, const void *b);
  * @param b 두 번째 DirEntry의 포인터
  * @return a가 b보다 작으면 음수, 크면 양수, 같으면 0
  */
-int compareBySize_Asc(const void *a, const void *b);
+int cmpSizeAsc(const void *a, const void *b);
 
 /**
  * 크기 기준 내림차순으로 비교합니다.
@@ -99,7 +99,7 @@ int compareBySize_Asc(const void *a, const void *b);
  * @param b 두 번째 DirEntry의 포인터
  * @return a가 b보다 크면 음수, 작으면 양수, 같으면 0
  */
-int compareBySize_Desc(const void *a, const void *b);
+int cmpSizeDesc(const void *a, const void *b);
 
 /**
  * 날짜 기준 오름차순으로 비교합니다.
@@ -108,7 +108,7 @@ int compareBySize_Desc(const void *a, const void *b);
  * @param b 두 번째 DirEntry의 포인터
  * @return a가 b보다 작으면 음수, 크면 양수, 같으면 0
  */
-int compareByDate_Asc(const void *a, const void *b);
+int cmpDateAsc(const void *a, const void *b);
 
 /**
  * 날짜 기준 내림차순으로 비교합니다.
@@ -117,7 +117,7 @@ int compareByDate_Asc(const void *a, const void *b);
  * @param b 두 번째 DirEntry의 포인터
  * @return a가 b보다 크면 음수, 작으면 양수, 같으면 0
  */
-int compareByDate_Desc(const void *a, const void *b);
+int cmpDateDesc(const void *a, const void *b);
 
 
 #endif
