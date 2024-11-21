@@ -151,16 +151,6 @@ void initThreads(void) {
 
 void mainLoop(void) {
     // clang-format off
-#define CHECK_FD_OPEN_CLOSE(fd) do {\
-    if ((fd) != -1) {\
-        close((fd));\
-        (fd) = -1;\
-    }\
-} while (0)
-#define RESET_FD(fd) do {\
-    close((fd));\
-    (fd) = -1;\
-} while (0)
     // clang-format on
 
     struct timespec startTime;  // Iteration 시작 시간
@@ -174,10 +164,20 @@ void mainLoop(void) {
 
     unsigned int curWin;  // 현재 창
     ssize_t currentSelection;  // 선택된 Item
+    // File Task (copy/move 및 source 정보 등 저장)
     FileTask fileTask = {
         .src.dirFd = -1,
-    };  // File Task (copy/move 및 source 정보 등 저장)
+    };
+    // File Task (Delete 전용: Copy/Move 원본 지정에 영향 미치지 않게)
+    FileTask fileDelTask = {
+        .type = DELETE,
+    };
 
+// 아래에서, dirFd 변수들에 대해 fd leak 경고 발생
+// File Operator Thread에서 close() -> 여기서 close()하면, Thread쪽에서 오류 발생
+// 따라서, leak되는 게 정상임
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
     while (1) {
         clock_gettime(CLOCK_MONOTONIC, &startTime);  // 시작 시간 가져옴
 
@@ -201,31 +201,45 @@ void mainLoop(void) {
                 case 'x':
                 case 'X':  // 잘라내기
                     // 파일 정보 저장
-                    CHECK_FD_OPEN_CLOSE(fileTask.src.dirFd);
-                    fileTask.type = (ch == 'c' || ch == 'C') ? COPY : MOVE;
+                    // 기존에 Source로 선택된 Item 있었으면: 해당 dirfd close (여기서 값 덮어쓰게 됨)
+                    if (fileTask.src.dirFd != -1) {
+                        close(fileTask.src.dirFd);
+                        fileTask.src.dirFd = -1;
+                    }
+                    fileTask.type = (ch == 'c' || ch == 'C') ? COPY : MOVE;  // 복사/삭제 결정
+                    fileTask.src = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
+                    // 현재 폴더의 fd 가져옴
                     curWin = getCurrentWindow();
-                    fileTask.src = getCurrentSelectedItem();
                     pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
                     fileTask.src.dirFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
                     pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
                     break;
                 case 'v':
                 case 'V':  // 붙여넣기: 미리 복사/잘라내기 된 파일 있으면 수행, 없으면 오류 표시
-                    if (fileTask.src.dirFd == -1) {
+                    if (fileTask.src.dirFd == -1) {  // 선택된 파일 없음
                         // TODO: 오류 표시
                         break;
                     }
-                    fileTask.dst = getCurrentSelectedItem();
+                    fileTask.dst = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
+                    // 현재 폴더의 fd 가져옴
+                    curWin = getCurrentWindow();
+                    pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
+                    fileTask.dst.dirFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
+                    pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
+                    // pipe에 명령 쓰기
                     write(pipeFileOpCmd, &fileTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
-                    RESET_FD(fileTask.src.dirFd);
-                    RESET_FD(fileTask.dst.dirFd);
+                    fileTask.src.dirFd = -1;  // '덮어쓰기'될 fd 아님: 다음 Copy/Move 대상 지정 시, close 방지
                     break;
-                case KEY_DC:
-                    CHECK_FD_OPEN_CLOSE(fileTask.src.dirFd);
-                    fileTask.type = DELETE;
-                    fileTask.src = getCurrentSelectedItem();
-                    write(pipeFileOpCmd, &fileTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
-                    RESET_FD(fileTask.src.dirFd);
+                case KEY_DC:  // Delete 키
+                    // fileTask.type = DELETE;  // '삭제' 전용 변수: 종류 대입 불필요
+                    fileDelTask.src = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
+                    // 현재 폴더의 fd 가져옴
+                    curWin = getCurrentWindow();
+                    pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
+                    fileDelTask.src.dirFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
+                    pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
+                    // pipe에 명령 쓰기
+                    write(pipeFileOpCmd, &fileDelTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
                     break;
                 case '\n':  // 디렉터리 변경
                 case KEY_ENTER:
@@ -236,6 +250,9 @@ void mainLoop(void) {
                         dirListenerArgs[curWin].chdirIdx = currentSelection;
                         dirListenerArgs[curWin].commonArgs.statusFlags |= DIRLISTENER_FLAG_CHANGE_DIR;
                         pthread_mutex_unlock(&dirListenerArgs[curWin].bufMutex);
+                        pthread_mutex_lock(&dirListenerArgs[curWin].commonArgs.statusMutex);
+                        pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
+                        pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
                         setCurrentSelectedDirectory(0);
                     }
                     break;
@@ -283,9 +300,9 @@ void mainLoop(void) {
         }
     }
 CLEANUP:
-    CHECK_FD_OPEN_CLOSE(fileTask.src.dirFd);
     return;
 }
+#pragma GCC diagnostic pop
 
 void cleanup(void) {
     endwin();

@@ -50,12 +50,15 @@ int fileOperator(void *argsPtr) {
         case COPY:
             // TODO: Implement here
             copyFile(&command.src, &command.dst, &args->progress, &args->progressMutex);
+            break;
         case MOVE:
             // TODO: Implement here
             moveFile(&command.src, &command.dst, &args->progress, &args->progressMutex);
+            break;
         case DELETE:
             // TODO: Implement here
             removeFile(&command.src, &args->progress, &args->progressMutex);
+            break;
     }
 
     close(command.src.dirFd);
