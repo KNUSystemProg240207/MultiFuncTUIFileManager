@@ -98,7 +98,6 @@ int readProcInfo(ProcWin *procWindow) {
 
         FILE *statFile = fopen(statPath, "r");
         if (statFile == NULL) {
-            fprintf(stderr, "Failed to open file: %s\n", statPath);
             continue;
         }
         // fscanf로 데이터를 읽어서 구조체에 저장

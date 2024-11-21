@@ -83,7 +83,7 @@ int updateProcWin(ProcWin *procWindow) {
     getmaxyx(procWindow->win, winH, winW);
     itemsCnt = procWindow->totalReadItems;  // 읽어들인 총 항목 수
 
-    maxItemsToPrint = winH - 2;  // 상하단 여백 제외 창 높이에 비례한 출력 가능한 항목 수
+    maxItemsToPrint = winH - 3;  // 상하단 여백 제외 창 높이에 비례한 출력 가능한 항목 수
 
     if (maxItemsToPrint > itemsCnt)
         maxItemsToPrint = itemsCnt;
@@ -91,7 +91,18 @@ int updateProcWin(ProcWin *procWindow) {
     // wclear(procWindow->win);  // <- 여기 한번 주목
     box(procWindow->win, 0, 0);
 
-    mvwprintw(procWindow->win, 1, 1, "%-6s %-30s %-6s %-10s %-10s %-10s", "PID", "Name", "State", "VSize", "UTime", "STime");
+    if(winW < 20)
+        mvwprintw(procWindow->win, 1, 1, "%-6s", "PID");
+    else if(winW < 30)
+        mvwprintw(procWindow->win, 1, 1, "%-6s %-14s", "PID", "VSize");
+    else if(winW < 40)
+        mvwprintw(procWindow->win, 1, 1, "%-6s %-14s %-10s", "PID", "VSize", "UTime");
+    else if(winW < 50)
+        mvwprintw(procWindow->win, 1, 1, "%-6s %-14s %-10s %-10s", "PID", "VSize", "UTime", "STime");
+    else if(winW < 80)
+        mvwprintw(procWindow->win, 1, 1, "%-6s %-6s %-14s %-10s %-10s", "PID", "State", "VSize", "UTime", "STime");
+    else
+        mvwprintw(procWindow->win, 1, 1, "%-6s %-35s %-6s %-14s %-10s %-10s", "PID", "Name", "State", "VSize", "UTime", "STime");
     // 가장 큰 메모리를 차지하는 항목부터 출력
     for (int i = 0; i < maxItemsToPrint; i++) {
         // pointerArray를 사용하여 메모리 크기 내림차순으로 접근
@@ -99,7 +110,18 @@ int updateProcWin(ProcWin *procWindow) {
         ProcInfo *proc = procWindow->procEntries[idx];
 
         // 프로세스 정보 출력
-        mvwprintw(procWindow->win, i + 2, 1, "%-6d %-30s %-6c %-10lu %-10lu %-10lu", proc->pid, proc->name, proc->state, proc->vsize, proc->utime, proc->stime);
+        if(winW < 20)
+            mvwprintw(procWindow->win, i+2, 1, "%-6d", proc->pid);
+        else if(winW < 30)
+            mvwprintw(procWindow->win, i+2, 1, "%-6d %-14lu", proc->pid, proc->vsize);
+        else if(winW < 40)
+            mvwprintw(procWindow->win, i+2, 1, "%-6d %-14lu %-10lu", proc->pid, proc->vsize, proc->utime);
+        else if(winW < 50)
+            mvwprintw(procWindow->win, i+2, 1, "%-6d %-14lu %-10lu %-10lu", proc->pid, proc->vsize, proc->utime, proc->stime);
+        else if(winW < 80)
+            mvwprintw(procWindow->win, i + 2, 1, "%-6d %-6c %-14lu %-10lu %-10lu", proc->pid, proc->state, proc->vsize, proc->utime, proc->stime);
+        else
+            mvwprintw(procWindow->win, i + 2, 1, "%-6d %-35s %-6c %-14lu %-10lu %-10lu", proc->pid, proc->name, proc->state, proc->vsize, proc->utime, proc->stime);
     }
     // 창 새로고침
     // wrefresh(procWindow->win);  // <- 주목
