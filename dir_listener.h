@@ -34,7 +34,7 @@ typedef struct _DirListenerArgs {
     size_t totalReadItems;  // 총 읽어들인 개수
     // Mutexes
     pthread_mutex_t bufMutex;  // 결과값 buffer 보호 Mutex
-    DirEntry2 dirEntries[MAX_DIR_ENTRIES];
+    DirEntry dirEntries[MAX_DIR_ENTRIES];
 
 } DirListenerArgs;
 

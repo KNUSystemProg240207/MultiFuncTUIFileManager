@@ -6,10 +6,18 @@
 #include <string.h>
 #include <sys/stat.h>
 
-typedef struct DirEntry2 {
+/* DirEntry 구조체 */
+/**
+ * @typedef DirEntry
+ * 디렉토리 항목의 이름 및 파일 정보를 저장하는 구조체.
+ *
+ * @member entryName 파일/디렉토리 이름 (최대 MAX_NAME_LEN 길이)
+ * @member statEntry 파일/디렉토리의 stat 정보
+ */
+typedef struct DirEntry {
     char entryName[MAX_NAME_LEN + 1];  // 파일/디렉토리 이름
     struct stat statEntry;  // stat 정보
-} DirEntry2;
+} DirEntry;
 
 
 /* SortFlags 정의 */
@@ -47,23 +55,9 @@ struct _DirWin {
     size_t *totalReadItems;
     uint64_t lineMovementEvent;
     SortFlags sortFlag;
-    DirEntry2 *dirEntry;
+    DirEntry *dirEntry;
 };
 typedef struct _DirWin DirWin;
-
-
-/* DirEntry 구조체 */
-/**
- * @typedef DirEntry
- * 디렉토리 항목의 이름 및 파일 정보를 저장하는 구조체.
- *
- * @member entryName 파일/디렉토리 이름 (최대 MAX_NAME_LEN 길이)
- * @member statEntry 파일/디렉토리의 stat 정보
- */
-// typedef struct {
-//     char entryName[MAX_NAME_LEN];  // 파일/디렉토리 이름
-//     struct stat statEntry;  // stat 정보
-// } DirEntry;
 
 /** 이름 정렬 상태를 나타내는 비트마스크 */
 #define SORT_NAME_MASK 0x03  // 00000011
@@ -93,7 +87,7 @@ int initDirWin(
     // struct stat *bufEntryStat,
     // char (*bufEntryNames)[MAX_NAME_LEN + 1],
     size_t *totalReadItems,
-    DirEntry2 *dirEntry
+    DirEntry *dirEntry
 );
 
 /**

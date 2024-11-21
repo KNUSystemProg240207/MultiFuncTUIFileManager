@@ -2,8 +2,6 @@
 #define __DIR_ENTRY_UTILS_H_INCLUDED__
 #include "dir_window.h"
 
-void applySorting_list(DirEntry2 *dirEntries, uint16_t flags, size_t totalReadItems);
-
 /**
  * 파일 이름을 지정된 최대 표시 길이에 맞게 줄입니다.
  *
@@ -50,6 +48,22 @@ int isImageFile(const char *fileName);
  * - 확장자는 대소문자를 구분하지 않습니다.
  */
 int isEXE(const char *fileName);
+
+/**
+ * 디렉토리 항목 배열을 지정된 기준과 방향에 따라 정렬합니다.
+ *
+ * @param dirEntries 정렬할 디렉토리 항목 배열 (DirEntry 구조체 배열).
+ * @param flags 정렬 기준과 방향을 나타내는 비트 플래그:
+ *               - 기준: `SORT_NAME`, `SORT_SIZE`, `SORT_DATE`
+ *               - 방향: `SORT_ASCENDING`, `SORT_DESCENDING`
+ * @param totalReadItems 정렬할 항목의 개수.
+ *
+ * @details
+ * - 기준 플래그와 방향 플래그를 조합하여 정렬 수행.
+ * - 기준이 동일하면 이름 기준으로 정렬.
+ * - 항목이 없거나 배열이 NULL이면 동작하지 않음.
+ */
+void applySorting(DirEntry *dirEntries, uint16_t flags, size_t totalReadItems);
 
 /**
  * 이름 기준 오름차순으로 비교합니다.

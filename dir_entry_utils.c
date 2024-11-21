@@ -61,9 +61,9 @@ int isEXE(const char *fileName) {
 }
 
 /* 정렬 적용 함수 */
-void applySorting_list(DirEntry2 *dirEntries, uint16_t flags, size_t totalReadItems) {
+void applySorting(DirEntry *dirEntries, uint16_t flags, size_t totalReadItems) {
     if (!dirEntries || totalReadItems == 0) {
-        fprintf(stderr, "Invalid input to applySorting_list: dirEntries=%p, totalReadItems=%zu\n", dirEntries, totalReadItems);
+        fprintf(stderr, "Invalid input to applySorting: dirEntries=%p, totalReadItems=%zu\n", dirEntries, totalReadItems);
         return;
     }
 
@@ -88,15 +88,15 @@ void applySorting_list(DirEntry2 *dirEntries, uint16_t flags, size_t totalReadIt
 
     // 정렬 함수가 설정되었으면, DirEntry 배열을 정렬
     if (compareFunc != NULL) {
-        qsort(dirEntries, totalReadItems, sizeof(DirEntry2), compareFunc);
+        qsort(dirEntries, totalReadItems, sizeof(DirEntry), compareFunc);
     } else {
         fprintf(stderr, "Invalid sorting flags: flags=%u (criterion=%u, direction=%u)\n", flags, criterion, direction);
     }
 }
 
 int compareByDate_Asc(const void *a, const void *b) {
-    DirEntry2 *entryA = ((DirEntry2 *)a);
-    DirEntry2 *entryB = ((DirEntry2 *)b);
+    DirEntry *entryA = ((DirEntry *)a);
+    DirEntry *entryB = ((DirEntry *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;
@@ -126,8 +126,8 @@ int compareByDate_Asc(const void *a, const void *b) {
     return strcmp(entryA->entryName, entryB->entryName);  // 완전히 같으면 이름 비교
 }
 int compareByDate_Desc(const void *a, const void *b) {
-    DirEntry2 *entryA = ((DirEntry2 *)a);
-    DirEntry2 *entryB = ((DirEntry2 *)b);
+    DirEntry *entryA = ((DirEntry *)a);
+    DirEntry *entryB = ((DirEntry *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;
@@ -158,8 +158,8 @@ int compareByDate_Desc(const void *a, const void *b) {
 }
 
 int compareByName_Asc(const void *a, const void *b) {
-    DirEntry2 *entryA = ((DirEntry2 *)a);
-    DirEntry2 *entryB = ((DirEntry2 *)b);
+    DirEntry *entryA = ((DirEntry *)a);
+    DirEntry *entryB = ((DirEntry *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;
@@ -175,8 +175,8 @@ int compareByName_Asc(const void *a, const void *b) {
     return strcmp(entryA->entryName, entryB->entryName);
 }
 int compareByName_Desc(const void *a, const void *b) {
-    DirEntry2 *entryA = ((DirEntry2 *)a);
-    DirEntry2 *entryB = ((DirEntry2 *)b);
+    DirEntry *entryA = ((DirEntry *)a);
+    DirEntry *entryB = ((DirEntry *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;
@@ -193,8 +193,8 @@ int compareByName_Desc(const void *a, const void *b) {
 }
 
 int compareBySize_Asc(const void *a, const void *b) {
-    DirEntry2 *entryA = ((DirEntry2 *)a);
-    DirEntry2 *entryB = ((DirEntry2 *)b);
+    DirEntry *entryA = ((DirEntry *)a);
+    DirEntry *entryB = ((DirEntry *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;
@@ -212,8 +212,8 @@ int compareBySize_Asc(const void *a, const void *b) {
     return (strcmp(entryA->entryName, entryB->entryName));  // a와 b가 같으면 이름 비교
 }
 int compareBySize_Desc(const void *a, const void *b) {
-    DirEntry2 *entryA = ((DirEntry2 *)a);
-    DirEntry2 *entryB = ((DirEntry2 *)b);
+    DirEntry *entryA = ((DirEntry *)a);
+    DirEntry *entryB = ((DirEntry *)b);
 
     // ".."는 최상단
     if (strcmp(entryA->entryName, "..") == 0) return -1;

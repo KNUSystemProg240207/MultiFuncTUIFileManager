@@ -33,7 +33,7 @@ static int dirListener(void *argsPtr);
  * @param bufLen 최대 읽어올 항목 수
  * @return 성공: (읽은 항목 수), 실패: -1
  */
-static ssize_t listEntries(DIR *dirToList, DirEntry2 *dirEntry, size_t bufLen);
+static ssize_t listEntries(DIR *dirToList, DirEntry *dirEntry, size_t bufLen);
 
 /**
  * 디렉터리 변경
@@ -95,13 +95,13 @@ int dirListener(void *argsPtr) {
     args->totalReadItems = readItems;
 
     //	여기에 정렬 플래그 보고 확인해서 정렬
-    applySorting_list(args->dirEntries, args->commonArgs.statusFlags, readItems);
+    applySorting(args->dirEntries, args->commonArgs.statusFlags, readItems);
 
     pthread_mutex_unlock(&args->bufMutex);  // 결과값 보호 Mutex 해제
     return readItems;
 }
 
-ssize_t listEntries(DIR *dirToList, DirEntry2 *dirEntries, size_t bufLen) {
+ssize_t listEntries(DIR *dirToList, DirEntry *dirEntries, size_t bufLen) {
     // TODO: 정렬 구현
 
     size_t readItems = 0;

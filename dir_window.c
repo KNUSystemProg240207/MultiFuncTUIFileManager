@@ -82,8 +82,6 @@ int updateDirWins(void) {
         winH -= 4;  // 최대 출력 가능한 라인 넘버 -4
         // winW = 31;  // 윈도우 크기 확인용
 
-        // applySorting(win->sortFlag, win);  // 애초에 받아올 때, 정렬 안 된 상태로 받아오니까 계속 정렬을 해야 함
-
         wbkgd(win->win, COLOR_PAIR(BGRND));
         printFileHeader(win, winH, winW);  // 헤더 부분 출력
 
@@ -162,7 +160,7 @@ int initDirWin(
     // struct stat *bufEntryStat,
     // char (*bufEntryNames)[MAX_NAME_LEN + 1],
     size_t *totalReadItems,
-    DirEntry2 *dirEntry
+    DirEntry *dirEntry
 ) {
     int y, x, h, w;
     winCnt++;

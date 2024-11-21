@@ -49,8 +49,8 @@ int main(int argc, char **argv) {
     for (int i = 0; i < dirWinCnt; i++) {
         pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
         dirListenerArgs[i].commonArgs.statusFlags |= THREAD_FLAG_STOP;
-        // 여기에 SortFlag 지우고
-        // dirListenerArgs[i].commonArgs.statusFlags |= 정렬 방식 플래그
+        dirListenerArgs[i].commonArgs.statusFlags &= ~SORT_CRITERION_MASK;  // 정렬 기준 플래그 초기화
+        dirListenerArgs[i].commonArgs.statusFlags &= ~SORT_DIRECTION_BIT;  // 정렬 방향 플래그 초기화
         pthread_cond_signal(&dirListenerArgs[i].commonArgs.resumeThread);
         pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
     }
