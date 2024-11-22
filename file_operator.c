@@ -1,8 +1,8 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdint.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include "config.h"
 #include "file_operator.h"

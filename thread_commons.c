@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "config.h"
 #include "commons.h"
+#include "config.h"
 #include "thread_commons.h"
 
 
