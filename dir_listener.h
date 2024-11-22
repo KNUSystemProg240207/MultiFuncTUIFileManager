@@ -10,7 +10,7 @@
 #include "thread_commons.h"
 
 
-#define DIRLISTENER_FLAG_CHANGE_DIR (1 << 2)  // 디렉터리 변경 요청
+#define DIRLISTENER_FLAG_CHANGE_DIR (1 << 9)  // 디렉터리 변경 요청
 
 
 /**

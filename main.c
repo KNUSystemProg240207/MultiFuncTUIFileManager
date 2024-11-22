@@ -221,6 +221,7 @@ void mainLoop(void) {
                         break;
                     }
                     fileTask.dst = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
+                    strcpy(fileTask.dst.name, fileTask.src.name);  // 목적지 이름 설정 (Rename Operation 대비)
                     // 현재 폴더의 fd 가져옴
                     curWin = getCurrentWindow();
                     pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);

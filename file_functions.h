@@ -7,32 +7,33 @@
 #include "file_operator.h"
 
 /**
- * 파일 복사 수행
+ * 파일 복사
  *
- * @param src 원본 파일 정보
- * @param dst 대상 폴더 정보
- * @param progress 현재 진행 상황 ([7..0] 백분률 진행률 / [8] 복사중)
- * @param progressMutex 대상 폴더 정보
+ * @param src 원본 파일
+ * @param dst 대상 폴더
+ * @param progress 진행 상태 구조체
+ * @return 성공: 0, 실패: -1
  */
-int copyFile(SrcDstInfo *src, SrcDstInfo *dst, uint16_t *progress, pthread_mutex_t *progressMutex);
+int copyFile(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress);
 
 /**
- * 파일 이동 수행
+ * 파일 이동
  *
- * @param src 원본 파일 정보
- * @param dst 대상 폴더 정보
- * @param progress 현재 진행 상황 ([7..0] 백분률 진행률 / [9] 이동중)
- * @param progressMutex 대상 폴더 정보
+ * @param src 원본 파일
+ * @param dst 대상 폴더
+ * @param progress 진행 상태 구조체
+ * @return 성공: 0, 실패: -1
  */
-int moveFile(SrcDstInfo *src, SrcDstInfo *dst, uint16_t *progress, pthread_mutex_t *progressMutex);
+int moveFile(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress);
 
 /**
- * 파일 삭제 수행
+ * 파일 삭제
  *
- * @param src 원본 파일 정보
- * @param progress 현재 진행 상황 ([7..0] 백분률 진행률 / [10] 삭제중)
- * @param progressMutex 대상 폴더 정보
+ * @param src 원본 파일
+ * @param dst 대상 폴더
+ * @param progress 진행 상태 구조체
+ * @return 성공: 0, 실패: -1
  */
-int removeFile(SrcDstInfo *src, uint16_t *progress, pthread_mutex_t *progressMutex);
+int removeFile(SrcDstInfo *src, FileProgressInfo *progress);
 
 #endif
