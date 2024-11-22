@@ -19,9 +19,9 @@
 #include "config.h"
 #include "dir_listener.h"
 #include "dir_window.h"
+#include "file_operator.h"
 #include "list_process.h"
 #include "proc_win.h"
-#include "file_operator.h"
 #include "title_bar.h"
 
 WINDOW *titleBar, *bottomBox;
@@ -29,16 +29,16 @@ PANEL *titlePanel, *bottomPanel;  // 패널 추가
 
 mode_t directoryOpenArgs;  // fdopendir()에 전달할 directory file descriptor를 open()할 때 쓸 argument: Thread 시작 전 저장되어야 함
 
-// 각 (폴더의 내용 가져오는) Directory Listener Thread별 저장 공간:
 static pthread_t threadListDir[MAX_DIRWINS];
 static pthread_t threadFileOperators[MAX_FILE_OPERATORS];
 static DirListenerArgs dirListenerArgs[MAX_DIRWINS];
+static FileProgressInfo fileProgresses[MAX_FILE_OPERATORS];
 static FileOperatorArgs fileOpArgs[MAX_FILE_OPERATORS];
 static int pipeFileOpCmd;
 
 static pthread_t threadProcess;  // 프로세스 스레드
-static ProcWin proc_Win;
-pthread_mutex_t proc_Win_Mutex;
+static ProcWin processWindow;
+pthread_mutex_t processWindow_Mutex;
 
 static ProcThreadArgs procThreadArgs;  // 프로세스 스레드 시작을 위한 인자
 WINDOW *p_win;
@@ -115,12 +115,13 @@ void initVariables(void) {
     for (int i = 0; i < MAX_FILE_OPERATORS; i++) {
         pthread_cond_init(&fileOpArgs[i].commonArgs.resumeThread, NULL);
         pthread_mutex_init(&fileOpArgs[i].commonArgs.statusMutex, NULL);
-        pthread_mutex_init(&fileOpArgs[i].progressInfo.flagMutex, NULL);
         pthread_mutex_init(&fileOpArgs[i].pipeReadMutex, NULL);
+        pthread_mutex_init(&fileProgresses[i].flagMutex, NULL);
+        fileOpArgs[i].progressInfo = fileProgresses;
     }
 
-    // `proc_Win` 구조체 초기화
-    proc_Win = (ProcWin) {
+    // `processWindow` 구조체 초기화
+    processWindow = (ProcWin) {
         .win = p_win,
         .statMutex = PTHREAD_MUTEX_INITIALIZER,
         .visibleMutex = PTHREAD_MUTEX_INITIALIZER,
@@ -130,16 +131,16 @@ void initVariables(void) {
 
     // 포인터 배열 초기화
     for (size_t i = 0; i < MAX_PROCESSES; i++) {
-        proc_Win.procEntries[i] = &p_Entries[i];
+        processWindow.procEntries[i] = &p_Entries[i];
     }
 
     procThreadArgs = (ProcThreadArgs) {
-        .procWin = &proc_Win,
-        .procWinMutex = &proc_Win_Mutex,
+        .procWin = &processWindow,
+        .procWinMutex = &processWindow_Mutex,
     };
 
-    pthread_mutex_init(&proc_Win_Mutex, NULL);
-    pthread_mutex_init(&proc_Win.visibleMutex, NULL);
+    pthread_mutex_init(&processWindow_Mutex, NULL);
+    pthread_mutex_init(&processWindow.visibleMutex, NULL);
 }
 
 void initScreen(void) {
@@ -268,13 +269,13 @@ void mainLoop(void) {
                         pthread_mutex_lock(&dirListenerArgs[curWin].commonArgs.statusMutex);
                         pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
                         pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
-                        setCurrentSelectedDirectory(0);
+                        setCurrentSelection(0);
                     }
                     break;
 
                 // 프로세스 창 토글
                 case 'p':
-                    toggleProcWin(&proc_Win);
+                    toggleProcWin(&processWindow);
                     break;
 
                 // 정렬 변경
@@ -383,6 +384,7 @@ void mainLoop(void) {
                 default:
                     mvwhline(stdscr, getmaxy(stdscr) - 3, 0, ACS_HLINE, getmaxy(stdscr));
                     mvwprintw(stdscr, getmaxy(stdscr) - 3, 2, "0x%x 0x%lx 0x%lx", ch, ch & ~BUTTON_CTRL, ~BUTTON_CTRL);
+                    break;
             }
         }
 
@@ -409,12 +411,14 @@ void mainLoop(void) {
 
         updateDirWins();  // 폴더 표시 창들 업데이트
 
-        pthread_mutex_lock(&proc_Win.visibleMutex);
-        if (proc_Win.isWindowVisible) {
-            pthread_mutex_unlock(&proc_Win.visibleMutex);  // Unlock before update
-            updateProcWin(&proc_Win);
+        displayProgress(fileProgresses);
+
+        pthread_mutex_lock(&processWindow.visibleMutex);
+        if (processWindow.isWindowVisible) {
+            pthread_mutex_unlock(&processWindow.visibleMutex);  // Unlock before update
+            updateProcWin(&processWindow);
         } else {
-            pthread_mutex_unlock(&proc_Win.visibleMutex);  // Unlock if not visible
+            pthread_mutex_unlock(&processWindow.visibleMutex);  // Unlock if not visible
         }
 
         // 패널 업데이트
@@ -435,7 +439,7 @@ CLEANUP:
 void cleanup(void) {
     endwin();
 
-    pthread_mutex_destroy(&proc_Win.statMutex);
-    pthread_mutex_destroy(&proc_Win.visibleMutex);
-    pthread_mutex_destroy(&proc_Win_Mutex);
+    pthread_mutex_destroy(&processWindow.statMutex);
+    pthread_mutex_destroy(&processWindow.visibleMutex);
+    pthread_mutex_destroy(&processWindow_Mutex);
 }

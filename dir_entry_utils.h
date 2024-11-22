@@ -12,7 +12,7 @@
  * - 파일 확장자는 유지되며, 확장자를 제외한 앞부분이 생략됩니다.
  * - 확장자가 너무 길 경우, 확장자를 포함한 문자열을 `MAX_DISPLAY_LEN` 이내로 잘라냅니다.
  */
-void truncateFileName(char *fileName);
+char *truncateFileName(char *fileName);
 
 /**
  * 파일 이름이 숨김 파일인지 확인합니다.

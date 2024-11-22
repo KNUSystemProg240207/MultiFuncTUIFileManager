@@ -52,7 +52,7 @@ typedef struct _FileProgressInfo {
  */
 typedef struct _FileOperatorArgs {
     ThreadArgs commonArgs;  // Thread들 공통 공유 변수
-    FileProgressInfo progressInfo;  // 진행 상태 공유 변수
+    FileProgressInfo *progressInfo;  // 진행 상태 공유 변수
     // 명령 관련
     int pipeEnd;  // 명령 읽어올, pipe의 read용 끝
     pthread_mutex_t pipeReadMutex;  // 명령 읽기 보호 Mutex

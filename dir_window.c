@@ -21,25 +21,23 @@
  * @var _DirWin::win WINDOW 구조체
  * @var _DirWin::order Directory 창 순서 (가장 왼쪽=0) ( [0, MAX_DIRWINS) )
  * @var _DirWin::currentPos 현재 선택된 Element
- * @var _DirWin::bufMutex bufEntryStat, bufEntryNames 보호 Mutex
- * @var _DirWin::statEntries 항목들의 stat 정보
- * @var _DirWin::entryNames 항목들의 이름
+ * @var _DirWin::bufMutex dirEntry 보호 Mutex
+ * @var _DirWin::dirEntry 폴더 항목들
  * @var _DirWin::totalReadItems 현 폴더에서 읽어들인 항목 수
  *   일반적으로, 디렉토리에 있는 파일, 폴더의 수와 같음
  *   단, buffer 공간 부족한 경우, 최대 buffer 길이
- * @var _DirWin::lineMovementEvent (bit field) 창별 줄 이동 Event 저장
- *   Event당 2bit (3종류 Event 존재: 이벤트 없음(0b00), 위로 이동(0b10), 아래로 이동(0b11)) -> 최대 32개 Event 저장
- *   (Mutex 잠그지 않고 이동 처리 가능하게 함)
+ * @var _DirWin::lineMovementEvent 창별 줄 이동 Event 저장 (bit field)
+ * @var _DirWin::sortFlag 정렬 관련 Flag들
  */
 struct _DirWin {
-    WINDOW *win;
-    unsigned int order;
-    size_t currentPos;
-    pthread_mutex_t *bufMutex;
-    struct stat *bufEntryStat;
-    char (*bufEntryNames)[MAX_NAME_LEN + 1];
-    size_t *totalReadItems;
-    uint64_t lineMovementEvent;
+    WINDOW *win;  // WINDOW 구조체
+    unsigned int order;  // 창 순서 (가장 왼쪽=0) ( [0, MAX_DIRWINS) )
+    size_t currentPos;  // 현재 선택된 Element
+    pthread_mutex_t *bufMutex;  // dirEntry 보호 Mutex
+    DirEntry *dirEntry;  // 폴더 항목들
+    size_t *totalReadItems;  // 현 폴더에서 읽어들인 항목 수
+    uint64_t lineMovementEvent;  // 창별 줄 이동 Event 저장 (bit field)
+    uint8_t sortFlag;  // 정렬 관련 Flag들
 };
 typedef struct _DirWin DirWin;
 
@@ -61,6 +59,25 @@ static int panelCnt = 0;  // 패널의 개수
  * @return 성공: 0, 부적절한 인자 전달한 경우: -1
  */
 static int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w);
+
+/**
+ * 디렉토리 창의 파일 목록 상단 헤더를 출력합니다.
+ *
+ * @param win 디렉토리 표시 창
+ * @param winH 창의 높이
+ * @param winW 창의 너비
+ */
+static void printFileHeader(DirWin *win, int winH, int winW);
+
+/**
+ * 디렉토리 항목 정보를 출력합니다.
+ *
+ * @param win 디렉토리 표시 창
+ * @param startIdx 출력 시작 인덱스
+ * @param line 출력할 줄 번호
+ * @param winW 창의 너비
+ */
+static void printFileInfo(DirWin *win, int startIdx, int line, int winW);
 
 int updateDirWins(void) {
     int ret, winH, winW;
@@ -295,7 +312,7 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
         colorPair = EXE;
     }
     /* 파일 이름 너무 길면 자르기 */
-    truncateFileName(fileName);
+    fileName = truncateFileName(fileName);
 
     /* 출력 파트 */
     wattron(win->win, COLOR_PAIR(colorPair));
@@ -315,17 +332,17 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
 
 /* 정렬 상태 토글 함수 */
 void toggleSort(int mask, int shift) {
-    SortFlags *flags = &(windows[currentWin].sortFlag);  // static 변수 currentWin 사용
+#define SORT_FLAG (windows[currentWin].sortFlag)
 
     // 현재 상태를 추출
-    int state = (*flags & mask) >> shift;
+    int state = (SORT_FLAG & mask) >> shift;
 
     // 만약, 현재 상태가 00이면 이전의 다른 비트들을 모두 00으로 초기화
     if (state == 0) {
         // 다른 비트들은 모두 00으로 초기화
-        *flags &= ~SORT_NAME_MASK;  // 이름 기준 비트 초기화
-        *flags &= ~SORT_SIZE_MASK;  // 사이즈 기준 비트 초기화
-        *flags &= ~SORT_DATE_MASK;  // 날짜 기준 비트 초기화
+        SORT_FLAG &= ~SORT_NAME_MASK;  // 이름 기준 비트 초기화
+        SORT_FLAG &= ~SORT_SIZE_MASK;  // 사이즈 기준 비트 초기화
+        SORT_FLAG &= ~SORT_DATE_MASK;  // 날짜 기준 비트 초기화
     }
 
     // 상태 순환: 01 -> 10 -> 01 순으로 순환
@@ -338,7 +355,7 @@ void toggleSort(int mask, int shift) {
     }
 
     // 해당 비트에 상태 반영
-    *flags = (*flags & ~mask) | (state << shift);
+    SORT_FLAG = (SORT_FLAG & ~mask) | (state << shift);
 }
 
 int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w) {
@@ -422,13 +439,12 @@ ssize_t getCurrentSelectedDirectory(void) {
 SrcDstInfo getCurrentSelectedItem(void) {
     DirWin *currentWinArgs = windows + currentWin;
     size_t currentSelection = currentWinArgs->currentPos;
-    struct stat *curStat = currentWinArgs->bufEntryStat + currentSelection;
     assert(pthread_mutex_lock(currentWinArgs->bufMutex) == 0);
     SrcDstInfo result = {
-        .devNo = curStat->st_dev,
-        .fileSize = curStat->st_size
+        .devNo = currentWinArgs->dirEntry[currentSelection].statEntry.st_dev,
+        .fileSize = currentWinArgs->dirEntry[currentSelection].statEntry.st_size
     };
-    strcpy(result.name, currentWinArgs->bufEntryNames[currentSelection]);
+    strcpy(result.name, currentWinArgs->dirEntry[currentSelection].entryName);
     pthread_mutex_unlock(currentWinArgs->bufMutex);
     return result;
 }

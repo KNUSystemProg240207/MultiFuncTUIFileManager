@@ -15,6 +15,19 @@
 
 
 /**
+ * @struct _DirEntry
+ * 디렉토리 항목의 이름 및 파일 정보를 저장
+ *
+ * @var _DirEntry::entryName 파일/디렉토리 이름 (최대 MAX_NAME_LEN 길이)
+ * @var _DirEntry::statEntry 파일/디렉토리의 stat 정보
+ */
+struct _DirEntry {
+    char entryName[MAX_NAME_LEN + 1];  // 파일/디렉토리 이름
+    struct stat statEntry;  // 파일/디렉토리의 stat 정보
+};
+typedef struct _DirEntry DirEntry;
+
+/**
  * @struct _DirListenerArgs
  *
  * @var _DirListenerArgs::commonArgs Thread들 공통 공유 변수

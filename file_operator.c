@@ -48,15 +48,15 @@ int fileOperator(void *argsPtr) {
 
     switch (command.type) {
         case COPY:
-            copyFile(&command.src, &command.dst, &args->progressInfo);
+            copyFile(&command.src, &command.dst, args->progressInfo);
             close(command.dst.dirFd);
             break;
         case MOVE:
-            moveFile(&command.src, &command.dst, &args->progressInfo);
+            moveFile(&command.src, &command.dst, args->progressInfo);
             close(command.dst.dirFd);
             break;
         case DELETE:
-            removeFile(&command.src, &args->progressInfo);
+            removeFile(&command.src, args->progressInfo);
             // DELETE: dst.dirFd 유효하지 않음 -> close()하면 안 됨
             break;
     }

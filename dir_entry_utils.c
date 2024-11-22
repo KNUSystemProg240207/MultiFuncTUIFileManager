@@ -5,26 +5,33 @@
 #include "dir_window.h"
 #include "thread_commons.h"
 
-void truncateFileName(char *fileName) {
+char *truncateFileName(char *fileName) {
+    static char nameBuf[MAX_NAME_LEN + 1];
     size_t len = strlen(fileName);
+
+    strncpy(nameBuf, fileName, MAX_NAME_LEN);
+    nameBuf[MAX_NAME_LEN] = '\0';
 
     if (len > MAX_DISPLAY_LEN) {
         const char *dot = strrchr(fileName, '.');  // 마지막 '.' 찾기
         size_t extLen = dot ? strlen(dot) : 0;  // 확장자의 길이
 
-        // 확장자까지 포함해서 길이가 MAX_DISPLAY_LEN보다 길면 생략
         if (extLen >= MAX_DISPLAY_LEN - 3) {
-            fileName[MAX_DISPLAY_LEN - 3] = '\0';
-            strcat(fileName, "...");
-            return;
+            // 확장자 길이가 너무 김
+            nameBuf[MAX_DISPLAY_LEN - 3] = '\0';
+            strcat(nameBuf, "...");
+            return nameBuf;
+        } else {
+            // 확장자 길이는 길지 않음
+            size_t prefixLen = MAX_DISPLAY_LEN - extLen - 3;  // '...'을 포함한 앞부분 길이
+            nameBuf[prefixLen] = '\0';  // 그 지점에서 문자열을 잘라냄
+            strcat(nameBuf, "..");  // 생략 기호 추가
+            if (dot != NULL)
+                strcat(nameBuf, dot);  // 확장자 추가
         }
-
-        // 확장자를 제외한 앞부분이 MAX_DISPLAY_LEN보다 길면 생략
-        size_t prefixLen = MAX_DISPLAY_LEN - extLen - 3;  // '...'을 포함한 앞부분 길이
-        fileName[prefixLen] = '\0';  // 그 지점에서 문자열을 잘라냄
-        strcat(fileName, "..");  // 생략 기호 추가
-        strcat(fileName, dot);  // 확장자 추가
     }
+
+    return nameBuf;
 }
 
 int isHidden(const char *fileName) {

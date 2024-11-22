@@ -3,6 +3,8 @@
 
 #include <curses.h>
 
+#include "config.h"
+#include "file_operator.h"
 
 /**
  * 화면 하단 단축키 표시 Window 초기화
@@ -12,5 +14,12 @@
  * @return 하단 단축키 Window
  */
 WINDOW *initBottomBox(int width, int startY);
+
+/**
+ * 화면 하단 진행률 표시 Window 업데이트
+ *
+ * @param infos 진행률 정보
+ */
+void displayProgress(FileProgressInfo *infos);
 
 #endif

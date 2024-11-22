@@ -6,58 +6,9 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "dir_listener.h"
 #include "file_operator.h"
 
-/* DirEntry 구조체 */
-/**
- * @typedef DirEntry
- * 디렉토리 항목의 이름 및 파일 정보를 저장하는 구조체.
- *
- * @member entryName 파일/디렉토리 이름 (최대 MAX_NAME_LEN 길이)
- * @member statEntry 파일/디렉토리의 stat 정보
- */
-typedef struct DirEntry {
-    char entryName[MAX_NAME_LEN + 1];  // 파일/디렉토리 이름
-    struct stat statEntry;  // stat 정보
-} DirEntry;
-
-
-/* SortFlags 정의 */
-/**
- * @typedef SortFlags
- * 정렬 상태를 저장하는 플래그 (1BYTE 사용).
- * 비트마스크를 이용해 이름, 크기, 날짜 정렬 상태를 나타냅니다.
- */
-typedef unsigned char SortFlags;
-
-/**
- * @struct _DirWin
- * Directory Window의 정보 저장
- *
- * @var _DirWin::win WINDOW 구조체
- * @var _DirWin::order Directory 창 순서 (가장 왼쪽=0) ( [0, MAX_DIRWINS) )
- * @var _DirWin::currentPos 현재 선택된 Element
- * @var _DirWin::bufMutex 현 폴더 항목들의 Stat 및 이름 관련 Mutex
- * @var _DirWin::statEntries 항목들의 stat 정보
- * @var _DirWin::entryNames 항목들의 이름
- * @var _DirWin::totalReadItems 현 폴더에서 읽어들인 항목 수
- *   일반적으로, 디렉토리에 있는 파일, 폴더의 수와 같음
- *   단, buffer 공간 부족한 경우, 최대 buffer 길이
- * @var _DirWin::lineMovementEvent (bit field) 창별 줄 이동 Event 저장
- *   Event당 2bit (3종류 Event 존재: 이벤트 없음(0b00), 위로 이동(0b10), 아래로 이동(0b11)) -> 최대 32개 Event 저장
- *   (Mutex 잠그지 않고 이동 처리 가능하게 함)
- */
-struct _DirWin {
-    WINDOW *win;
-    unsigned int order;
-    size_t currentPos;
-    pthread_mutex_t *bufMutex;
-    size_t *totalReadItems;
-    uint64_t lineMovementEvent;
-    SortFlags sortFlag;
-    DirEntry *dirEntry;
-};
-typedef struct _DirWin DirWin;
 
 /** 이름 정렬 상태를 나타내는 비트마스크 */
 #define SORT_NAME_MASK 0x03  // 00000011
@@ -72,6 +23,8 @@ typedef struct _DirWin DirWin;
 #define SORT_SIZE_SHIFT 2
 /** 날짜 정렬 상태를 위한 비트 쉬프트 */
 #define SORT_DATE_SHIFT 4
+
+typedef struct _DirEntry DirEntry;
 
 /**
  * 새 폴더 표시 창 초기화 (생성)
@@ -163,25 +116,6 @@ int initPanelForWindow(WINDOW *win);
  * - 이 함수는 여러 패널이 겹치는 UI 환경에서 화면 갱신을 보장합니다.
  */
 void refreshPanels();
-
-/**
- * 디렉토리 창의 파일 목록 상단 헤더를 출력합니다.
- *
- * @param win 디렉토리 표시 창
- * @param winH 창의 높이
- * @param winW 창의 너비
- */
-void printFileHeader(DirWin *win, int winH, int winW);
-
-/**
- * 디렉토리 항목 정보를 출력합니다.
- *
- * @param win 디렉토리 표시 창
- * @param startIdx 출력 시작 인덱스
- * @param line 출력할 줄 번호
- * @param winW 창의 너비
- */
-void printFileInfo(DirWin *win, int startIdx, int line, int winW);
 
 /**
  * 정렬 상태를 토글합니다.
