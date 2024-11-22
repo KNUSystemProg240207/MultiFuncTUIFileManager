@@ -1,7 +1,9 @@
+#include <assert.h>
 #include <curses.h>
 #include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/stat.h>
 
 #include "config.h"
@@ -15,7 +17,7 @@
  * @var _DirWin::win WINDOW 구조체
  * @var _DirWin::order Directory 창 순서 (가장 왼쪽=0) ( [0, MAX_DIRWINS) )
  * @var _DirWin::currentPos 현재 선택된 Element
- * @var _DirWin::statMutex 현 폴더 항목들의 Stat 및 이름 관련 Mutex
+ * @var _DirWin::bufMutex bufEntryStat, bufEntryNames 보호 Mutex
  * @var _DirWin::statEntries 항목들의 stat 정보
  * @var _DirWin::entryNames 항목들의 이름
  * @var _DirWin::totalReadItems 현 폴더에서 읽어들인 항목 수
@@ -29,9 +31,9 @@ struct _DirWin {
     WINDOW *win;
     unsigned int order;
     size_t currentPos;
-    pthread_mutex_t *statMutex;
-    struct stat *statEntries;
-    char (*entryNames)[MAX_NAME_LEN + 1];
+    pthread_mutex_t *bufMutex;
+    struct stat *bufEntryStat;
+    char (*bufEntryNames)[MAX_NAME_LEN + 1];
     size_t *totalReadItems;
     uint64_t lineMovementEvent;
 };
@@ -57,9 +59,9 @@ static int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w);
 
 
 int initDirWin(
-    pthread_mutex_t *statMutex,
-    struct stat *statEntries,
-    char (*entryNames)[MAX_NAME_LEN + 1],
+    pthread_mutex_t *bufMutex,
+    struct stat *bufEntryStat,
+    char (*bufEntryNames)[MAX_NAME_LEN + 1],
     size_t *totalReadItems
 ) {
     int y, x, h, w;
@@ -79,9 +81,9 @@ int initDirWin(
         .win = newWin,
         .order = winCnt - 1,
         .currentPos = 0,
-        .statMutex = statMutex,
-        .statEntries = statEntries,
-        .entryNames = entryNames,
+        .bufMutex = bufMutex,
+        .bufEntryStat = bufEntryStat,
+        .bufEntryNames = bufEntryNames,
         .totalReadItems = totalReadItems,
     };
     return winCnt;
@@ -103,7 +105,7 @@ int updateDirWins(void) {
         win = windows + winNo;
 
         // Mutex 획득 시도: 실패 시, 파일 정보 업데이트 중: 해당 창 업데이트 건너뜀
-        ret = pthread_mutex_trylock(win->statMutex);
+        ret = pthread_mutex_trylock(win->bufMutex);
         if (ret != 0)
             continue;
         itemsCnt = *win->totalReadItems;  // 읽어들인 개수 가져옴
@@ -119,10 +121,14 @@ int updateDirWins(void) {
                 case 0x02:  // '한 칸 위로 이동' Event
                     if (win->currentPos > 0)  // 위로 이동 가능하면
                         win->currentPos--;
+                    else
+                        win->currentPos = 0;  // Corner case 처리: 최소 Index
                     break;
                 case 0x03:  // '한 칸 아래로 이동' Event
                     if (win->currentPos < itemsCnt - 1)  // 아래로 이동 가능하면
                         win->currentPos++;
+                    else
+                        win->currentPos = itemsCnt - 1;  // Corner case 처리: 최대 Index
                     break;
             }
         }
@@ -151,8 +157,8 @@ int updateDirWins(void) {
         for (line = 0; line < itemsToPrint; line++) {  // 항목 있는 공간: 출력
             if (winNo == currentWin && line == currentLine)  // 선택된 것 역상으로 출력
                 wattron(win->win, A_REVERSE);
-            mvwaddstr(win->win, line, 0, win->entryNames[startIdx + line]);  // 항목 이름 출력
-            // mvwprintw(win->win, line, 0, "%2d | %3ld | %s", line, startIdx + line, win->entryNames[startIdx + line]);  // 디버그용: 줄번호 & Item index 같이 출력 (윗 줄 대신 사용)
+            mvwaddstr(win->win, line, 0, win->bufEntryNames[startIdx + line]);  // 항목 이름 출력
+            // mvwprintw(win->win, line, 0, "%2d | %3ld | %s", line, startIdx + line, win->bufEntryNames[startIdx + line]);  // 디버그용: 줄번호 & Item index 같이 출력 (윗 줄 대신 사용)
             whline(win->win, ' ', winW - getcurx(win->win));  // 현재 줄의 남은 공간: 공백으로 덮어씀 (역상 출력 위함)
             if (winNo == currentWin && line == currentLine)
                 wattroff(win->win, A_REVERSE);
@@ -160,7 +166,7 @@ int updateDirWins(void) {
         wclrtobot(win->win);  // 아래 남는 공간: 지움
         wrefresh(win->win);  // 창 새로 그림
 
-        pthread_mutex_unlock(win->statMutex);
+        pthread_mutex_unlock(win->bufMutex);
     }
 
     return 0;
@@ -235,13 +241,32 @@ void selectNextWindow(void) {
         currentWin++;
 }
 
-// 여기에 새 함수들 추가
-const char *getCurrentFileName(void) {
-    // TODO: UI 구현 후 실제 선택된 파일 이름 반환하도록 수정
-    return windows[currentWin].entryNames[windows[currentWin].currentPos];
+ssize_t getCurrentSelectedDirectory(void) {
+    bool isDirectory;
+    assert(pthread_mutex_lock(windows[currentWin].bufMutex) == 0);
+    isDirectory = (windows[currentWin].bufEntryStat[windows[currentWin].currentPos].st_mode & S_IFDIR) == S_IFDIR;
+    pthread_mutex_unlock(windows[currentWin].bufMutex);
+    return isDirectory ? windows[currentWin].currentPos : -1;
 }
 
-size_t getCurrentFileSize(void) {
-    // TODO:UI 구현 후 실제 선택된 파일 크기 반환하도록 수정
-    return windows[currentWin].statEntries[windows[currentWin].currentPos].st_size;
+SrcDstInfo getCurrentSelectedItem(void) {
+    DirWin *currentWinArgs = windows + currentWin;
+    size_t currentSelection = currentWinArgs->currentPos;
+    struct stat *curStat = currentWinArgs->bufEntryStat + currentSelection;
+    assert(pthread_mutex_lock(currentWinArgs->bufMutex) == 0);
+    SrcDstInfo result = {
+        .devNo = curStat->st_dev,
+        .fileSize = curStat->st_size
+    };
+    strcpy(result.name, currentWinArgs->bufEntryNames[currentSelection]);
+    pthread_mutex_unlock(currentWinArgs->bufMutex);
+    return result;
+}
+
+void setCurrentSelectedDirectory(size_t index) {
+    windows[currentWin].currentPos = index;
+}
+
+unsigned int getCurrentWindow(void) {
+    return currentWin;
 }
