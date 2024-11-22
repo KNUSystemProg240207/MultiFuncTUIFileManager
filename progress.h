@@ -1,8 +1,9 @@
 #ifndef PROGRESS_H
 #define PROGRESS_H
 
-#include <stdint.h>
 #include <ncurses.h>
+#include <stdint.h>
+
 #include "config.h"
 #include "file_operator.h"
 

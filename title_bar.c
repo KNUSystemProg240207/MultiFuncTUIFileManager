@@ -5,8 +5,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "commons.h"
+#include "config.h"
 #include "title_bar.h"
 
 

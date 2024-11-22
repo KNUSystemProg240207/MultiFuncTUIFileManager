@@ -4,9 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
 
 #include "commons.h"
 #include "config.h"
