@@ -90,6 +90,7 @@ void initVariables(void) {
     for (int i = 0; i < MAX_FILE_OPERATORS; i++) {
         pthread_cond_init(&fileOpArgs[i].commonArgs.resumeThread, NULL);
         pthread_mutex_init(&fileOpArgs[i].commonArgs.statusMutex, NULL);
+        pthread_mutex_init(&fileOpArgs[i].progressInfo.flagMutex, NULL);
         pthread_mutex_init(&fileOpArgs[i].pipeReadMutex, NULL);
     }
 }

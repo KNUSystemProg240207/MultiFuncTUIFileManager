@@ -37,9 +37,9 @@ typedef struct _FileTask {
 } FileTask;
 
 typedef struct _FileProgressInfo {
-    char *name;  // 작업중인 파일 이름
-    uint16_t *flags;  // 진행률 Bit Field
-    pthread_mutex_t *flagMutex;  // 진행률 보호 Mutex
+    char name[MAX_NAME_LEN];  // 작업중인 파일 이름
+    uint16_t flags;  // 진행률 Bit Field
+    pthread_mutex_t flagMutex;  // 진행률 보호 Mutex
 } FileProgressInfo;
 
 /**

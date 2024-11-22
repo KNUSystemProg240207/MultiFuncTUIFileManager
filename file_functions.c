@@ -13,16 +13,16 @@
 
 #define SET_FILE_OPERATION_FLAG(progress, fileName, operationType) \
     do { \
-        pthread_mutex_lock((progress)->flagMutex); \
-        *(progress)->flags = operationType; \
+        pthread_mutex_lock(&(progress)->flagMutex); \
+        (progress)->flags = operationType; \
         strcpy((progress)->name, (fileName)); \
-        pthread_mutex_unlock((progress)->flagMutex); \
+        pthread_mutex_unlock(&(progress)->flagMutex); \
     } while (0)
 #define CLEAR_FILE_OPERATION_FLAG(progress) \
     do { \
-        pthread_mutex_lock((progress)->flagMutex); \
-        *(progress)->flags |= ~PROGRESS_BITS; \
-        pthread_mutex_unlock((progress)->flagMutex); \
+        pthread_mutex_lock(&(progress)->flagMutex); \
+        (progress)->flags |= ~PROGRESS_BITS; \
+        pthread_mutex_unlock(&(progress)->flagMutex); \
     } while (0)
 
 /**
@@ -50,10 +50,10 @@ static int doCopyFile(int srcFd, int dstFd, size_t fileSize, FileProgressInfo *p
         totalCopied += copied;
 
         // 진행률 업데이트
-        pthread_mutex_lock(progress->flagMutex);
-        *progress->flags &= ~PROGRESS_PERCENT_MASK;
-        *progress->flags |= (totalCopied / fileSize * 100) << PROGRESS_PERCENT_START;
-        pthread_mutex_unlock(progress->flagMutex);
+        pthread_mutex_lock(&progress->flagMutex);
+        progress->flags &= ~PROGRESS_PERCENT_MASK;
+        progress->flags |= (totalCopied / fileSize * 100) << PROGRESS_PERCENT_START;
+        pthread_mutex_unlock(&progress->flagMutex);
     }
 
     return (totalCopied == fileSize) ? 0 : -1;

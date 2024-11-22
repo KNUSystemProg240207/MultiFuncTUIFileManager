@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -fdiagnostics-color=always -std=gnu99 -Wall -fanalyzer -g
+CFLAGS = -D_GNU_SOURCE -fdiagnostics-color=always -std=gnu99 -Wall -fanalyzer -g
 LFLAGS = -lncurses
 TARGET = demo.out
 # 주의: Source 추가 시 해당 object file, header file 추가
