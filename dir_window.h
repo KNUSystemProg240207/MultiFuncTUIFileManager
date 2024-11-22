@@ -49,7 +49,7 @@ void selectPreviousWindow(void);
 void selectNextWindow(void);
 
 // 현재 선택된 파일 정보 가져오기
-const char* getCurrentFileName(void);
+const char *getCurrentFileName(void);
 size_t getCurrentFileSize(void);
 
 #endif

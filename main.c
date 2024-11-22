@@ -1,18 +1,18 @@
 #include <curses.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <pthread.h>
-#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-#include "file_ops.h"
+#include <sys/stat.h>
 
-#include "config.h"
-#include "commons.h"
-#include "dir_window.h"
 #include "bottom_area.h"
+#include "commons.h"
+#include "config.h"
+#include "dir_window.h"
+#include "file_ops.h"
 #include "list_dir.h"
 #include "title_bar.h"
 
@@ -152,7 +152,6 @@ void mainLoop(void) {
                 case 'q':
                 case 'Q':
                     goto CLEANUP;  // Main Loop 빠져나감
-
             }
         }
 

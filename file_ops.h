@@ -1,8 +1,9 @@
 #ifndef __FILE_OPS_H_INCLUDED__
 #define __FILE_OPS_H_INCLUDED__
 
-#include <sys/types.h>
 #include <pthread.h>
+#include <sys/types.h>
+
 #include "config.h"
 
 typedef enum _FileOperation {

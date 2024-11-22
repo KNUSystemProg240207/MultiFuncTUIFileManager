@@ -1,27 +1,29 @@
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <sys/stat.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <pthread.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "file_ops.h"
 
 #define COPY_CHUNK_SIZE (1024 * 1024)  // 1MB 단위로 복사
 
-#define SET_FILE_OPERATION_FLAG(progress, fileName, operationType) do {\
-    pthread_mutex_lock((progress)->flagMutex);\
-    *(progress)->flags = operationType;\
-    strcpy((progress)->name, (fileName));\
-    pthread_mutex_unlock((progress)->flagMutex);\
-} while (0)
-#define CLEAR_FILE_OPERATION_FLAG(progress) do {\
-    pthread_mutex_lock((progress)->flagMutex);\
-    *(progress)->flags |= ~PROGRESS_BITS;\
-    pthread_mutex_unlock((progress)->flagMutex);\
-} while (0)
+#define SET_FILE_OPERATION_FLAG(progress, fileName, operationType) \
+    do { \
+        pthread_mutex_lock((progress)->flagMutex); \
+        *(progress)->flags = operationType; \
+        strcpy((progress)->name, (fileName)); \
+        pthread_mutex_unlock((progress)->flagMutex); \
+    } while (0)
+#define CLEAR_FILE_OPERATION_FLAG(progress) \
+    do { \
+        pthread_mutex_lock((progress)->flagMutex); \
+        *(progress)->flags |= ~PROGRESS_BITS; \
+        pthread_mutex_unlock((progress)->flagMutex); \
+    } while (0)
 
 /**
  * COPY_CHUNK_SIZE 단위로 분할 복사, 진행률 갱신
