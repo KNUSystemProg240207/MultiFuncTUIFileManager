@@ -17,16 +17,28 @@
 #include "config.h"
 #include "dir_listener.h"
 #include "dir_window.h"
+#include "list_process.h"
+#include "proc_win.h"
 #include "title_bar.h"
 
 WINDOW *titleBar, *bottomBox;
-PANEL *titlePanel, *bottomPanel;
+PANEL *titlePanel, *bottomPanel;  // 패널 추가
 
 mode_t directoryOpenArgs;  // fdopendir()에 전달할 directory file descriptor를 open()할 때 쓸 argument: Thread 시작 전 저장되어야 함
 
 // 각 (폴더의 내용 가져오는) Directory Listener Thread별 저장 공간:
 static pthread_t threadListDir[MAX_DIRWINS];
 static DirListenerArgs dirListenerArgs[MAX_DIRWINS];
+
+static pthread_t threadProcess;  // 프로세스 스레드
+static ProcWin proc_Win;
+pthread_mutex_t proc_Win_Mutex;
+
+static ProcThreadArgs procThreadArgs;  // 프로세스 스레드 시작을 위한 인자
+WINDOW *p_win;
+pthread_mutex_t p_statMutex;
+ProcInfo p_Entries[MAX_PROCESSES];  // 프로세스 정보 배열
+pthread_mutex_t p_visibleMutex;
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
@@ -76,9 +88,14 @@ int main(int argc, char **argv) {
         bottomPanel = NULL;
     }
 
+    // 패널들 정리
+    del_panel(titlePanel);
+    del_panel(bottomPanel);
+
     // 창 '지움' (자원 해제)
     CHECK_CURSES(delwin(titleBar));
     CHECK_CURSES(delwin(bottomBox));
+
 
     return 0;
 }
@@ -90,6 +107,28 @@ void initVariables(void) {
         pthread_cond_init(&dirListenerArgs[i].commonArgs.resumeThread, NULL);
         pthread_mutex_init(&dirListenerArgs[i].commonArgs.statusMutex, NULL);
     }
+
+    // `proc_Win` 구조체 초기화
+    proc_Win = (ProcWin) {
+        .win = p_win,
+        .statMutex = PTHREAD_MUTEX_INITIALIZER,
+        .visibleMutex = PTHREAD_MUTEX_INITIALIZER,
+        .isWindowVisible = false,
+        .totalReadItems = 0,
+    };
+
+    // 포인터 배열 초기화
+    for (size_t i = 0; i < MAX_PROCESSES; i++) {
+        proc_Win.procEntries[i] = &p_Entries[i];
+    }
+
+    procThreadArgs = (ProcThreadArgs) {
+        .procWin = &proc_Win,
+        .procWinMutex = &proc_Win_Mutex,
+    };
+
+    pthread_mutex_init(&proc_Win_Mutex, NULL);
+    pthread_mutex_init(&proc_Win.visibleMutex, NULL);
 }
 
 void initScreen(void) {
@@ -139,6 +178,8 @@ void initThreads(void) {
     directoryOpenArgs = fcntl(dirfd(dirListenerArgs[0].currentDir), F_GETFL);
     assert(directoryOpenArgs != -1);
     startDirListender(&threadListDir[0], &dirListenerArgs[0]);  // Directory Listener Thread 시작
+
+    startProcThread(&threadProcess, &procThreadArgs);  // 프로세스 스레드 시작
 }
 
 void mainLoop(void) {
@@ -227,6 +268,9 @@ void mainLoop(void) {
                         setCurrentSelection(0);
                     }
                     break;
+                case 'p':
+                    toggleProcWin(&proc_Win);
+                    break;
                 case 'q':
                 case 'Q':
                     goto CLEANUP;  // Main Loop 빠져나감
@@ -237,12 +281,21 @@ void mainLoop(void) {
         renderTime();  // 시간 업데이트
         // TODO: get current window's cwd
         cwd = getcwd(cwdBuf, MAX_CWD_LEN);  // 경로 가져옴
+        cwd = getcwd(cwdBuf, MAX_CWD_LEN);  // 경로 가져옴
         if (cwd == NULL)
             printPath("-----");  // 경로 가져오기 실패 시
         else
-            printPath(cwd);  // 경로 업데이트
+            printPath(cwd);  // 경로 업데이트s
 
         updateDirWins();  // 폴더 표시 창들 업데이트
+
+        pthread_mutex_lock(&proc_Win.visibleMutex);
+        if (proc_Win.isWindowVisible) {
+            pthread_mutex_unlock(&proc_Win.visibleMutex);  // Unlock before update
+            updateProcWin(&proc_Win);
+        } else {
+            pthread_mutex_unlock(&proc_Win.visibleMutex);  // Unlock if not visible
+        }
 
         // 패널 업데이트
         update_panels();
@@ -260,4 +313,8 @@ CLEANUP:
 
 void cleanup(void) {
     endwin();
+
+    pthread_mutex_destroy(&proc_Win.statMutex);
+    pthread_mutex_destroy(&proc_Win.visibleMutex);
+    pthread_mutex_destroy(&proc_Win_Mutex);
 }
