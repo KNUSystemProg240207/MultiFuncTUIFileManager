@@ -154,7 +154,7 @@ size_t findInsertPosition(ProcInfo *pointerArray[], size_t size, unsigned long v
             high = mid;
         }
     }
-     if (low > size - 1) {
+    if (low > size - 1) {
         return size - 1;
     }
     return low;  // 삽입 위치 반환

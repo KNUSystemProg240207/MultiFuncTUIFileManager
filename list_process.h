@@ -2,21 +2,21 @@
 #define __PROC_THREAD_H_INCLUDED__
 
 #include <pthread.h>
-#include "thread_commons.h"
+
 #include "proc_win.h"
+#include "thread_commons.h"
 
 /**
  * @struct ProcThreadArgs
- * 
+ *
  * @var threadArgs ThreadArgs 구조체로 스레드 상태와 관련된 정보를 포함
  * @var procWin 프로세스 창에 대한 정보를 저장
  */
 typedef struct {
     ThreadArgs threadArgs;  // 스레드 상태 및 재개 정보
-    ProcWin *procWin;       // 프로세스 창 정보
-	pthread_mutex_t *procWinMutex;
+    ProcWin *procWin;  // 프로세스 창 정보
+    pthread_mutex_t *procWinMutex;
 } ProcThreadArgs;
-
 
 
 /**

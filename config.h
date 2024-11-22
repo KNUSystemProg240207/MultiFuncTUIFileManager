@@ -17,7 +17,7 @@
 #define MAX_DISPLAY_LEN 20
 #define MAX_PROCESSES 128  // 한 번에 표시 가능한 최대 프로세스 수
 #ifndef PATH_MAX
-#define PATH_MAX 255 // 폴더의 최대 경로 길이
+#define PATH_MAX 255  // 폴더의 최대 경로 길이
 #endif
 
 #define MAX_FILE_OPERATORS 1

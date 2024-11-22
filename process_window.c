@@ -2,8 +2,8 @@
 #include <panel.h>
 #include <pthread.h>
 #include <stdint.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include "config.h"
 #include "list_process.h"
@@ -91,15 +91,15 @@ int updateProcWin(ProcWin *procWindow) {
     // wclear(procWindow->win);  // <- 여기 한번 주목
     box(procWindow->win, 0, 0);
 
-    if(winW < 20)
+    if (winW < 20)
         mvwprintw(procWindow->win, 1, 1, "%-6s", "PID");
-    else if(winW < 30)
+    else if (winW < 30)
         mvwprintw(procWindow->win, 1, 1, "%-6s %-14s", "PID", "VSize");
-    else if(winW < 40)
+    else if (winW < 40)
         mvwprintw(procWindow->win, 1, 1, "%-6s %-14s %-10s", "PID", "VSize", "UTime");
-    else if(winW < 50)
+    else if (winW < 50)
         mvwprintw(procWindow->win, 1, 1, "%-6s %-14s %-10s %-10s", "PID", "VSize", "UTime", "STime");
-    else if(winW < 80)
+    else if (winW < 80)
         mvwprintw(procWindow->win, 1, 1, "%-6s %-6s %-14s %-10s %-10s", "PID", "State", "VSize", "UTime", "STime");
     else
         mvwprintw(procWindow->win, 1, 1, "%-6s %-35s %-6s %-14s %-10s %-10s", "PID", "Name", "State", "VSize", "UTime", "STime");
@@ -110,15 +110,15 @@ int updateProcWin(ProcWin *procWindow) {
         ProcInfo *proc = procWindow->procEntries[idx];
 
         // 프로세스 정보 출력
-        if(winW < 20)
-            mvwprintw(procWindow->win, i+2, 1, "%-6d", proc->pid);
-        else if(winW < 30)
-            mvwprintw(procWindow->win, i+2, 1, "%-6d %-14lu", proc->pid, proc->vsize);
-        else if(winW < 40)
-            mvwprintw(procWindow->win, i+2, 1, "%-6d %-14lu %-10lu", proc->pid, proc->vsize, proc->utime);
-        else if(winW < 50)
-            mvwprintw(procWindow->win, i+2, 1, "%-6d %-14lu %-10lu %-10lu", proc->pid, proc->vsize, proc->utime, proc->stime);
-        else if(winW < 80)
+        if (winW < 20)
+            mvwprintw(procWindow->win, i + 2, 1, "%-6d", proc->pid);
+        else if (winW < 30)
+            mvwprintw(procWindow->win, i + 2, 1, "%-6d %-14lu", proc->pid, proc->vsize);
+        else if (winW < 40)
+            mvwprintw(procWindow->win, i + 2, 1, "%-6d %-14lu %-10lu", proc->pid, proc->vsize, proc->utime);
+        else if (winW < 50)
+            mvwprintw(procWindow->win, i + 2, 1, "%-6d %-14lu %-10lu %-10lu", proc->pid, proc->vsize, proc->utime, proc->stime);
+        else if (winW < 80)
             mvwprintw(procWindow->win, i + 2, 1, "%-6d %-6c %-14lu %-10lu %-10lu", proc->pid, proc->state, proc->vsize, proc->utime, proc->stime);
         else
             mvwprintw(procWindow->win, i + 2, 1, "%-6d %-35s %-6c %-14lu %-10lu %-10lu", proc->pid, proc->name, proc->state, proc->vsize, proc->utime, proc->stime);
