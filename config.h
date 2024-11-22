@@ -16,8 +16,7 @@
 #define MAX_CWD_LEN 2048  // 최대 '현재 경로' 길이
 #define MAX_DISPLAY_LEN 20
 
-#define MAX_FILE_OPERATORS 1
-// #define MAX_FILE_OPERATORS 4
+#define MAX_FILE_OPERATORS 4  // 최대 파일 작업 수
 
 // 날짜 및 시간 출력 형식
 #define DATETIME_FORMAT "%2.2d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"  // 날짜-시간 문자열 형식 (printf 형식)

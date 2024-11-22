@@ -215,7 +215,7 @@ void printFileHeader(DirWin *win, int winH, int winW) {
     }
 
     /* 헤더 출력 파트 */
-    if (winW >= 80) {
+    if (winW >= 55) {
         // 최대 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-10s|%-19s|", nameHeader, sizeHeader, dateHeader);
     } else if (winW >= 40) {
@@ -268,7 +268,7 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
 
     /* 출력 파트 */
     wattron(win->win, COLOR_PAIR(colorPair));
-    if (winW >= 80) {  // 최대 너비
+    if (winW >= 55) {  // 최대 너비
         format = "%-20s %10zu %13s %s";
         mvwprintw(win->win, displayLine, 1, format, fileName, fileSize, lastModDate, lastModTime);
     } else if (winW >= 40) {  // 중간 너비

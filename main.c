@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
     mainLoop();
 
     // Thread들 정지 요청
-    for (int i = 0; i < dirWinCnt; i++) {
+    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++) {
         pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
         dirListenerArgs[i].commonArgs.statusFlags |= THREAD_FLAG_STOP;
         dirListenerArgs[i].commonArgs.statusFlags &= ~SORT_CRITERION_MASK;  // 정렬 기준 플래그 초기화
@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
         pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
     }
     // 각 Thread들 대기
-    for (int i = 0; i < dirWinCnt; i++) {
+    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++) {
         pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
         if (dirListenerArgs[i].commonArgs.statusFlags & THREAD_FLAG_RUNNING) {
             pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
