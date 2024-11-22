@@ -6,6 +6,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "file_operator.h"
+
 /* DirEntry 구조체 */
 /**
  * @typedef DirEntry
@@ -74,7 +76,7 @@ typedef struct _DirWin DirWin;
 /**
  * 새 폴더 표시 창 초기화 (생성)
  *
- * @param bufMutex Stat 및 이름 관련 Mutex
+ * @param bufMutex Stat 및 이름 Mutex
  * @param bufEntryStat 항목들의 stat 정보
  * @param bufEntryNames 항목들의 이름
  * @param totalReadItems 현 폴더에서 읽어들인 항목 수
@@ -121,7 +123,14 @@ void selectNextWindow(void);
 ssize_t getCurrentSelectedDirectory(void);
 
 /**
- * 현재 창의 선택 Index 변경
+ * 현재 창의 선택된 item 정보 리턴
+ *
+ * @return 폴더 선택됨: (현재 선택의 Index), 폴더 아님: -1
+ */
+SrcDstInfo getCurrentSelectedItem(void);
+
+/**
+ * 현재 창의 선택된 폴더 Index 변경
  */
 void setCurrentSelection(size_t index);
 

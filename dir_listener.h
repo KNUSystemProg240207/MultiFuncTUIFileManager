@@ -10,7 +10,8 @@
 #include "dir_entry_utils.h"
 #include "thread_commons.h"
 
-#define DIRLISTENER_FLAG_CHANGE_DIR (1 << 2)  // 디렉터리 변경 요청
+
+#define DIRLISTENER_FLAG_CHANGE_DIR (1 << 9)  // 디렉터리 변경 요청
 
 
 /**
@@ -21,7 +22,8 @@
  * @var _DirListenerArgs::statBuf 읽어들인 항목들의 stat 결과
  * @var _DirListenerArgs::nameBuf 읽어들인 항목들의 이름
  * @var _DirListenerArgs::totalReadItems 총 읽어들인 개수
- * @var _DirListenerArgs::bufMutex 결과값 buffer 보호 Mutex
+ * @var _DirListenerArgs::bufMutex 결과값 보호 Mutex
+ * @var _DirListenerArgs::dirMutex currentDir 보호 Mutex
  */
 typedef struct _DirListenerArgs {
     ThreadArgs commonArgs;  // Thread들 공통 공유 변수
@@ -32,9 +34,8 @@ typedef struct _DirListenerArgs {
     DirEntry dirEntries[MAX_DIR_ENTRIES];
     size_t totalReadItems;  // 총 읽어들인 개수
     // Mutexes
-    pthread_mutex_t bufMutex;  // 결과값 buffer 보호 Mutex
-
-
+    pthread_mutex_t bufMutex;  // 결과값 보호 Mutex
+    pthread_mutex_t dirMutex;  // currentDir 보호 Mutex
 } DirListenerArgs;
 
 /**

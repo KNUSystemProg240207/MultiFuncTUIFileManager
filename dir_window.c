@@ -13,6 +13,37 @@
 #include "dir_entry_utils.h"
 #include "dir_window.h"
 
+
+/**
+ * @struct _DirWin
+ * Directory Window의 정보 저장
+ *
+ * @var _DirWin::win WINDOW 구조체
+ * @var _DirWin::order Directory 창 순서 (가장 왼쪽=0) ( [0, MAX_DIRWINS) )
+ * @var _DirWin::currentPos 현재 선택된 Element
+ * @var _DirWin::bufMutex bufEntryStat, bufEntryNames 보호 Mutex
+ * @var _DirWin::statEntries 항목들의 stat 정보
+ * @var _DirWin::entryNames 항목들의 이름
+ * @var _DirWin::totalReadItems 현 폴더에서 읽어들인 항목 수
+ *   일반적으로, 디렉토리에 있는 파일, 폴더의 수와 같음
+ *   단, buffer 공간 부족한 경우, 최대 buffer 길이
+ * @var _DirWin::lineMovementEvent (bit field) 창별 줄 이동 Event 저장
+ *   Event당 2bit (3종류 Event 존재: 이벤트 없음(0b00), 위로 이동(0b10), 아래로 이동(0b11)) -> 최대 32개 Event 저장
+ *   (Mutex 잠그지 않고 이동 처리 가능하게 함)
+ */
+struct _DirWin {
+    WINDOW *win;
+    unsigned int order;
+    size_t currentPos;
+    pthread_mutex_t *bufMutex;
+    struct stat *bufEntryStat;
+    char (*bufEntryNames)[MAX_NAME_LEN + 1];
+    size_t *totalReadItems;
+    uint64_t lineMovementEvent;
+};
+typedef struct _DirWin DirWin;
+
+
 static DirWin windows[MAX_DIRWINS];  // 각 창의 runtime 정보 저장
 static PANEL *panels[MAX_DIRWINS];  // 패널 배열
 static unsigned int winCnt;  // 창 개수
@@ -371,6 +402,8 @@ void selectPreviousWindow(void) {
         currentWin--;
 }
 
+////
+
 void selectNextWindow(void) {
     if (currentWin == winCnt - 1)
         currentWin = 0;
@@ -384,6 +417,20 @@ ssize_t getCurrentSelectedDirectory(void) {
     isDirectory = (windows[currentWin].dirEntry[windows[currentWin].currentPos].statEntry.st_mode & S_IFDIR) == S_IFDIR;
     pthread_mutex_unlock(windows[currentWin].bufMutex);
     return isDirectory ? windows[currentWin].currentPos : -1;
+}
+
+SrcDstInfo getCurrentSelectedItem(void) {
+    DirWin *currentWinArgs = windows + currentWin;
+    size_t currentSelection = currentWinArgs->currentPos;
+    struct stat *curStat = currentWinArgs->bufEntryStat + currentSelection;
+    assert(pthread_mutex_lock(currentWinArgs->bufMutex) == 0);
+    SrcDstInfo result = {
+        .devNo = curStat->st_dev,
+        .fileSize = curStat->st_size
+    };
+    strcpy(result.name, currentWinArgs->bufEntryNames[currentSelection]);
+    pthread_mutex_unlock(currentWinArgs->bufMutex);
+    return result;
 }
 
 void setCurrentSelection(size_t index) {

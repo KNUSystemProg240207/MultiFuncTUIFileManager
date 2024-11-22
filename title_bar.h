@@ -21,7 +21,8 @@ void renderTime();
  * 화면 상단 가운데에 경로 출력
  *
  * @param path 출력할 경로 문자열
+ * @param pathLen (NULL-문자 제외한) 경로 문자열의 길이
  */
-void printPath(char *path);
+void printPath(char *path, size_t pathLen);
 
 #endif

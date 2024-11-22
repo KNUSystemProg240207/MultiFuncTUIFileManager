@@ -9,39 +9,53 @@
 #include "thread_commons.h"
 
 
-typedef enum _FileOpration {
+#define PROGRESS_COPY (1 << 10)
+#define PROGRESS_MOVE (2 << 10)
+#define PROGRESS_DELETE (3 << 10)
+#define PROGRESS_BITS (3 << 10)
+#define PROGRESS_PERCENT_START 1
+#define PROGRESS_PERCENT_MASK (0x7f << PROGRESS_PERCENT_START)
+
+
+typedef enum _FileOperation {
     COPY,
     MOVE,
     DELETE
-} FileOpration;
+} FileOperation;
+
+typedef struct _SrcDstFile {
+    dev_t devNo;
+    int dirFd;
+    char name[MAX_NAME_LEN];
+    size_t fileSize;
+} SrcDstInfo;
 
 typedef struct _FileTask {
-    FileOpration type;
-    int srcDirFd;
-    dev_t srcDevNo;
-    char srcName[MAX_NAME_LEN];
-    size_t fileSize;
-    int dstDirFd;
-    dev_t dstDevNo;
-    char dstName[MAX_NAME_LEN];
+    FileOperation type;
+    SrcDstInfo src;
+    SrcDstInfo dst;
 } FileTask;
 
+typedef struct _FileProgressInfo {
+    char name[MAX_NAME_LEN];  // 작업중인 파일 이름
+    uint16_t flags;  // 진행률 Bit Field
+    pthread_mutex_t flagMutex;  // 진행률 보호 Mutex
+} FileProgressInfo;
 
 /**
  * @struct _FileOperatorArgs
  *
  * @var _FileOperatorArgs::commonArgs Thread들 공통 공유 변수
- * @var _FileOperatorArgs::opearatingFile 작업 중인 파일명
- * @var _FileOperatorArgs::progress 진행률(백분률) & 진행 중인 작업 종류
+ * @var _FileOperatorArgs::progressInfo 진행 상태 공유 변수
  * @var _FileOperatorArgs::pipeEnd 명령 읽어올, pipe의 read용 끝단
+ * @var _FileOperatorArgs::pipeReadMutex 명령 읽기 보호 Mutex
  */
 typedef struct _FileOperatorArgs {
     ThreadArgs commonArgs;  // Thread들 공통 공유 변수
-    // 상태 관련
-    char opearatingFile[MAX_NAME_LEN];
-    uint16_t progress;
-    // 명령 읽어올 곳
-    int pipeEnd;
+    FileProgressInfo progressInfo;  // 진행 상태 공유 변수
+    // 명령 관련
+    int pipeEnd;  // 명령 읽어올, pipe의 read용 끝
+    pthread_mutex_t pipeReadMutex;  // 명령 읽기 보호 Mutex
 } FileOperatorArgs;
 
 

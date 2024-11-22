@@ -2,6 +2,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -82,6 +83,7 @@ int dirListener(void *argsPtr) {
     pthread_mutex_unlock(&args->commonArgs.statusMutex);  // 상태 Flag 보호 Mutex 해제
 
     // 폴더 변경 처리
+    pthread_mutex_lock(&args->dirMutex);  // 현재 Directory 보호 Mutex 획득
     if (changeDirRequested)
         changeDir(&args->currentDir, args->dirEntries[args->chdirIdx].entryName);
 
@@ -98,6 +100,7 @@ int dirListener(void *argsPtr) {
     applySorting(args->dirEntries, args->commonArgs.statusFlags, readItems);
 
     pthread_mutex_unlock(&args->bufMutex);  // 결과값 보호 Mutex 해제
+    pthread_mutex_unlock(&args->dirMutex);  // 현재 Directory 보호 Mutex 해제
     return readItems;
 }
 

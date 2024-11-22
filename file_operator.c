@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 
 #include "config.h"
+#include "file_functions.h"
 #include "file_operator.h"
 
 
@@ -18,7 +19,7 @@ int startFileOperator(pthread_t *newThread, FileOperatorArgs *args) {
         return -1;
     if (startThread(
             newThread, NULL, fileOperator, NULL,
-            DIR_INTERVAL_USEC, &args->commonArgs, args
+            0, &args->commonArgs, args
         ) == -1) {
         return -1;
     }
@@ -29,19 +30,38 @@ int fileOperator(void *argsPtr) {
     FileOperatorArgs *args = (FileOperatorArgs *)argsPtr;
     FileTask command;
 
-    read(args->pipeEnd, &command, sizeof(FileTask));
+    pthread_mutex_lock(&args->pipeReadMutex);
+    int ret = read(args->pipeEnd, &command, sizeof(FileTask));
+    pthread_mutex_unlock(&args->pipeReadMutex);
+    switch (ret) {
+        case 0:  // EOF: Write End가 Close됨 -> 종료
+            pthread_mutex_lock(&args->commonArgs.statusMutex);
+            args->commonArgs.statusFlags |= THREAD_FLAG_STOP;
+            pthread_mutex_unlock(&args->commonArgs.statusMutex);
+            return 0;
+        case sizeof(FileTask):  // 성공적으로 읽어들임
+            break;  // 계속 진행
+        case -1:  // 읽기 실패
+        default:  // Size 이상 있음
+            return -1;  // abort
+    }
 
     switch (command.type) {
         case COPY:
-            // TODO: Implement here
+            copyFile(&command.src, &command.dst, &args->progressInfo);
+            close(command.dst.dirFd);
             break;
         case MOVE:
-            // TODO: Implement here
+            moveFile(&command.src, &command.dst, &args->progressInfo);
+            close(command.dst.dirFd);
             break;
         case DELETE:
-            // TODO: Implement here
+            removeFile(&command.src, &args->progressInfo);
+            // DELETE: dst.dirFd 유효하지 않음 -> close()하면 안 됨
             break;
     }
+
+    close(command.src.dirFd);  // 항상 쓰임 -> 항상 close()
 
     return 0;
 }
