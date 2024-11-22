@@ -15,11 +15,11 @@ typedef struct _FileTask {
     FileOpration type;
     SrcDstInfo src;
     SrcDstInfo dst;  //src와 dst를 받아서 전달
-} FileTask; //파일 테스크 함수 
+} FileTask; //파일 테스크 함수
 
 /**
  * 파일 복사 수행
- * 
+ *
  * @param src 원본 파일 정보
  * @param dst 대상 폴더 정보
  * @param progress 현재 진행 상황 ([7..0] 백분률 진행률 / [8] 복사중)
@@ -30,7 +30,7 @@ int copyFile(SrcDstInfo *src, SrcDstInfo *dst, uint16_t *progress, pthread_mutex
 
 /**
  * 파일 이동 수행
- * 
+ *
  * @param src 원본 파일 정보
  * @param dst 대상 폴더 정보
  * @param progress 현재 진행 상황 ([7..0] 백분률 진행률 / [9] 이동중)
@@ -40,7 +40,7 @@ int moveFile(SrcDstInfo *src, SrcDstInfo *dst, uint16_t *progress, pthread_mutex
 
 /**
  * 파일 삭제 수행
- * 
+ *
  * @param src 원본 파일 정보
  * @param dst 대상 폴더 정보
  * @param progress 현재 진행 상황 ([7..0] 백분률 진행률 / [10] 삭제중)
@@ -68,7 +68,7 @@ copy의 경우, 파일 실제 복사해야 하는 경우가 있기에, 백분율
 
 파일 오퍼레이션 그것은, 일단 3종류 구현하려 함
 3종류는, 각각을 함수로 만들면 된다.
-나머지 변수들은, 각각을 전부다 인자로, 각 함수들에서 필요한 경우에는 받고, 안필요하면 안받는 식으로 각 함수에다가 
+나머지 변수들은, 각각을 전부다 인자로, 각 함수들에서 필요한 경우에는 받고, 안필요하면 안받는 식으로 각 함수에다가
 인자로 전달.
 ex)delete 는 데스티네이션에 대한 정보는 필요없으니, 빼면 된다.
 

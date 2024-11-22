@@ -239,18 +239,45 @@ void mainLoop(void) {
         // 키 입력 처리
         for (int ch = wgetch(stdscr); ch != ERR; ch = wgetch(stdscr)) {
             switch (ch) {
+                // 창 이동
                 case KEY_UP:
                     moveCursorUp();
                     break;
                 case KEY_DOWN:
                     moveCursorDown();
                     break;
+
+                // 선택 항목 이동
                 case KEY_LEFT:
                     selectNextWindow();
                     break;
                 case KEY_RIGHT:
                     selectPreviousWindow();
                     break;
+
+                // 디렉터리 변경
+                case '\n':
+                case KEY_ENTER:
+                    currentSelection = getCurrentSelectedDirectory();
+                    if (currentSelection >= 0) {
+                        curWin = getCurrentWindow();
+                        pthread_mutex_lock(&dirListenerArgs[curWin].bufMutex);
+                        dirListenerArgs[curWin].chdirIdx = currentSelection;
+                        dirListenerArgs[curWin].commonArgs.statusFlags |= DIRLISTENER_FLAG_CHANGE_DIR;
+                        pthread_mutex_unlock(&dirListenerArgs[curWin].bufMutex);
+                        pthread_mutex_lock(&dirListenerArgs[curWin].commonArgs.statusMutex);
+                        pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
+                        pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
+                        setCurrentSelectedDirectory(0);
+                    }
+                    break;
+
+                // 프로세스 창 토글
+                case 'p':
+                    toggleProcWin(&proc_Win);
+                    break;
+
+                // 정렬 변경
                 case 'w':  // F1 키 (이름 기준 오름차순)
                     toggleSort(SORT_NAME_MASK, SORT_NAME_SHIFT);
                     curWin = getCurrentWindow();
@@ -299,16 +326,8 @@ void mainLoop(void) {
                     pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
                     pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
                     break;
-                case '\n':
-                case KEY_ENTER:
-                    currentSelection = getCurrentSelectedDirectory();
-                    if (currentSelection >= 0) {
-                        curWin = getCurrentWindow();
-                        pthread_mutex_lock(&dirListenerArgs[curWin].bufMutex);
-                        dirListenerArgs[curWin].chdirIdx = currentSelection;
-                        dirListenerArgs[curWin].commonArgs.statusFlags |= DIRLISTENER_FLAG_CHANGE_DIR;
-                        pthread_mutex_unlock(&dirListenerArgs[curWin].bufMutex);
-                        setCurrentSelection(0);
+
+                // 복사, 잘라내기, 붙여넣기
                 case 'c':
                 case 'C':  // 복사
                 case 'x':
@@ -355,27 +374,12 @@ void mainLoop(void) {
                     // pipe에 명령 쓰기
                     write(pipeFileOpCmd, &fileDelTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
                     break;
-                case '\n':  // 디렉터리 변경
-                case KEY_ENTER:
-                    currentSelection = getCurrentSelectedDirectory();
-                    if (currentSelection >= 0) {
-                        curWin = getCurrentWindow();
-                        pthread_mutex_lock(&dirListenerArgs[curWin].bufMutex);
-                        dirListenerArgs[curWin].chdirIdx = currentSelection;
-                        dirListenerArgs[curWin].commonArgs.statusFlags |= DIRLISTENER_FLAG_CHANGE_DIR;
-                        pthread_mutex_unlock(&dirListenerArgs[curWin].bufMutex);
-                        pthread_mutex_lock(&dirListenerArgs[curWin].commonArgs.statusMutex);
-                        pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
-                        pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
-                        setCurrentSelectedDirectory(0);
-                    }
-                    break;
-                case 'p':
-                    toggleProcWin(&proc_Win);
-                    break;
+
+                // 종료
                 case 'q':
                 case 'Q':
                     goto CLEANUP;  // Main Loop 빠져나감
+
                 default:
                     mvwhline(stdscr, getmaxy(stdscr) - 3, 0, ACS_HLINE, getmaxy(stdscr));
                     mvwprintw(stdscr, getmaxy(stdscr) - 3, 2, "0x%x 0x%lx 0x%lx", ch, ch & ~BUTTON_CTRL, ~BUTTON_CTRL);

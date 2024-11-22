@@ -53,7 +53,7 @@ colors.o: colors.h colors.c commons.h
 	$(CC) $(CFLAGS) -c colors.c
 
 # Misc
-dir_entry_utils.o: config.h dir_window.h thread_commons.h dir_entry_utils.h dir_entry_utils.c 
+dir_entry_utils.o: config.h dir_window.h thread_commons.h dir_entry_utils.h dir_entry_utils.c
 	$(CC) $(CFLAGS) -c dir_entry_utils.c
 
 file_functions.o: file_functions.h file_functions.c
