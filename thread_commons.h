@@ -12,13 +12,6 @@
 #define THREAD_FLAG_STOP (1 << 8)  // 쓰레드 정지 요청
 
 
-#define SORT_DIRECTION_BIT (1 << 12)  // 정렬 방향 비트
-#define SORT_CRITERION_MASK (0b11 << 10)  // 정렬 기준 마스크
-#define SORT_NAME (0b00 << 10)  // 이름 기준
-#define SORT_SIZE (0b01 << 10)  // 크기 기준
-#define SORT_DATE (0b10 << 10)  // 날짜 기준
-
-
 /**
  * @struct _DirListenerArgs
  *

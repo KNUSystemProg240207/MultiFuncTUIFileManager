@@ -1,4 +1,6 @@
+#include <assert.h>
 #include <curses.h>
+#include <panel.h>
 #include <stdlib.h>
 
 #include "bottom_area.h"
@@ -8,11 +10,18 @@
 
 
 static WINDOW *bottomBox;
+static PANEL *bottomPanel;
 
 
 WINDOW *initBottomBox(int width, int startY) {
-    CHECK_NULL(bottomBox = newwin(2, width, startY, 0));
+    assert((bottomBox = newwin(2, width, startY, 0)));
+    assert((bottomPanel = new_panel(bottomBox)));
     return bottomBox;
+}
+
+void delBottomBox(void) {
+    assert((del_panel(bottomPanel) != ERR));
+    assert((delwin(bottomBox) != ERR));
 }
 
 void displayProgress(FileProgressInfo *infos) {

@@ -96,8 +96,7 @@ int dirListener(void *argsPtr) {
     }
     args->totalReadItems = readItems;
 
-    //	여기에 정렬 플래그 보고 확인해서 정렬
-    applySorting(args->dirEntries, args->commonArgs.statusFlags, readItems);
+    applySorting(args->dirEntries, args->commonArgs.statusFlags, readItems);  // 불러온 목록 정렬
 
     pthread_mutex_unlock(&args->bufMutex);  // 결과값 보호 Mutex 해제
     pthread_mutex_unlock(&args->dirMutex);  // 현재 Directory 보호 Mutex 해제
@@ -105,8 +104,6 @@ int dirListener(void *argsPtr) {
 }
 
 ssize_t listEntries(DIR *dirToList, DirEntry *dirEntries, size_t bufLen) {
-    // TODO: 정렬 구현
-
     size_t readItems = 0;
     int fdDir = dirfd(dirToList);
     errno = 0;  // errno 변수는 각 Thread별로 존재 -> Race Condition 없음

@@ -3,30 +3,32 @@
 #include "dir_window.h"
 
 /**
- * 파일 이름을 지정된 최대 표시 길이에 맞게 줄입니다.
+ * 파일 이름을 지정된 최대 표시 길이에 맞게 줄임
  *
  * @param fileName 수정할 파일 이름 (null-terminated 문자열)
+ * @return 축약한 파일명 (static buffer에 저장됨 -> 다시 호출 시 값 덮어씌워짐)
  *
  * @details
- * - 파일 이름이 `MAX_DISPLAY_LEN`을 초과할 경우, 생략 기호(`...`)를 추가하여 길이를 조정합니다.
- * - 파일 확장자는 유지되며, 확장자를 제외한 앞부분이 생략됩니다.
- * - 확장자가 너무 길 경우, 확장자를 포함한 문자열을 `MAX_DISPLAY_LEN` 이내로 잘라냅니다.
+ * - 파일 이름이 `MAX_DISPLAY_LEN`을 초과할 경우: 이름이 생략 기호(`...`) 삽입되어 축약
+ * - 파일 확장자는 유지되며, 확장자를 제외한 부분이 생략
+ * - 확장자가 너무 길 경우, 확장자를 포함한 문자열을 `MAX_DISPLAY_LEN` 이내로 잘라냄
  */
 char *truncateFileName(char *fileName);
 
 /**
- * 파일 이름이 숨김 파일인지 확인합니다.
+ * 파일 이름이 숨김 파일인지 확인
  *
  * @param fileName 확인할 파일 이름 (null-terminated 문자열)
  * @return 숨김 파일이면 1, 그렇지 않으면 0
  *
  * @details
- * - 숨김 파일은 '.'으로 시작하지만, 현재 디렉토리(`.`) 또는 상위 디렉토리(`..`)는 제외합니다.
+ * - 숨김 파일: '.'으로 시작하는 파일
+ * - 현재 디렉토리(`.`) 또는 상위 디렉토리(`..`)는 제외
  */
 int isHidden(const char *fileName);
 
 /**
- * 파일이 이미지 파일인지 확인합니다.
+ * 파일이 이미지 파일인지 확인
  *
  * @param fileName 확인할 파일 이름 (null-terminated 문자열)
  * @return 이미지 파일이면 1, 그렇지 않으면 0
@@ -38,7 +40,7 @@ int isHidden(const char *fileName);
 int isImageFile(const char *fileName);
 
 /**
- * 파일이 실행 파일인지 확인합니다.
+ * 파일이 실행 파일인지 확인
  *
  * @param fileName 확인할 파일 이름 (null-terminated 문자열)
  * @return 실행 파일이면 1, 그렇지 않으면 0
@@ -50,7 +52,7 @@ int isImageFile(const char *fileName);
 int isEXE(const char *fileName);
 
 /**
- * 디렉토리 항목 배열을 지정된 기준과 방향에 따라 정렬합니다.
+ * 디렉토리 항목 배열 정렬
  *
  * @param dirEntries 정렬할 디렉토리 항목 배열 (DirEntry 구조체 배열).
  * @param flags 정렬 기준과 방향을 나타내는 비트 플래그:
@@ -64,60 +66,6 @@ int isEXE(const char *fileName);
  * - 항목이 없거나 배열이 NULL이면 동작하지 않음.
  */
 void applySorting(DirEntry *dirEntries, uint16_t flags, size_t totalReadItems);
-
-/**
- * 이름 기준 오름차순으로 비교합니다.
- *
- * @param a 첫 번째 DirEntry의 포인터
- * @param b 두 번째 DirEntry의 포인터
- * @return a가 b보다 작으면 음수, 크면 양수, 같으면 0
- */
-int cmpNameAsc(const void *a, const void *b);
-
-/**
- * 이름 기준 내림차순으로 비교합니다.
- *
- * @param a 첫 번째 DirEntry의 포인터
- * @param b 두 번째 DirEntry의 포인터
- * @return a가 b보다 크면 음수, 작으면 양수, 같으면 0
- */
-int cmpNameDesc(const void *a, const void *b);
-
-/**
- * 크기 기준 오름차순으로 비교합니다.
- *
- * @param a 첫 번째 DirEntry의 포인터
- * @param b 두 번째 DirEntry의 포인터
- * @return a가 b보다 작으면 음수, 크면 양수, 같으면 0
- */
-int cmpSizeAsc(const void *a, const void *b);
-
-/**
- * 크기 기준 내림차순으로 비교합니다.
- *
- * @param a 첫 번째 DirEntry의 포인터
- * @param b 두 번째 DirEntry의 포인터
- * @return a가 b보다 크면 음수, 작으면 양수, 같으면 0
- */
-int cmpSizeDesc(const void *a, const void *b);
-
-/**
- * 날짜 기준 오름차순으로 비교합니다.
- *
- * @param a 첫 번째 DirEntry의 포인터
- * @param b 두 번째 DirEntry의 포인터
- * @return a가 b보다 작으면 음수, 크면 양수, 같으면 0
- */
-int cmpDateAsc(const void *a, const void *b);
-
-/**
- * 날짜 기준 내림차순으로 비교합니다.
- *
- * @param a 첫 번째 DirEntry의 포인터
- * @param b 두 번째 DirEntry의 포인터
- * @return a가 b보다 크면 음수, 작으면 양수, 같으면 0
- */
-int cmpDateDesc(const void *a, const void *b);
 
 
 #endif

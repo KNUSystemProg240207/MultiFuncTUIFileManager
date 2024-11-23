@@ -1,4 +1,6 @@
+#include <assert.h>
 #include <curses.h>
+#include <panel.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,18 +13,25 @@
 
 
 static WINDOW *titleBar;  // 제목 Bar Window
+static PANEL *titlePanel;
 static unsigned int barWidth;  // 제목 창 너비
 static unsigned int margin;  // 현재 경로 양 옆의 공간 (프로그램명 및 시간 출력용)
 
 
 WINDOW *initTitleBar(int width) {
-    CHECK_NULL(titleBar = newwin(1, width, 0, 0));  // 새 Window 생성
+    assert((titleBar = newwin(1, width, 0, 0)));
+    assert((titlePanel = new_panel(titleBar)));
     CHECK_CURSES(mvwaddstr(titleBar, 0, 0, PROG_NAME));  // 프로그램 이름 출력
 
     barWidth = width;
     margin = PROG_NAME_LEN > DATETIME_LEN ? PROG_NAME_LEN + 1 : DATETIME_LEN + 1;  // 양 옆 공간 계산
 
     return titleBar;
+}
+
+void delTitleBar(void) {
+    assert((del_panel(titlePanel) != ERR));
+    assert((delwin(titleBar) != ERR));
 }
 
 void renderTime() {

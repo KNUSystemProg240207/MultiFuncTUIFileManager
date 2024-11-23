@@ -46,19 +46,19 @@ static DirWin windows[MAX_DIRWINS];  // 각 창의 runtime 정보 저장
 static PANEL *panels[MAX_DIRWINS];  // 패널 배열
 static unsigned int winCnt;  // 창 개수
 static unsigned int currentWin;  // 현재 창의 Index
-static int panelCnt = 0;  // 패널의 개수
 
 /**
  * 창 위치 계산
  *
- * @param winNo 창의 순서 (가장 왼쪽=0) ( [0, winCnt) )
  * @param y (반환) 창 좌상단 y좌표
  * @param x (반환) 창 좌상단 x좌표
  * @param h (반환) 창 높이
  * @param w (반환) 창 폭
+ * @param winNo 창의 순서 (가장 왼쪽=0) ( [0, winCnt) )
+ * @param winCnt 총 창의 개수
  * @return 성공: 0, 부적절한 인자 전달한 경우: -1
  */
-static int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w);
+static int calculateWinPos(int *y, int *x, int *h, int *w, unsigned int winNo, unsigned int winCnt);
 
 /**
  * 디렉토리 창의 파일 목록 상단 헤더를 출력합니다.
@@ -78,6 +78,49 @@ static void printFileHeader(DirWin *win, int winH, int winW);
  * @param winW 창의 너비
  */
 static void printFileInfo(DirWin *win, int startIdx, int line, int winW);
+
+
+int initDirWin(
+    pthread_mutex_t *bufMutex,
+    size_t *totalReadItems,
+    DirEntry *dirEntry
+) {
+    if (winCnt >= MAX_DIRWINS) {
+        // 최대 창 개수 초과
+        return -1;
+    }
+
+    int y, x, h, w;
+    // 위치 계산
+    if (calculateWinPos(&y, &x, &h, &w, winCnt, winCnt + 1) == -1) {
+        return -1;
+    }
+    // 창 생성
+    WINDOW *newWin = newwin(h, w, y, x);
+    if (newWin == NULL) {
+        return -1;
+    }
+
+    // Panel 초기화
+    PANEL *newPanel = new_panel(newWin);
+    if (newPanel == NULL) {
+        delwin(newWin);
+        return -1;
+    }
+    panels[winCnt] = newPanel;
+
+    // 변수 설정
+    windows[winCnt] = (DirWin) {
+        .win = newWin,
+        .order = winCnt,
+        .currentPos = 0,
+        .bufMutex = bufMutex,
+        .totalReadItems = totalReadItems,
+        .sortFlag = 0x01,  // 기본 정렬 방식은 이름 오름차순
+        .dirEntry = dirEntry
+    };
+    return winCnt++;
+}
 
 int updateDirWins(void) {
     int ret, winH, winW;
@@ -128,12 +171,11 @@ int updateDirWins(void) {
         // 최상단에 출력될 항목의 index 계산
         getmaxyx(win->win, winH, winW);
         winH -= 4;  // 최대 출력 가능한 라인 넘버 -4
-        // winW = 31;  // 윈도우 크기 확인용
 
-        wbkgd(win->win, COLOR_PAIR(BGRND));
-        printFileHeader(win, winH, winW);  // 헤더 부분 출력
+        wbkgd(win->win, COLOR_PAIR(BGRND));  // 창 색깔 변경
+        printFileHeader(win, winH, winW);  // 최상단 Header 출력
 
-        /* 라인 스크롤 */
+        // 라인 스크롤
         centerLine = (winH - 1) / 2;  // 가운데 줄의 줄 번호 ( [0, winH) )
         if (itemsCnt <= winH) {  // 항목 개수 적음 -> 빠르게 처리
             startIdx = 0;
@@ -148,17 +190,16 @@ int updateDirWins(void) {
             startIdx = win->currentPos - centerLine;
             itemsToPrint = winH;
         }
-        refreshPanels();
 
         currentLine = win->currentPos - startIdx;  // 역상으로 출력할, 현재 선택된 줄
 
-        /* 디렉토리 출력 */
+        // 디렉토리 출력
         for (line = 0, displayLine = 0; line < itemsToPrint; line++) {  // 항목 있는 공간: 출력
             // "." 항목은 출력하지 않음, line 값은 증가시키지 않음
             if (strcmp(win->dirEntry[startIdx + line].entryName, ".") == 0) {
-                continue;  // "."은 건너뛰고 다음 항목으로 넘어감
+                continue;  // 현재 폴더(".")는 출력하지 않음
             }
-            if (winNo == currentWin && displayLine == currentLine)  // 선택된 것 역상으로 출력
+            if (winNo == currentWin && displayLine == currentLine)  // 선택된 것: 역상으로 출력
                 wattron(win->win, A_REVERSE);
             printFileInfo(win, startIdx, line, winW);
             if (winNo == currentWin && displayLine == currentLine)
@@ -172,63 +213,6 @@ int updateDirWins(void) {
     }
 
     return 0;
-}
-
-// 패널을 초기화하는 함수
-int initPanelForWindow(WINDOW *win) {
-    if (panelCnt >= MAX_DIRWINS) {
-        return -1;  // 최대 창 개수 초과
-    }
-
-    // 창에 패널 추가
-    panels[panelCnt] = new_panel(win);
-    panelCnt++;
-
-    // 패널 순서 업데이트 (이후 패널을 화면에 반영하려면 update_panels() 호출 필요)
-    update_panels();
-    doupdate();
-
-    return 0;
-}
-
-void refreshPanels() {
-    // 화면을 새로 고침하여 모든 패널을 업데이트
-    update_panels();
-    doupdate();
-}
-
-int initDirWin(
-    pthread_mutex_t *bufMutex,
-    size_t *totalReadItems,
-    DirEntry *dirEntry
-) {
-    int y, x, h, w;
-    winCnt++;
-    // 위치 계산
-    if (calculateWinPos(winCnt - 1, &y, &x, &h, &w) == -1) {
-        return -1;
-    }
-    // 창 생성
-    WINDOW *newWin = newwin(h, w, y, x);
-    if (newWin == NULL) {
-        winCnt--;
-        return -1;
-    }
-
-    // 패널 입히기
-    initPanelForWindow(newWin);
-
-    // 변수 설정
-    windows[winCnt - 1] = (DirWin) {
-        .win = newWin,
-        .order = winCnt - 1,
-        .currentPos = 0,
-        .bufMutex = bufMutex,
-        .totalReadItems = totalReadItems,
-        .sortFlag = 0x01,  // 기본 정렬 방식은 이름 오름차순
-        .dirEntry = dirEntry
-    };
-    return winCnt;
 }
 
 
@@ -288,7 +272,6 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     char lastModTime[20];  // 시간이 담기는 문자열
     int displayLine = line + 3;  // 출력되는 실제 라인 넘버
     const char *format;  // 출력 포맷
-
 
     /* 마지막 수정 시간 */
     struct tm tm;
@@ -358,7 +341,7 @@ void toggleSort(int mask, int shift) {
     SORT_FLAG = (SORT_FLAG & ~mask) | (state << shift);
 }
 
-int calculateWinPos(unsigned int winNo, int *y, int *x, int *h, int *w) {
+int calculateWinPos(int *y, int *x, int *h, int *w, unsigned int winNo, unsigned int winCnt) {
     int screenW, screenH;
     getmaxyx(stdscr, screenH, screenW);
 
@@ -418,8 +401,6 @@ void selectPreviousWindow(void) {
     else
         currentWin--;
 }
-
-////
 
 void selectNextWindow(void) {
     if (currentWin == winCnt - 1)

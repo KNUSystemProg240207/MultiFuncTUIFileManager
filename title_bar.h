@@ -12,6 +12,8 @@
  */
 WINDOW *initTitleBar(int width);
 
+void delTitleBar(void);
+
 /**
  * 화면 우상단에 현재 시간 표시 (또는 새로고침)
  */

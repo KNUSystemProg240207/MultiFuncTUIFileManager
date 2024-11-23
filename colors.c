@@ -3,12 +3,14 @@
 #include "colors.h"
 #include "commons.h"
 
+
 void calc255Color(short color_name, short r, short g, short b) {
     r *= (1000 / 255);
     g *= (1000 / 255);
     b *= (1000 / 255);
     init_color(color_name, r, g, b);
 }
+
 void initColorSet() {
     calc255Color(COLOR_ORANGE, 250, 182, 87);
     calc255Color(COLOR_NAVY, 0x00, 0x1F, 0x3F);

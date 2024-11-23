@@ -15,6 +15,8 @@
  */
 WINDOW *initBottomBox(int width, int startY);
 
+void delBottomBox(void);
+
 /**
  * 화면 하단 진행률 표시 Window 업데이트
  *

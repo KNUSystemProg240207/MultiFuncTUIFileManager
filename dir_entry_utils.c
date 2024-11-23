@@ -5,6 +5,62 @@
 #include "dir_window.h"
 #include "thread_commons.h"
 
+
+/**
+ * 이름 기준 오름차순 비교
+ *
+ * @param a 첫 번째 DirEntry의 포인터
+ * @param b 두 번째 DirEntry의 포인터
+ * @return a가 b보다 작으면 음수, 크면 양수, 같으면 0
+ */
+static int cmpNameAsc(const void *a, const void *b);
+
+/**
+ * 이름 기준 내림차순 비교
+ *
+ * @param a 첫 번째 DirEntry의 포인터
+ * @param b 두 번째 DirEntry의 포인터
+ * @return a가 b보다 크면 음수, 작으면 양수, 같으면 0
+ */
+static int cmpNameDesc(const void *a, const void *b);
+
+/**
+ * 크기 기준 오름차순 비교
+ *
+ * @param a 첫 번째 DirEntry의 포인터
+ * @param b 두 번째 DirEntry의 포인터
+ * @return a가 b보다 작으면 음수, 크면 양수, 같으면 0
+ */
+static int cmpSizeAsc(const void *a, const void *b);
+
+/**
+ * 크기 기준 내림차순 비교
+ *
+ * @param a 첫 번째 DirEntry의 포인터
+ * @param b 두 번째 DirEntry의 포인터
+ * @return a가 b보다 크면 음수, 작으면 양수, 같으면 0
+ */
+static int cmpSizeDesc(const void *a, const void *b);
+
+/**
+ * 날짜 기준 오름차순 비교
+ *
+ * @param a 첫 번째 DirEntry의 포인터
+ * @param b 두 번째 DirEntry의 포인터
+ * @return a가 b보다 작으면 음수, 크면 양수, 같으면 0
+ */
+static int cmpDateAsc(const void *a, const void *b);
+
+/**
+ * 날짜 기준 내림차순 비교
+ *
+ * @param a 첫 번째 DirEntry의 포인터
+ * @param b 두 번째 DirEntry의 포인터
+ * @return a가 b보다 크면 음수, 작으면 양수, 같으면 0
+ */
+static int cmpDateDesc(const void *a, const void *b);
+
+
 char *truncateFileName(char *fileName) {
     static char nameBuf[MAX_NAME_LEN + 1];
     size_t len = strlen(fileName);
@@ -37,6 +93,7 @@ char *truncateFileName(char *fileName) {
 int isHidden(const char *fileName) {
     return fileName[0] == '.' && strcmp(fileName, ".") != 0 && strcmp(fileName, "..") != 0;
 }
+
 int isImageFile(const char *fileName) {
     const char *extensions[] = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
     size_t numExtensions = sizeof(extensions) / sizeof(extensions[0]);
@@ -67,7 +124,6 @@ int isEXE(const char *fileName) {
     return 0;
 }
 
-/* 정렬 적용 함수 */
 void applySorting(DirEntry *dirEntries, uint16_t flags, size_t totalReadItems) {
     if (!dirEntries || totalReadItems == 0) {
         fprintf(stderr, "Invalid input to applySorting: dirEntries=%p, totalReadItems=%zu\n", dirEntries, totalReadItems);
@@ -101,6 +157,7 @@ void applySorting(DirEntry *dirEntries, uint16_t flags, size_t totalReadItems) {
     }
 }
 
+// 정렬 비교 들수들
 int cmpDateAsc(const void *a, const void *b) {
     DirEntry *entryA = ((DirEntry *)a);
     DirEntry *entryB = ((DirEntry *)b);
@@ -117,7 +174,6 @@ int cmpDateAsc(const void *a, const void *b) {
         return 1;
     }
 
-
     // 초 단위 비교
     if (entryA->statEntry.st_mtim.tv_sec < entryB->statEntry.st_mtim.tv_sec)
         return -1;
@@ -132,6 +188,7 @@ int cmpDateAsc(const void *a, const void *b) {
 
     return strcmp(entryA->entryName, entryB->entryName);  // 완전히 같으면 이름 비교
 }
+
 int cmpDateDesc(const void *a, const void *b) {
     DirEntry *entryA = ((DirEntry *)a);
     DirEntry *entryB = ((DirEntry *)b);
@@ -147,7 +204,6 @@ int cmpDateDesc(const void *a, const void *b) {
     } else if (!S_ISDIR(entryA->statEntry.st_mode) && S_ISDIR(entryB->statEntry.st_mode)) {
         return 1;
     }
-
 
     // 초 단위 비교
     if (entryA->statEntry.st_mtim.tv_sec < entryB->statEntry.st_mtim.tv_sec)
@@ -178,9 +234,11 @@ int cmpNameAsc(const void *a, const void *b) {
     } else if (!S_ISDIR(entryA->statEntry.st_mode) && S_ISDIR(entryB->statEntry.st_mode)) {
         return 1;
     }
+
     // 이름 순 정렬
     return strcmp(entryA->entryName, entryB->entryName);
 }
+
 int cmpNameDesc(const void *a, const void *b) {
     DirEntry *entryA = ((DirEntry *)a);
     DirEntry *entryB = ((DirEntry *)b);
@@ -195,6 +253,7 @@ int cmpNameDesc(const void *a, const void *b) {
     } else if (!S_ISDIR(entryA->statEntry.st_mode) && S_ISDIR(entryB->statEntry.st_mode)) {
         return 1;
     }
+
     // 이름 순 정렬
     return -1 * (strcmp(entryA->entryName, entryB->entryName));
 }
@@ -218,6 +277,7 @@ int cmpSizeAsc(const void *a, const void *b) {
     if (entryA->statEntry.st_size > entryB->statEntry.st_size) return 1;  // a가 b보다 크면 양수 반환
     return (strcmp(entryA->entryName, entryB->entryName));  // a와 b가 같으면 이름 비교
 }
+
 int cmpSizeDesc(const void *a, const void *b) {
     DirEntry *entryA = ((DirEntry *)a);
     DirEntry *entryB = ((DirEntry *)b);

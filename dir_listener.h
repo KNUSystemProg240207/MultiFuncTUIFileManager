@@ -13,6 +13,12 @@
 
 #define DIRLISTENER_FLAG_CHANGE_DIR (1 << 9)  // 디렉터리 변경 요청
 
+#define SORT_DIRECTION_BIT (1 << 12)  // 정렬 방향 비트
+#define SORT_CRITERION_MASK (0b11 << 10)  // 정렬 기준 마스크
+#define SORT_NAME (0b00 << 10)  // 정렬 기준: 이름
+#define SORT_SIZE (0b01 << 10)  // 정렬 기준: 크기
+#define SORT_DATE (0b10 << 10)  // 정렬 기준: 날짜
+
 
 /**
  * @struct _DirEntry

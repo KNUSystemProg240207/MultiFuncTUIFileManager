@@ -21,7 +21,7 @@
 #include "dir_window.h"
 #include "file_operator.h"
 #include "list_process.h"
-#include "proc_win.h"
+#include "process_window.h"
 #include "title_bar.h"
 
 WINDOW *titleBar, *bottomBox;
@@ -31,19 +31,18 @@ mode_t directoryOpenArgs;  // fdopendir()에 전달할 directory file descriptor
 
 static pthread_t threadListDir[MAX_DIRWINS];
 static pthread_t threadFileOperators[MAX_FILE_OPERATORS];
+static pthread_t threadProcess;
+
 static DirListenerArgs dirListenerArgs[MAX_DIRWINS];
 static FileProgressInfo fileProgresses[MAX_FILE_OPERATORS];
 static FileOperatorArgs fileOpArgs[MAX_FILE_OPERATORS];
+static ProcessThreadArgs processThreadArgs;
+
 static int pipeFileOpCmd;
 
-static pthread_t threadProcess;  // 프로세스 스레드
-static ProcWin processWindow;
 pthread_mutex_t processWindow_Mutex;
 
-static ProcThreadArgs procThreadArgs;  // 프로세스 스레드 시작을 위한 인자
-WINDOW *p_win;
 pthread_mutex_t p_statMutex;
-ProcInfo p_Entries[MAX_PROCESSES];  // 프로세스 정보 배열
 pthread_mutex_t p_visibleMutex;
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
@@ -52,6 +51,7 @@ static void initVariables(void);  // 변수들 초기화
 static void initScreen(void);  // ncurses 관련 초기화 & subwindow들 생성
 static void initThreads(void);  // thread 관련 초기화
 static void mainLoop(void);  // 프로그램 Main Loop
+static void stopThreads(void);  // 실행 중인 Thread들 정지
 static void cleanup(void);  // atexit()에 전달할 함수: 프로그램 종료 직전, main() 반환 직후에 수행됨
 
 
@@ -64,42 +64,12 @@ int main(int argc, char **argv) {
     initThreads();
     mainLoop();
 
-    // Thread들 정지 요청
-    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++) {
-        pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
-        dirListenerArgs[i].commonArgs.statusFlags |= THREAD_FLAG_STOP;
-        dirListenerArgs[i].commonArgs.statusFlags &= ~SORT_CRITERION_MASK;  // 정렬 기준 플래그 초기화
-        dirListenerArgs[i].commonArgs.statusFlags &= ~SORT_DIRECTION_BIT;  // 정렬 방향 플래그 초기화
-        pthread_cond_signal(&dirListenerArgs[i].commonArgs.resumeThread);
-        pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
-    }
-    // 각 Thread들 대기
-    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++) {
-        pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
-        if (dirListenerArgs[i].commonArgs.statusFlags & THREAD_FLAG_RUNNING) {
-            pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
-            pthread_join(threadListDir[i], NULL);
-        } else {
-            pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
-        }
-    }
-
-    // 패널들 정리
-    if (titlePanel != NULL) {
-        del_panel(titlePanel);
-        titlePanel = NULL;
-    }
-    if (bottomPanel != NULL) {
-        del_panel(bottomPanel);
-        bottomPanel = NULL;
-    }
-
-    // Linux에서: pthread_mutex_destroy, pthread_cond_destroy 반드시 필요한 것 아님 (manpage 참조)
-    close(fileOpArgs[0].pipeEnd);  // File Operator Thread용 pipe의 read end: close()
+    stopThreads();
 
     // 창 '지움' (자원 해제)
-    CHECK_CURSES(delwin(titleBar));
-    CHECK_CURSES(delwin(bottomBox));
+    delProcessWindow();
+    delTitleBar();
+    delBottomBox();
 
     return 0;
 }
@@ -119,28 +89,9 @@ void initVariables(void) {
         pthread_mutex_init(&fileProgresses[i].flagMutex, NULL);
         fileOpArgs[i].progressInfo = fileProgresses;
     }
-
-    // `processWindow` 구조체 초기화
-    processWindow = (ProcWin) {
-        .win = p_win,
-        .statMutex = PTHREAD_MUTEX_INITIALIZER,
-        .visibleMutex = PTHREAD_MUTEX_INITIALIZER,
-        .isWindowVisible = false,
-        .totalReadItems = 0,
-    };
-
-    // 포인터 배열 초기화
-    for (size_t i = 0; i < MAX_PROCESSES; i++) {
-        processWindow.procEntries[i] = &p_Entries[i];
-    }
-
-    procThreadArgs = (ProcThreadArgs) {
-        .procWin = &processWindow,
-        .procWinMutex = &processWindow_Mutex,
-    };
-
-    pthread_mutex_init(&processWindow_Mutex, NULL);
-    pthread_mutex_init(&processWindow.visibleMutex, NULL);
+    pthread_cond_init(&processThreadArgs.commonArgs.resumeThread, NULL);
+    pthread_mutex_init(&processThreadArgs.commonArgs.statusMutex, NULL);
+    pthread_mutex_init(&processThreadArgs.entriesMutex, NULL);
 }
 
 void initScreen(void) {
@@ -166,20 +117,21 @@ void initScreen(void) {
     int h, w;
     getmaxyx(stdscr, h, w);
 
-    titleBar = initTitleBar(w);  // 제목 창 (프로그램 이름 - 현재 경로 - 현재 시간) 생성
-    bottomBox = initBottomBox(w, h - 2);  // 아래쪽 단축키 창 생성
+    initTitleBar(w);  // 제목 창 (프로그램 이름 - 현재 경로 - 현재 시간) 생성
+    initBottomBox(w, h - 2);  // 아래쪽 단축키 창 생성
     CHECK_CURSES(mvhline(1, 0, ACS_HLINE, w));  // 제목 창 아래로 가로줄 그림
     CHECK_CURSES(mvhline(h - 3, 0, ACS_HLINE, w));  // 단축키 창 위로 가로줄 그림
-
-    // 패널 생성
-    titlePanel = new_panel(titleBar);
-    bottomPanel = new_panel(bottomBox);
 
     // 폴더 내용 표시 창 생성
     initDirWin(
         &dirListenerArgs[0].bufMutex,
         &dirListenerArgs[0].totalReadItems,
         dirListenerArgs[0].dirEntries
+    );
+    initProcessWindow(
+        &processThreadArgs.entriesMutex,
+        &processThreadArgs.totalReadItems,
+        processThreadArgs.processEntries
     );
     dirWinCnt = 1;
 }
@@ -193,7 +145,8 @@ void initThreads(void) {
     startDirListender(&threadListDir[0], &dirListenerArgs[0]);
 
     // 프로세스 스레드 시작
-    startProcThread(&threadProcess, &procThreadArgs);
+    processThreadArgs.commonArgs.statusFlags |= LISTPROCESS_FLAG_PAUSE_THREAD;  // 초기: 일시정지 된 상태로 시작
+    startProcessThread(&threadProcess, &processThreadArgs);
 
     // File Operator Thread 초기화, 실행
     int pipeEnds[2];
@@ -229,9 +182,11 @@ void mainLoop(void) {
         .type = DELETE,
     };
 
+    bool showProcessWindow = false, prevShowProcessWindow = false;
+
 // 아래에서, dirFd 변수들에 대해 fd leak 경고 발생
 // File Operator Thread에서 close() -> 여기서 close()하면, Thread쪽에서 오류 발생
-// 따라서, leak되는 게 정상임
+// 따라서, 의도적으로 leak되게 함
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
     while (1) {
@@ -275,7 +230,7 @@ void mainLoop(void) {
 
                 // 프로세스 창 토글
                 case 'p':
-                    toggleProcWin(&processWindow);
+                    showProcessWindow = !showProcessWindow;
                     break;
 
                 // 정렬 변경
@@ -413,12 +368,28 @@ void mainLoop(void) {
 
         displayProgress(fileProgresses);
 
-        pthread_mutex_lock(&processWindow.visibleMutex);
-        if (processWindow.isWindowVisible) {
-            pthread_mutex_unlock(&processWindow.visibleMutex);  // Unlock before update
-            updateProcWin(&processWindow);
-        } else {
-            pthread_mutex_unlock(&processWindow.visibleMutex);  // Unlock if not visible
+        // pthread_mutex_lock(&processWindow.visibleMutex);
+        // if (processWindow.isWindowVisible) {
+        //     pthread_mutex_unlock(&processWindow.visibleMutex);  // Unlock before update
+        //     updateProcessWindow(&processWindow);
+        // } else {
+        //     pthread_mutex_unlock(&processWindow.visibleMutex);  // Unlock if not visible
+        // }
+        if (showProcessWindow) {
+            if (!prevShowProcessWindow) {
+                pthread_mutex_lock(&processThreadArgs.commonArgs.statusMutex);
+                processThreadArgs.commonArgs.statusFlags &= ~LISTPROCESS_FLAG_PAUSE_THREAD;
+                pthread_cond_signal(&processThreadArgs.commonArgs.resumeThread);
+                pthread_mutex_unlock(&processThreadArgs.commonArgs.statusMutex);
+            }
+            updateProcessWindow();
+            prevShowProcessWindow = true;
+        } else if (prevShowProcessWindow) {
+            hideProcessWindow();
+            pthread_mutex_lock(&processThreadArgs.commonArgs.statusMutex);
+            processThreadArgs.commonArgs.statusFlags |= LISTPROCESS_FLAG_PAUSE_THREAD;
+            pthread_mutex_unlock(&processThreadArgs.commonArgs.statusMutex);
+            prevShowProcessWindow = false;
         }
 
         // 패널 업데이트
@@ -436,10 +407,51 @@ CLEANUP:
 }
 #pragma GCC diagnostic pop
 
+void stopThreads(void) {
+    // Thread들 정지 요청
+    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++) {
+        pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
+        dirListenerArgs[i].commonArgs.statusFlags |= THREAD_FLAG_STOP;
+        dirListenerArgs[i].commonArgs.statusFlags &= ~SORT_CRITERION_MASK;  // 정렬 기준 플래그 초기화
+        dirListenerArgs[i].commonArgs.statusFlags &= ~SORT_DIRECTION_BIT;  // 정렬 방향 플래그 초기화
+        pthread_cond_signal(&dirListenerArgs[i].commonArgs.resumeThread);
+        pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
+    }
+    pthread_mutex_lock(&processThreadArgs.commonArgs.statusMutex);
+    processThreadArgs.commonArgs.statusFlags |= THREAD_FLAG_STOP;
+    pthread_cond_signal(&processThreadArgs.commonArgs.resumeThread);
+    pthread_mutex_unlock(&processThreadArgs.commonArgs.statusMutex);
+    // Linux에서: pthread_mutex_destroy, pthread_cond_destroy 반드시 필요한 것 아님 (manpage 참조)
+    close(pipeFileOpCmd);  // File Operator Thread용 pipe의 write end: close() -> Thread들 순차적으로 정지됨
+
+    // 각 Thread들 대기
+    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++) {
+        pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
+        if (dirListenerArgs[i].commonArgs.statusFlags & THREAD_FLAG_RUNNING) {
+            pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
+            pthread_join(threadListDir[i], NULL);
+        } else {
+            pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
+        }
+    }
+    for (int i = 0; i < dirWinCnt && i < MAX_FILE_OPERATORS; i++) {
+        pthread_mutex_lock(&fileOpArgs[i].commonArgs.statusMutex);
+        if (fileOpArgs[i].commonArgs.statusFlags & THREAD_FLAG_RUNNING) {
+            pthread_mutex_unlock(&fileOpArgs[i].commonArgs.statusMutex);
+            pthread_join(threadFileOperators[i], NULL);
+        } else {
+            pthread_mutex_unlock(&fileOpArgs[i].commonArgs.statusMutex);
+        }
+    }
+    pthread_mutex_lock(&processThreadArgs.commonArgs.statusMutex);
+    if (processThreadArgs.commonArgs.statusFlags & THREAD_FLAG_RUNNING) {
+        pthread_mutex_unlock(&processThreadArgs.commonArgs.statusMutex);
+        pthread_join(threadProcess, NULL);
+    } else {
+        pthread_mutex_unlock(&processThreadArgs.commonArgs.statusMutex);
+    }
+}
+
 void cleanup(void) {
     endwin();
-
-    pthread_mutex_destroy(&processWindow.statMutex);
-    pthread_mutex_destroy(&processWindow.visibleMutex);
-    pthread_mutex_destroy(&processWindow_Mutex);
 }

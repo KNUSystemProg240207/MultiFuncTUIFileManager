@@ -94,29 +94,6 @@ void setCurrentSelection(size_t index);
  */
 unsigned int getCurrentWindow(void);
 
-
-/**
- * 윈도우에 패널을 초기화합니다.
- *
- * @param win 패널을 생성할 대상 WINDOW 포인터
- * @return 성공 시 0, 실패 시 -1
- *
- * @details
- * - 주어진 WINDOW 객체에 새로운 패널을 생성하여 연결합니다.
- * - 생성된 패널은 패널 스택에서 초기화되며, 나중에 순서 조정 및 갱신이 가능합니다.
- * - 실패 시 적절한 에러 처리를 통해 반환 값을 확인해야 합니다.
- */
-int initPanelForWindow(WINDOW *win);
-
-/**
- * 모든 패널의 순서를 갱신하고 화면에 적용합니다.
- *
- * @details
- * - 패널 스택을 기준으로 패널의 순서를 재조정하고, 화면에 최신 상태를 출력합니다.
- * - 이 함수는 여러 패널이 겹치는 UI 환경에서 화면 갱신을 보장합니다.
- */
-void refreshPanels();
-
 /**
  * 정렬 상태를 토글합니다.
  *
