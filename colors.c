@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <locale.h>  // 추가된 헤더 - 한국어 출력
 
 #include "colors.h"
 #include "commons.h"
@@ -10,6 +11,8 @@ void calc255Color(short color_name, short r, short g, short b) {
     init_color(color_name, r, g, b);
 }
 void initColorSet() {
+    setlocale(LC_ALL, "");  // 로케일 설정 추가
+    calc255Color(COLOR_ORANGE, 250, 182, 87);
     calc255Color(COLOR_ORANGE, 250, 182, 87);
     calc255Color(COLOR_NAVY, 0x00, 0x1F, 0x3F);
     calc255Color(COLOR_DARKGRAY, 115, 115, 115);
