@@ -19,6 +19,7 @@ void initColorSet() {
     calc255Color(COLOR_HOT_PINK, 255, 46, 123);
     calc255Color(COLOR_GREEN_BLUE, 0x00, 0xB3, 0xB3);
     calc255Color(COLOR_ALL_BLUE, 0x00, 0x00, 0xFF);
+    calc255Color(COLOR_DEEP_RED, 224, 115, 79);
 
     init_pair(DIRECTORY, COLOR_WHITE, COLOR_ORANGE);  // 디렉토리: 하얀색
     init_pair(SYMBOLIC, COLOR_HOT_PINK, COLOR_ORANGE);  // 심볼릭 링크: 핫핑크
@@ -29,4 +30,5 @@ void initColorSet() {
     init_pair(HEADER, COLOR_WHITE, COLOR_ORANGE);  // 헤더 : 흰색
     init_pair(BGRND, COLOR_WHITE, COLOR_ORANGE);  // 배경(박스) : 흰색
     init_pair(DEFAULT, COLOR_NAVY, COLOR_ORANGE);  // 기본 파일 : 네이비
+    init_pair(PRCSBGRND, COLOR_WHITE, COLOR_DEEP_RED);  // 프로세스 창 배경
 }

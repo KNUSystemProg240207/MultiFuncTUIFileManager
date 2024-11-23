@@ -47,6 +47,9 @@ pthread_mutex_t p_visibleMutex;
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
+char manual1[MAX_NAME_LEN];  // 메뉴얼1
+char manual2[MAX_NAME_LEN];  // 메뉴얼2
+
 static void initVariables(void);  // 변수들 초기화
 static void initScreen(void);  // ncurses 관련 초기화 & subwindow들 생성
 static void initThreads(void);  // thread 관련 초기화
@@ -92,6 +95,10 @@ void initVariables(void) {
     pthread_cond_init(&processThreadArgs.commonArgs.resumeThread, NULL);
     pthread_mutex_init(&processThreadArgs.commonArgs.statusMutex, NULL);
     pthread_mutex_init(&processThreadArgs.entriesMutex, NULL);
+
+    // 메뉴얼 내용 입력
+    strcpy(manual1, "[^ / v] Move   [< / >] Switch   [Enter] Open   [w] NameSort   [e] SizeSort   [r] DateSort");
+    strcpy(manual2, "[c / x] Copy / Cut   [v] Paste   [Delete] Delete   [p] Process   [q] Quit");
 }
 
 void initScreen(void) {
@@ -344,7 +351,6 @@ void mainLoop(void) {
         }
 
         // 제목 영역 업데이트
-        renderTime();  // 시간 업데이트
 
         // 현재 창의 Working Directory 가져옴
         curWin = getCurrentWindow();
@@ -357,16 +363,13 @@ void mainLoop(void) {
             cwdLen = readlink(fdPathBuf, cwdBuf, MAX_PATH_LEN);
         }
         close(cwdFd);
-        if (cwdLen == -1) {
-            printPath("-----", 5);
-        } else {
-            cwdBuf[MAX_PATH_LEN - 1] = '\0';
-            printPath(cwdBuf, (size_t)cwdLen);
-        }
+
+        updateTitleBar(cwdBuf, (size_t)cwdLen);  // 타이틀바 업데이트
+        mvwhline(stdscr, getmaxy(stdscr) - 3, 0, ACS_HLINE, getmaxx(stdscr));  // 바텀 박스 상단 선 출력
 
         updateDirWins();  // 폴더 표시 창들 업데이트
 
-        displayProgress(fileProgresses);
+        displayBottomBox(fileProgresses, manual1, manual2);
 
         // pthread_mutex_lock(&processWindow.visibleMutex);
         // if (processWindow.isWindowVisible) {

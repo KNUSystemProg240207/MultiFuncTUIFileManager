@@ -5,9 +5,11 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "colors.h"
 #include "config.h"
 #include "list_process.h"
 #include "process_window.h"
+
 
 static WINDOW *window;
 static PANEL *panel;
@@ -84,72 +86,45 @@ int updateProcessWindow() {
     // 프로세스 창 업데이트
     pthread_mutex_lock(bufMutex);
 
+    wbkgd(window, COLOR_PAIR(PRCSBGRND));
+
+    getmaxyx(window, winH, winW);
+    size_t itemsCnt = *totalReadItems;  // 읽어들인 총 항목 수
+
     int maxItemsToPrint = winH - 3;  // 상하단 여백 제외 창 높이에 비례한 출력 가능한 항목 수
-    if (maxItemsToPrint > *totalReadItems)
-        maxItemsToPrint = *totalReadItems;
+
+    if (maxItemsToPrint > itemsCnt)
+        maxItemsToPrint = itemsCnt;
+
+    // wclear(window);  // <- 여기 한번 주목
+    box(window, 0, 0);
 
     if (winW < 20) {
-        mvwprintw(
-            window, 1, 1, "%-6s",
-            "PID"
-        );
+        mvwprintw(window, 1, 1, "%6s", "PID");
         for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(
-                window, c + 2, 1, "%-6d",
-                processes[i].pid
-            );
+            mvwprintw(window, c + 2, 1, "%6d", processes[i].pid);
     } else if (winW < 30) {
-        mvwprintw(
-            window, 1, 1, "%-6s %-14s",
-            "PID", "VSize"
-        );
+        mvwprintw(window, 1, 1, "%6s %14s", "PID", "VSize");
         for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(
-                window, c + 2, 1, "%-6d %-14lu",
-                processes[i].pid, processes[i].vsize
-            );
+            mvwprintw(window, c + 2, 1, "%6d %14lu", processes[i].pid, processes[i].vsize);
     } else if (winW < 40) {
-        mvwprintw(
-            window, 1, 1, "%-6s %-14s %-10s",
-            "PID", "VSize", "UTime"
-        );
+        mvwprintw(window, 1, 1, "%6s %14s %10s", "PID", "VSize", "UTime");
         for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(
-                window, c + 2, 1, "%-6d %-14lu %-10lu",
-                processes[i].pid, processes[i].vsize, processes[i].utime
-            );
+            mvwprintw(window, c + 2, 1, "%6d %14lu %10lu", processes[i].pid, processes[i].vsize, processes[i].utime);
     } else if (winW < 50) {
-        mvwprintw(
-            window, 1, 1, "%-6s %-14s %-10s %-10s",
-            "PID", "VSize", "UTime", "STime"
-        );
+        mvwprintw(window, 1, 1, "%6s %14s %10s %10s", "PID", "VSize", "UTime", "STime");
         for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(
-                window, c + 2, 1, "%-6d %-14lu %-10lu %-10lu",
-                processes[i].pid, processes[i].vsize, processes[i].utime, processes[i].stime
-            );
+            mvwprintw(window, c + 2, 1, "%6d %14lu %10lu %10lu", processes[i].pid, processes[i].vsize, processes[i].utime, processes[i].stime);
     } else if (winW < 80) {
-        mvwprintw(
-            window, 1, 1, "%-6s %-6s %-14s %-10s %-10s",
-            "PID", "State", "VSize", "UTime", "STime"
-        );
+        mvwprintw(window, 1, 1, "%6s %6s %14s %10s %10s", "PID", "State", "VSize", "UTime", "STime");
         for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(
-                window, c + 2, 1, "%-6d %-6c %-14lu %-10lu %-10lu",
-                processes[i].pid, processes[i].state, processes[i].vsize, processes[i].utime, processes[i].stime
-            );
+            mvwprintw(window, c + 2, 1, "%6d %6c %14lu %10lu %10lu", processes[i].pid, processes[i].state, processes[i].vsize, processes[i].utime, processes[i].stime);
     } else {
-        mvwprintw(
-            window, 1, 1, "%-6s %-35s %-6s %-14s %-10s %-10s",
-            "PID", "Name", "State", "VSize", "UTime", "STime"
-        );
+        mvwprintw(window, 1, 1, "%6s %-35s %6s %14s %10s %10s", "PID", "Name", "State", "VSize", "UTime", "STime");
         for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(
-                window, c + 2, 1, "%-6d %-*.*s %-6c %-14lu %-10lu %-10lu",
-                processes[i].pid, winW - 53, winW - 53, processes[i].name, processes[i].state,
-                 processes[i].vsize, processes[i].utime, processes[i].stime
-            );
+            mvwprintw(window, c + 2, 1, "%6d %-35s %6c %14lu %10lu %10lu", processes[i].pid, processes[i].name, processes[i].state, processes[i].vsize, processes[i].utime, processes[i].stime);
     }
+    whline(window, ' ', getmaxx(window) - getcurx(window) - 1);  // 남은 공간 공백 처리 (박스용 -1)
 
     pthread_mutex_unlock(bufMutex);
 
