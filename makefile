@@ -60,5 +60,5 @@ file_functions.o: file_functions.h file_functions.c
 	$(CC) $(CFLAGS) -c file_functions.c
 
 clean:
-	rm $(OBJS)
-	rm $(TARGET)
+	rm -f $(OBJS)
+	rm -f $(TARGET)

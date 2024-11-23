@@ -101,6 +101,7 @@ int updateProcWin(ProcWin *procWindow) {
         mvwprintw(procWindow->win, 1, 1, "%-6s %-6s %-14s %-10s %-10s", "PID", "State", "VSize", "UTime", "STime");
     else
         mvwprintw(procWindow->win, 1, 1, "%-6s %-35s %-6s %-14s %-10s %-10s", "PID", "Name", "State", "VSize", "UTime", "STime");
+    whline(procWindow->win, ' ', getmaxx(procWindow->win) - getcurx(procWindow->win) - 1);  // 남은 공간 공백 처리 (박스용 -1)
     // 가장 큰 메모리를 차지하는 항목부터 출력
     for (int i = 0; i < maxItemsToPrint; i++) {
         // pointerArray를 사용하여 메모리 크기 내림차순으로 접근
@@ -120,6 +121,7 @@ int updateProcWin(ProcWin *procWindow) {
             mvwprintw(procWindow->win, i + 2, 1, "%-6d %-6c %-14lu %-10lu %-10lu", proc->pid, proc->state, proc->vsize, proc->utime, proc->stime);
         else
             mvwprintw(procWindow->win, i + 2, 1, "%-6d %-35s %-6c %-14lu %-10lu %-10lu", proc->pid, proc->name, proc->state, proc->vsize, proc->utime, proc->stime);
+        whline(procWindow->win, ' ', getmaxx(procWindow->win) - getcurx(procWindow->win) - 1);  // 남은 공간 공백 처리 (박스용 -1)
     }
     // 창 새로고침
     // wrefresh(procWindow->win);  // <- 주목
