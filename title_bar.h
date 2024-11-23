@@ -25,4 +25,24 @@ void renderTime();
  */
 void printPath(char *path, size_t pathLen);
 
+/**
+ * @brief 제목 표시줄의 내용을 갱신합니다.
+ *
+ * @param cwd 현재 작업 디렉토리 경로
+ */
+void updateTitleBar(char *cwd, size_t cwdLen);
+
+/**
+ * @brief 제목 표시줄의 여백을 계산합니다.
+ *
+ * @param width 제목 표시줄의 총 너비
+ */
+void renderMargin(int width);
+
+/**
+ * @brief 제목 표시줄의 프로그램 이름을 출력합니다.
+ */
+void printProgramName(void);
+
+
 #endif

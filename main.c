@@ -402,12 +402,9 @@ void mainLoop(void) {
             cwdLen = readlink(fdPathBuf, cwdBuf, MAX_PATH_LEN);
         }
         close(cwdFd);
-        if (cwdLen == -1) {
-            printPath("-----", 5);
-        } else {
-            cwdBuf[MAX_PATH_LEN - 1] = '\0';
-            printPath(cwdBuf, (size_t)cwdLen);
-        }
+
+        updateTitleBar(cwdBuf, (size_t)cwdLen);  // 타이틀바 업데이트
+        mvwhline(stdscr, getmaxy(stdscr) - 3, 0, ACS_HLINE, getmaxx(stdscr));  // 바텀 박스 상단 선 출력
 
         updateDirWins();  // 폴더 표시 창들 업데이트
 
