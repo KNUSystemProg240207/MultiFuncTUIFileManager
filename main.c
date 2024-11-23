@@ -48,7 +48,8 @@ pthread_mutex_t p_visibleMutex;
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
-char manual[MAX_NAME_LEN];  // 메뉴얼
+char manual1[MAX_NAME_LEN];  // 메뉴얼1
+char manual2[MAX_NAME_LEN];  // 메뉴얼2
 
 static void initVariables(void);  // 변수들 초기화
 static void initScreen(void);  // ncurses 관련 초기화 & subwindow들 생성
@@ -145,7 +146,8 @@ void initVariables(void) {
     pthread_mutex_init(&processWindow.visibleMutex, NULL);
 
     // 메뉴얼 내용 입력
-    strcpy(manual, "^ / v Move < / > Switch Enter Open p Process w NameSort e SizeSort r DateSort c / x Copy / Cut v Paste Delete Delete q Quit");
+    strcpy(manual1, "[^ / v] Move   [< / >] Switch   [Enter] Open   [w] NameSort   [e] SizeSort   [r] DateSort");
+    strcpy(manual2, "[c / x] Copy / Cut   [v] Paste   [Delete] Delete   [p] Process   [q] Quit");
 }
 
 void initScreen(void) {
@@ -412,7 +414,7 @@ void mainLoop(void) {
 
         updateDirWins();  // 폴더 표시 창들 업데이트
 
-        displayBottomBox(fileProgresses, manual);
+        displayBottomBox(fileProgresses, manual1, manual2);
 
         pthread_mutex_lock(&processWindow.visibleMutex);
         if (processWindow.isWindowVisible) {

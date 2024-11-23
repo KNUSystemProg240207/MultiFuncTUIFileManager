@@ -22,7 +22,7 @@ WINDOW *initBottomBox(int width, int startY);
  * @param infos 진행률 정보
  */
 int displayProgress(FileProgressInfo *infos);
-void displayManual(char* manual);
-void displayBottomBox(FileProgressInfo *infos, char* manual);
+void displayManual(char* manual1, char* manual2);
+void displayBottomBox(FileProgressInfo *infos, char* manual1, char* manual2);
 
 #endif
