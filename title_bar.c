@@ -16,7 +16,7 @@ static unsigned int margin;  // 현재 경로 양 옆의 공간 (프로그램명
 
 
 WINDOW *initTitleBar(int width) {
-    CHECK_NULL(titleBar = newwin(1, width, 0, 0));  // 새 Window 생성
+    CHECK_NULL(titleBar = newwin(2, width, 0, 0));  // 새 Window 생성
     CHECK_CURSES(mvwaddstr(titleBar, 0, 0, PROG_NAME));  // 프로그램 이름 출력
 
     barWidth = width;
@@ -77,7 +77,7 @@ void updateTitleBar(char *cwd, size_t cwdLen) {
         // 최소 너비: 경로만 출력
         mvwaddnstr(titleBar, 0, 0, cwd, cwdLen);
     }
-    mvwhline(stdscr, 1, 0, ACS_HLINE, getmaxx(stdscr));
+    mvwhline(titleBar, 1, 0, ACS_HLINE, getmaxx(stdscr));
 }
 
 
