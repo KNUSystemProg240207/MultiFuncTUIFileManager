@@ -9,6 +9,7 @@
 /**
  * 화면 하단 단축키 표시 Window 초기화
  *
+ * 
  * @param width 화면 폭 (= 단축키 Window 폭)
  * @param startY 화면 기준 단축키 Window 최상단의 y좌표
  * @return 하단 단축키 Window
@@ -20,6 +21,8 @@ WINDOW *initBottomBox(int width, int startY);
  *
  * @param infos 진행률 정보
  */
-void displayProgress(FileProgressInfo *infos);
+int displayProgress(FileProgressInfo *infos);
+void displayManual(char* manual);
+void displayBottomBox(FileProgressInfo *infos, char* manual);
 
 #endif

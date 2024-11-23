@@ -9,13 +9,12 @@
 
 static WINDOW *bottomBox;
 
-
 WINDOW *initBottomBox(int width, int startY) {
     CHECK_NULL(bottomBox = newwin(2, width, startY, 0));
     return bottomBox;
 }
 
-void displayProgress(FileProgressInfo *infos) {
+int displayProgress(FileProgressInfo *infos) {
     int width = getmaxx(bottomBox);
     int x, y, w = width / 2 - 1;
     char operation;
@@ -68,4 +67,31 @@ void displayProgress(FileProgressInfo *infos) {
     }
 
     wrefresh(bottomBox);
+
+    return runningWins;
+}
+
+void displayManual(char *manual) {
+    int width = getmaxx(bottomBox);
+    int x = 1, y = 0;
+
+    for (int i = 0; manual[i] != '\0'; i++) {
+        if (x >= width - 1 || manual[i] == '\n') {  // 현재 줄 너비를 초과하거나 줄바꿈 문자일 경우
+            x = 1;  // 줄의 처음으로 이동
+            y++;  // 다음 줄로 이동
+            if (y >= 2) {  // bottomBox 높이가 2를 초과하면 종료
+                break;
+            }
+        }
+        if (manual[i] != '\n') {  // 줄바꿈 문자가 아니면 출력
+            mvwaddstr(bottomBox, y, x, manual);
+        }
+    }
+
+    wrefresh(bottomBox);  // 화면 업데이트
+}
+
+void displayBottomBox(FileProgressInfo *infos, char* manual){
+    if(displayProgress(infos) == 0)
+        displayManual(manual);
 }
