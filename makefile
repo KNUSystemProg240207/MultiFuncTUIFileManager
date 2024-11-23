@@ -32,7 +32,7 @@ title_bar.o: config.h commons.h title_bar.h title_bar.c
 bottom_area.o: config.h commons.h file_operator.h bottom_area.h bottom_area.c
 	$(CC) $(CFLAGS) -c bottom_area.c
 
-process_window.o: config.h commons.h list_process.h proc_win.h process_window.c
+process_window.o: config.h commons.h list_process.h colors.h proc_win.h process_window.c
 	$(CC) $(CFLAGS) -c process_window.c
 
 # Threads

@@ -48,7 +48,7 @@ pthread_mutex_t p_visibleMutex;
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
-char manual[MAX_NAME_LEN]; // 메뉴얼
+char manual[MAX_NAME_LEN];  // 메뉴얼
 
 static void initVariables(void);  // 변수들 초기화
 static void initScreen(void);  // ncurses 관련 초기화 & subwindow들 생성

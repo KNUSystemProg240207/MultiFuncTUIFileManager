@@ -12,7 +12,8 @@ typedef enum {
     HIDDEN,
     BGRND,
     HEADER,
-    DEFAULT
+    DEFAULT,
+    PRCSBGRND
 } FILE_COLOR;
 
 #define COLOR_ORANGE 1  // 주황색
@@ -23,6 +24,7 @@ typedef enum {
 #define COLOR_GREEN_BLUE 6  // 초록빛 파랑색
 // COLOR ID 7은 의도적으로 건너뛴 상태
 #define COLOR_ALL_BLUE 8  // 전체 파란색
+#define COLOR_DEEP_RED 9  // 다홍색
 
 void calc255Color(short color_name, short r, short g, short b);
 void initColorSet();

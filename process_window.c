@@ -5,10 +5,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "colors.h"
 #include "config.h"
 #include "list_process.h"
 #include "proc_win.h"
-
 
 int initProcWin(ProcWin *procWindow) {
     int y, x, h, w;
@@ -78,6 +78,8 @@ int updateProcWin(ProcWin *procWindow) {
     // 프로세스 창 업데이트
     pthread_mutex_lock(&procWindow->statMutex);
 
+    wbkgd(procWindow->win, COLOR_PAIR(PRCSBGRND));
+
     getmaxyx(procWindow->win, winH, winW);
     itemsCnt = procWindow->totalReadItems;  // 읽어들인 총 항목 수
 
@@ -90,17 +92,17 @@ int updateProcWin(ProcWin *procWindow) {
     box(procWindow->win, 0, 0);
 
     if (winW < 20)
-        mvwprintw(procWindow->win, 1, 1, "%-6s", "PID");
+        mvwprintw(procWindow->win, 1, 1, "%6s", "PID");
     else if (winW < 30)
-        mvwprintw(procWindow->win, 1, 1, "%-6s %-14s", "PID", "VSize");
+        mvwprintw(procWindow->win, 1, 1, "%6s %14s", "PID", "VSize");
     else if (winW < 40)
-        mvwprintw(procWindow->win, 1, 1, "%-6s %-14s %-10s", "PID", "VSize", "UTime");
+        mvwprintw(procWindow->win, 1, 1, "%6s %14s %10s", "PID", "VSize", "UTime");
     else if (winW < 50)
-        mvwprintw(procWindow->win, 1, 1, "%-6s %-14s %-10s %-10s", "PID", "VSize", "UTime", "STime");
+        mvwprintw(procWindow->win, 1, 1, "%6s %14s %10s %10s", "PID", "VSize", "UTime", "STime");
     else if (winW < 80)
-        mvwprintw(procWindow->win, 1, 1, "%-6s %-6s %-14s %-10s %-10s", "PID", "State", "VSize", "UTime", "STime");
+        mvwprintw(procWindow->win, 1, 1, "%6s %6s %14s %10s %10s", "PID", "State", "VSize", "UTime", "STime");
     else
-        mvwprintw(procWindow->win, 1, 1, "%-6s %-35s %-6s %-14s %-10s %-10s", "PID", "Name", "State", "VSize", "UTime", "STime");
+        mvwprintw(procWindow->win, 1, 1, "%6s %-35s %6s %14s %10s %10s", "PID", "Name", "State", "VSize", "UTime", "STime");
     whline(procWindow->win, ' ', getmaxx(procWindow->win) - getcurx(procWindow->win) - 1);  // 남은 공간 공백 처리 (박스용 -1)
     // 가장 큰 메모리를 차지하는 항목부터 출력
     for (int i = 0; i < maxItemsToPrint; i++) {
@@ -110,17 +112,17 @@ int updateProcWin(ProcWin *procWindow) {
 
         // 프로세스 정보 출력
         if (winW < 20)
-            mvwprintw(procWindow->win, i + 2, 1, "%-6d", proc->pid);
+            mvwprintw(procWindow->win, i + 2, 1, "%6d", proc->pid);
         else if (winW < 30)
-            mvwprintw(procWindow->win, i + 2, 1, "%-6d %-14lu", proc->pid, proc->vsize);
+            mvwprintw(procWindow->win, i + 2, 1, "%6d %14lu", proc->pid, proc->vsize);
         else if (winW < 40)
-            mvwprintw(procWindow->win, i + 2, 1, "%-6d %-14lu %-10lu", proc->pid, proc->vsize, proc->utime);
+            mvwprintw(procWindow->win, i + 2, 1, "%6d %14lu %10lu", proc->pid, proc->vsize, proc->utime);
         else if (winW < 50)
-            mvwprintw(procWindow->win, i + 2, 1, "%-6d %-14lu %-10lu %-10lu", proc->pid, proc->vsize, proc->utime, proc->stime);
+            mvwprintw(procWindow->win, i + 2, 1, "%6d %14lu %10lu %10lu", proc->pid, proc->vsize, proc->utime, proc->stime);
         else if (winW < 80)
-            mvwprintw(procWindow->win, i + 2, 1, "%-6d %-6c %-14lu %-10lu %-10lu", proc->pid, proc->state, proc->vsize, proc->utime, proc->stime);
+            mvwprintw(procWindow->win, i + 2, 1, "%6d %6c %14lu %10lu %10lu", proc->pid, proc->state, proc->vsize, proc->utime, proc->stime);
         else
-            mvwprintw(procWindow->win, i + 2, 1, "%-6d %-35s %-6c %-14lu %-10lu %-10lu", proc->pid, proc->name, proc->state, proc->vsize, proc->utime, proc->stime);
+            mvwprintw(procWindow->win, i + 2, 1, "%6d %-35s %6c %14lu %10lu %10lu", proc->pid, proc->name, proc->state, proc->vsize, proc->utime, proc->stime);
         whline(procWindow->win, ' ', getmaxx(procWindow->win) - getcurx(procWindow->win) - 1);  // 남은 공간 공백 처리 (박스용 -1)
     }
     // 창 새로고침
