@@ -389,7 +389,6 @@ void mainLoop(void) {
         }
 
         // 제목 영역 업데이트
-        renderTime();  // 시간 업데이트
 
         // 현재 창의 Working Directory 가져옴
         curWin = getCurrentWindow();
