@@ -16,11 +16,16 @@
 #define PROC_SCAN_INTERVAL_USEC 500000  // 프로세스 정보를 읽는 주기 (500ms)
 
 
-static size_t findInsertPosition(Process **readItems, size_t size, unsigned long vsize);
+static long pageSize;  // 메모리 Page Size: Thread 시작 전 알아내야 함
+
+static size_t findInsertPosition(Process **readItems, size_t size, unsigned long rsize);
 
 
 // 프로세스 정보 읽기 스레드 시작
 int startProcessThread(pthread_t *newThread, ProcessThreadArgs *args) {
+    pageSize = sysconf(_SC_PAGESIZE);
+    if (pageSize == -1)
+        return -1;
     // clang-format off
     if (startThread(
         newThread, NULL, procThreadMain, NULL,
@@ -77,22 +82,23 @@ int readProcInfo(ProcessThreadArgs *args) {
         // fscanf로 데이터를 읽어서 구조체에 저장
         // clang-format off
         if (fscanf(
-            statFile, "%d (%255[^)]) %c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %*d %*d %*d %*d %*d %*d %*u %lu",
-            &temp.pid, temp.name, &temp.state, &temp.utime, &temp.stime, &temp.vsize
+            statFile, "%d (%255[^)]) %c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %*d %*d %*d %*d %*d %*d %*u %*u %ld",
+            &temp.pid, temp.name, &temp.state, &temp.utime, &temp.stime, &temp.rsize
         ) != 6) {  // clang-format on
             fclose(statFile);
             continue;
         }
+        temp.rsize *= pageSize;
         fclose(statFile);
 
         if (readCount < MAX_PROCESSES) {  // 배열이 아직 가득 차지 않은 경우 직접 추가
-            size_t insertPos = findInsertPosition(elemPointers, readCount, temp.vsize);
+            size_t insertPos = findInsertPosition(elemPointers, readCount, temp.rsize);
             memmove(&elemPointers[0], &elemPointers[1], insertPos * sizeof(Process *));
             elements[readCount] = temp;
             elemPointers[readCount] = &elements[readCount];
             readCount++;
-        } else if (temp.vsize > elemPointers[0]->vsize) {
-            size_t insertPos = findInsertPosition(elemPointers, MAX_PROCESSES, temp.vsize);
+        } else if (temp.rsize > elemPointers[0]->rsize) {
+            size_t insertPos = findInsertPosition(elemPointers, MAX_PROCESSES, temp.rsize);
             memmove(&elemPointers[0], &elemPointers[1], insertPos * sizeof(Process *));
             *elemPointers[0] = temp;  // 새로운 데이터로 갱신
             elemPointers[insertPos] = elemPointers[0];
@@ -110,7 +116,7 @@ int readProcInfo(ProcessThreadArgs *args) {
     return 0;
 }
 
-size_t findInsertPosition(Process **readItems, size_t size, unsigned long vsize) {
+size_t findInsertPosition(Process **readItems, size_t size, unsigned long rsize) {
     size_t low = 0, high = size;
     while (low < high) {
         size_t mid = (low + high) / 2;
@@ -118,7 +124,7 @@ size_t findInsertPosition(Process **readItems, size_t size, unsigned long vsize)
         //     fprintf(stderr, "Null pointer detected at position %zu\n", mid);
         //     return mid;  // NULL을 발견한 위치에 삽입
         // }
-        if (vsize > readItems[mid]->vsize) {
+        if (rsize > readItems[mid]->rsize) {
             low = mid + 1;
         } else {
             high = mid;

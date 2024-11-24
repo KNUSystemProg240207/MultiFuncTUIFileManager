@@ -11,7 +11,7 @@ typedef struct _Process {
     pid_t pid;  // 프로세스 ID
     char name[MAX_NAME_LEN + 1];  // 프로세스 이름
     char state;  // 프로세스 상태
-    unsigned long vsize;  // 가상 메모리 사용량
+    long rsize;  // '실제 메모리 점유량 (= rss * pageSize)
     unsigned long utime;  // 사용자 모드에서의 CPU 시간
     unsigned long stime;  // 커널 모드에서의 CPU 시간
 } Process;

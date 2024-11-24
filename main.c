@@ -40,11 +40,6 @@ static ProcessThreadArgs processThreadArgs;
 
 static int pipeFileOpCmd;
 
-pthread_mutex_t processWindow_Mutex;
-
-pthread_mutex_t p_statMutex;
-pthread_mutex_t p_visibleMutex;
-
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
 char manual1[MAX_NAME_LEN];  // 메뉴얼1
