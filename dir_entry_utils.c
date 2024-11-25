@@ -62,11 +62,11 @@ static int cmpDateDesc(const void *a, const void *b);
 
 
 char *truncateFileName(char *fileName) {
-    static char nameBuf[MAX_NAME_LEN + 1];
+    static char nameBuf[NAME_MAX + 1];
     size_t len = strlen(fileName);
 
-    strncpy(nameBuf, fileName, MAX_NAME_LEN);
-    nameBuf[MAX_NAME_LEN] = '\0';
+    strncpy(nameBuf, fileName, NAME_MAX);
+    nameBuf[NAME_MAX] = '\0';
 
     if (len > MAX_DISPLAY_LEN) {
         const char *dot = strrchr(fileName, '.');  // 마지막 '.' 찾기

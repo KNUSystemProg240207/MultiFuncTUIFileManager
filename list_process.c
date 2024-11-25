@@ -54,13 +54,13 @@ int procThreadMain(void *argsPtr) {
     size_t readCount = 0;
     struct dirent *entry;
     Process temp;
-    char pathBuf[MAX_PATH_LEN + 1];
+    char pathBuf[PATH_MAX + 1];
     while ((entry = readdir(dir)) != NULL) {
         if (!isdigit(entry->d_name[0])) {
             continue;  // 숫자로 시작하지 않으면 건너뜀
         }
 
-        snprintf(pathBuf, MAX_PATH_LEN + 1, "/proc/%.244s/stat", entry->d_name);
+        snprintf(pathBuf, PATH_MAX + 1, "/proc/%.244s/stat", entry->d_name);
         FILE *statFile = fopen(pathBuf, "r");
         if (statFile == NULL) {
             continue;

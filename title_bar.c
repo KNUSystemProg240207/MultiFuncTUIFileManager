@@ -64,7 +64,7 @@ void updateTitleBar(char *cwd, size_t cwdLen) {
         cwd = "-----";  // 상수 문자열로 기본 값 설정
         cwdLen = strlen(cwd);  // 길이 재설정
     } else {
-        cwd[MAX_PATH_LEN - 1] = '\0';
+        cwd[PATH_MAX - 1] = '\0';
     }
 
     werase(titleBar);  // 기존 내용을 지움

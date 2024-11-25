@@ -26,7 +26,7 @@ typedef enum _FileOperation {
 typedef struct _SrcDstFile {
     dev_t devNo;
     int dirFd;
-    char name[MAX_NAME_LEN];
+    char name[NAME_MAX];
     size_t fileSize;
 } SrcDstInfo;
 
@@ -37,7 +37,7 @@ typedef struct _FileTask {
 } FileTask;
 
 typedef struct _FileProgressInfo {
-    char name[MAX_NAME_LEN];  // 작업중인 파일 이름
+    char name[NAME_MAX];  // 작업중인 파일 이름
     uint16_t flags;  // 진행률 Bit Field
     pthread_mutex_t flagMutex;  // 진행률 보호 Mutex
 } FileProgressInfo;

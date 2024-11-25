@@ -49,11 +49,13 @@ int fileOperator(void *argsPtr) {
     switch (command.type) {
         case COPY:
             copyFile(&command.src, &command.dst, args->progressInfo);
-            close(command.dst.dirFd);
+            if (command.src.dirFd != command.dst.dirFd)
+                close(command.dst.dirFd);
             break;
         case MOVE:
             moveFile(&command.src, &command.dst, args->progressInfo);
-            close(command.dst.dirFd);
+            if (command.src.dirFd != command.dst.dirFd)
+                close(command.dst.dirFd);
             break;
         case DELETE:
             removeFile(&command.src, args->progressInfo);
