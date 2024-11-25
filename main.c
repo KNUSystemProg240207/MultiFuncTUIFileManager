@@ -366,13 +366,6 @@ void mainLoop(void) {
 
         displayBottomBox(fileProgresses, manual1, manual2);
 
-        // pthread_mutex_lock(&processWindow.visibleMutex);
-        // if (processWindow.isWindowVisible) {
-        //     pthread_mutex_unlock(&processWindow.visibleMutex);  // Unlock before update
-        //     updateProcessWindow(&processWindow);
-        // } else {
-        //     pthread_mutex_unlock(&processWindow.visibleMutex);  // Unlock if not visible
-        // }
         if (showProcessWindow) {
             if (!prevShowProcessWindow) {
                 pthread_mutex_lock(&processThreadArgs.commonArgs.statusMutex);

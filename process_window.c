@@ -46,9 +46,6 @@ int initProcessWindow(
     totalReadItems = _totalReadItems;
     processes = _processes;
 
-    // pthread_mutex_lock(&procWindow->visibleMutex);
-    // procWindow->isWindowVisible = true;  // 프로세스 창 상태(열림)
-    // pthread_mutex_unlock(&procWindow->visibleMutex);
     return 0;
 }
 
@@ -59,10 +56,6 @@ void hideProcessWindow() {
 void delProcessWindow() {
     del_panel(panel);
     delwin(window);
-
-    // pthread_mutex_lock(&procWindow->visibleMutex);
-    // procWindow->isWindowVisible = false;  // 프로세스 창 상태(닫힘)
-    // pthread_mutex_unlock(&procWindow->visibleMutex);
 }
 
 // void toggleProcWin(ProcessWindow *procWindow) {
@@ -96,7 +89,6 @@ int updateProcessWindow() {
     if (maxItemsToPrint > itemsCnt)
         maxItemsToPrint = itemsCnt;
 
-    // wclear(window);  // <- 여기 한번 주목
     box(window, 0, 0);
 
     if (winW < 20) {

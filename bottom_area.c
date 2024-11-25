@@ -75,8 +75,6 @@ int displayProgress(FileProgressInfo *infos) {
         pthread_mutex_unlock(&infos[i].flagMutex);
     }
 
-    //    wrefresh(bottomBox);
-
     return runningWins;
 }
 
@@ -104,8 +102,6 @@ void displayManual(char *manual1, char *manual2) {
             x++;  // 다음 위치로 이동
         }
     }
-
-    // wrefresh(bottomBox);  // 화면 업데이트
 }
 
 void displayBottomBox(FileProgressInfo *infos, char *manual1, char *manual2) {
