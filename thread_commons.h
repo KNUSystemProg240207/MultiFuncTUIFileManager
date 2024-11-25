@@ -50,4 +50,25 @@ int startThread(
     void *targetFuncArgs
 );
 
+/**
+ * Thread 정지 요쳥 (주의: 즉시 정지되지 않으며, iteration 끝난 후 정지됨)
+ * 
+ * @param threadArgs 정지시키려는 Thread의 ThreadAargs 구조체
+ */
+int stopThread(ThreadArgs *args);
+
+/**
+ * Thread 일시 정지 요쳥 (주의: 즉시 일시정지되지 않으며, iteration 끝난 후 정지됨)
+ * 
+ * @param threadArgs 일시정지시키려는 Thread의 ThreadAargs 구조체
+ */
+int pauseThread(ThreadArgs *args);
+
+/**
+ * Thread 재개
+ * 
+ * @param threadArgs 일시정지시키려는 Thread의 ThreadAargs 구조체
+ */
+int resumeThread(ThreadArgs *args);
+
 #endif

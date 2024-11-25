@@ -147,7 +147,7 @@ void initThreads(void) {
     startDirListender(&threadListDir[0], &dirListenerArgs[0]);
 
     // 프로세스 스레드 시작
-    processThreadArgs.commonArgs.statusFlags |= LISTPROCESS_FLAG_PAUSE_THREAD;  // 초기: 일시정지 된 상태로 시작
+    processThreadArgs.commonArgs.statusFlags |= THREAD_FLAG_PAUSE;  // 초기: 일시정지 된 상태로 시작
     startProcessThread(&threadProcess, &processThreadArgs);
 
     // File Operator Thread 초기화, 실행
@@ -367,19 +367,13 @@ void mainLoop(void) {
         displayBottomBox(fileProgresses, manual1, manual2);
 
         if (showProcessWindow) {
-            if (!prevShowProcessWindow) {
-                pthread_mutex_lock(&processThreadArgs.commonArgs.statusMutex);
-                processThreadArgs.commonArgs.statusFlags &= ~LISTPROCESS_FLAG_PAUSE_THREAD;
-                pthread_cond_signal(&processThreadArgs.commonArgs.resumeThread);
-                pthread_mutex_unlock(&processThreadArgs.commonArgs.statusMutex);
-            }
+            if (!prevShowProcessWindow)
+                resumeThread(&processThreadArgs.commonArgs);
             updateProcessWindow();
             prevShowProcessWindow = true;
         } else if (prevShowProcessWindow) {
             hideProcessWindow();
-            pthread_mutex_lock(&processThreadArgs.commonArgs.statusMutex);
-            processThreadArgs.commonArgs.statusFlags |= LISTPROCESS_FLAG_PAUSE_THREAD;
-            pthread_mutex_unlock(&processThreadArgs.commonArgs.statusMutex);
+            pauseThread(&processThreadArgs.commonArgs);
             prevShowProcessWindow = false;
         }
 
@@ -398,47 +392,31 @@ CLEANUP:
 }
 #pragma GCC diagnostic pop
 
+static inline void tryJoinThread(ThreadArgs *commonArgs, pthread_t *threadToWait) {
+    pthread_mutex_lock(&commonArgs->statusMutex);
+    if (commonArgs->statusFlags & THREAD_FLAG_RUNNING) {
+        pthread_mutex_unlock(&commonArgs->statusMutex);
+        pthread_join(*threadToWait, NULL);
+    } else {
+        pthread_mutex_unlock(&commonArgs->statusMutex);
+    }
+}
+
 void stopThreads(void) {
     // Thread들 정지 요청
-    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++) {
-        pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
-        dirListenerArgs[i].commonArgs.statusFlags |= THREAD_FLAG_STOP;
-        pthread_cond_signal(&dirListenerArgs[i].commonArgs.resumeThread);
-        pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
-    }
-    pthread_mutex_lock(&processThreadArgs.commonArgs.statusMutex);
-    processThreadArgs.commonArgs.statusFlags |= THREAD_FLAG_STOP;
-    pthread_cond_signal(&processThreadArgs.commonArgs.resumeThread);
-    pthread_mutex_unlock(&processThreadArgs.commonArgs.statusMutex);
-    // Linux에서: pthread_mutex_destroy, pthread_cond_destroy 반드시 필요한 것 아님 (manpage 참조)
     close(pipeFileOpCmd);  // File Operator Thread용 pipe의 write end: close() -> Thread들 순차적으로 정지됨
+    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++)
+        stopThread(&dirListenerArgs[i].commonArgs);
+    stopThread(&processThreadArgs.commonArgs);
 
     // 각 Thread들 대기
-    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++) {
-        pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
-        if (dirListenerArgs[i].commonArgs.statusFlags & THREAD_FLAG_RUNNING) {
-            pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
-            pthread_join(threadListDir[i], NULL);
-        } else {
-            pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
-        }
-    }
-    for (int i = 0; i < dirWinCnt && i < MAX_FILE_OPERATORS; i++) {
-        pthread_mutex_lock(&fileOpArgs[i].commonArgs.statusMutex);
-        if (fileOpArgs[i].commonArgs.statusFlags & THREAD_FLAG_RUNNING) {
-            pthread_mutex_unlock(&fileOpArgs[i].commonArgs.statusMutex);
-            pthread_join(threadFileOperators[i], NULL);
-        } else {
-            pthread_mutex_unlock(&fileOpArgs[i].commonArgs.statusMutex);
-        }
-    }
-    pthread_mutex_lock(&processThreadArgs.commonArgs.statusMutex);
-    if (processThreadArgs.commonArgs.statusFlags & THREAD_FLAG_RUNNING) {
-        pthread_mutex_unlock(&processThreadArgs.commonArgs.statusMutex);
-        pthread_join(threadProcess, NULL);
-    } else {
-        pthread_mutex_unlock(&processThreadArgs.commonArgs.statusMutex);
-    }
+    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++)
+        tryJoinThread(&dirListenerArgs[i].commonArgs, &threadListDir[i]);
+    for (int i = 0; i < MAX_FILE_OPERATORS; i++)
+        tryJoinThread(&fileOpArgs[i].commonArgs, &threadFileOperators[i]);
+    tryJoinThread(&processThreadArgs.commonArgs, &threadProcess);
+
+    // Linux에서: pthread_mutex_destroy, pthread_cond_destroy 반드시 필요한 것 아님 (manpage 참조)
 }
 
 void cleanup(void) {

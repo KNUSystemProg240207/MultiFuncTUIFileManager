@@ -18,6 +18,7 @@
 
 static long pageSize;  // 메모리 Page Size: Thread 시작 전 알아내야 함
 
+static int procThreadMain(void *argsPtr);
 static size_t findInsertPosition(Process **readItems, size_t size, unsigned long rsize);
 
 
@@ -37,25 +38,10 @@ int startProcessThread(pthread_t *newThread, ProcessThreadArgs *args) {
 
 // 프로세스 정보를 읽는 스레드의 메인 함수
 int procThreadMain(void *argsPtr) {
-    ProcessThreadArgs *args = (ProcessThreadArgs *)argsPtr;
-
-    pthread_mutex_lock(&args->commonArgs.statusMutex);  // 상태 보호 Mutex 잠금
-    if (args->commonArgs.statusFlags & LISTPROCESS_FLAG_PAUSE_THREAD) {
-        args->commonArgs.statusFlags &= ~LISTPROCESS_FLAG_PAUSE_THREAD;
-        pthread_cond_wait(&args->commonArgs.resumeThread, &args->commonArgs.statusMutex);
-    }
-    pthread_mutex_unlock(&args->commonArgs.statusMutex);
-
-    // 프로세스 정보 읽기
-    readProcInfo(args);
-
-    return 0;
-}
-
-// proc 디렉토리에서 프로세스 정보를 읽고 procEntries에 저장
-int readProcInfo(ProcessThreadArgs *args) {
     static Process elements[MAX_PROCESSES];
     static Process *elemPointers[MAX_PROCESSES];
+
+    ProcessThreadArgs *args = (ProcessThreadArgs *)argsPtr;
 
     // /proc 디렉토리를 열기
     DIR *dir = opendir(PROC_DIR);
@@ -106,7 +92,7 @@ int readProcInfo(ProcessThreadArgs *args) {
     }
     closedir(dir);
 
-    // 읽어들인 총 프로세스 수를 저장
+    // 공유 변수에 읽어들인 정보 쓰기
     pthread_mutex_lock(&args->entriesMutex);  // 상태 보호 Mutex 잠금
     args->totalReadItems = readCount;
     for (int i = 0; i < readCount; i++)
