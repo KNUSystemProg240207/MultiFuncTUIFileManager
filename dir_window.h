@@ -69,6 +69,14 @@ void selectPreviousWindow(void);
 void selectNextWindow(void);
 
 /**
+ * 창 개수 변경
+ * 
+ * @param count 새 창 개수 ( [1, MAX_DIRWINS) )
+ * @return 성공: 0, 창 개수 범위 벗어남: -1
+ */
+int setDirWinCnt(int count);
+
+/**
  * 현재 창의 선택된 폴더 Index 리턴
  *
  * @return 폴더 선택됨: (현재 선택의 Index), 폴더 아님: -1
@@ -95,7 +103,7 @@ void setCurrentSelection(size_t index);
 unsigned int getCurrentWindow(void);
 
 /**
- * 정렬 상태를 토글합니다.
+ * 정렬 상태를 토글
  *
  * @param mask 적용할 비트마스크 (SORT_NAME_MASK, SORT_SIZE_MASK, SORT_DATE_MASK 중 하나)
  * @param shift 비트 쉬프트 값 (SORT_NAME_SHIFT, SORT_SIZE_SHIFT, SORT_DATE_SHIFT 중 하나)

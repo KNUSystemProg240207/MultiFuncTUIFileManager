@@ -24,6 +24,10 @@
 #include "process_window.h"
 #include "title_bar.h"
 
+
+#define CTRL_KEY(key) (key & 037)
+
+
 WINDOW *titleBar, *bottomBox;
 PANEL *titlePanel, *bottomPanel;  // 패널 추가
 
@@ -125,26 +129,36 @@ void initScreen(void) {
     CHECK_CURSES(mvhline(h - 3, 0, ACS_HLINE, w));  // 단축키 창 위로 가로줄 그림
 
     // 폴더 내용 표시 창 생성
-    initDirWin(
-        &dirListenerArgs[0].bufMutex,
-        &dirListenerArgs[0].totalReadItems,
-        dirListenerArgs[0].dirEntries
-    );
+    for (int i = 0; i < MAX_DIRWINS; i++) {
+        initDirWin(
+            &dirListenerArgs[i].bufMutex,
+            &dirListenerArgs[i].totalReadItems,
+            dirListenerArgs[i].dirEntries
+        );
+    }
+    setDirWinCnt(1);
+    dirWinCnt = 1;
+
     initProcessWindow(
         &processThreadArgs.entriesMutex,
         &processThreadArgs.totalReadItems,
         processThreadArgs.processEntries
     );
-    dirWinCnt = 1;
 }
 
 void initThreads(void) {
     // Directory Listener Thread 초기화, 실행
-    dirListenerArgs[0].currentDir = opendir(".");
-    assert(dirListenerArgs[0].currentDir != NULL);
-    directoryOpenArgs = fcntl(dirfd(dirListenerArgs[0].currentDir), F_GETFL);
-    assert(directoryOpenArgs != -1);
-    startDirListender(&threadListDir[0], &dirListenerArgs[0]);
+    DIR *currentDir;
+    for (int i = 0; i < MAX_DIRWINS; i++) {
+        assert((currentDir = opendir(".")) != NULL);
+        dirListenerArgs[i].currentDir = currentDir;
+        if (i != 0) {
+            dirListenerArgs[i].commonArgs.statusFlags |= THREAD_FLAG_PAUSE;  // 첫 창과 이어진 Thread 제외하고 일시정지시킴
+        } else {
+            assert((directoryOpenArgs = fcntl(dirfd(currentDir), F_GETFL)) != -1);
+        }
+        startDirListender(&threadListDir[i], &dirListenerArgs[i]);
+    }
 
     // 프로세스 스레드 시작
     processThreadArgs.commonArgs.statusFlags |= THREAD_FLAG_PAUSE;  // 초기: 일시정지 된 상태로 시작
@@ -161,9 +175,6 @@ void initThreads(void) {
 }
 
 void mainLoop(void) {
-    // clang-format off
-    // clang-format on
-
     struct timespec startTime;  // Iteration 시작 시간
     uint64_t elapsedUSec;  // Iteration 걸린 시간
 
@@ -207,10 +218,10 @@ void mainLoop(void) {
 
                 // 선택 항목 이동
                 case KEY_LEFT:
-                    selectNextWindow();
+                    selectPreviousWindow();
                     break;
                 case KEY_RIGHT:
-                    selectPreviousWindow();
+                    selectNextWindow();
                     break;
 
                 // 디렉터리 변경
@@ -233,6 +244,27 @@ void mainLoop(void) {
                 // 프로세스 창 토글
                 case 'p':
                     showProcessWindow = !showProcessWindow;
+                    break;
+
+                // 창 열기
+                case CTRL_KEY('t'):
+                    if (dirWinCnt == MAX_DIRWINS) {
+                        // TODO: 오류 표시
+                        break;
+                    }
+                    resumeThread(&dirListenerArgs[dirWinCnt].commonArgs);  // 새 창과 이어진 Thread 시작
+                    dirWinCnt++;
+                    setDirWinCnt(dirWinCnt);  // 새 창 표시
+                    break;
+                // 현재 창 닫기
+                case CTRL_KEY('r'):
+                    if (dirWinCnt == 1) {
+                        // TODO: 오류 표시
+                        break;
+                    }
+                    dirWinCnt--;
+                    setDirWinCnt(dirWinCnt);  // 창 감추기
+                    pauseThread(&dirListenerArgs[dirWinCnt].commonArgs);  // 기존 창과 이어진 Thread 정지
                     break;
 
                 // 정렬 변경
@@ -405,12 +437,12 @@ static inline void tryJoinThread(ThreadArgs *commonArgs, pthread_t *threadToWait
 void stopThreads(void) {
     // Thread들 정지 요청
     close(pipeFileOpCmd);  // File Operator Thread용 pipe의 write end: close() -> Thread들 순차적으로 정지됨
-    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++)
+    for (int i = 0; i < MAX_DIRWINS; i++)
         stopThread(&dirListenerArgs[i].commonArgs);
     stopThread(&processThreadArgs.commonArgs);
 
     // 각 Thread들 대기
-    for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++)
+    for (int i = 0; i < MAX_DIRWINS; i++)
         tryJoinThread(&dirListenerArgs[i].commonArgs, &threadListDir[i]);
     for (int i = 0; i < MAX_FILE_OPERATORS; i++)
         tryJoinThread(&fileOpArgs[i].commonArgs, &threadFileOperators[i]);
