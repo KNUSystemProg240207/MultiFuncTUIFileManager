@@ -80,7 +80,7 @@ int displayProgress(FileProgressInfo *infos) {
     return runningWins;
 }
 
-void displayManual(char *manual1, char*manual2) {
+void displayManual(char *manual1, char *manual2) {
     int width = getmaxx(bottomBox);
 
     int x = 1, y = 0;
@@ -95,7 +95,7 @@ void displayManual(char *manual1, char*manual2) {
     }
 
     x = 1, y = 1;
-     for (int i = 0; manual2[i] != '\0'; i++) {
+    for (int i = 0; manual2[i] != '\0'; i++) {
         if (x >= width - 1) {  // 화면 너비 초과 시
             break;
         }
@@ -108,7 +108,7 @@ void displayManual(char *manual1, char*manual2) {
     // wrefresh(bottomBox);  // 화면 업데이트
 }
 
-void displayBottomBox(FileProgressInfo *infos, char *manual1, char*manual2) {
+void displayBottomBox(FileProgressInfo *infos, char *manual1, char *manual2) {
     if (displayProgress(infos) == 0)
         displayManual(manual1, manual2);
 }
