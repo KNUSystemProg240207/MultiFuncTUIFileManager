@@ -449,6 +449,8 @@ int setDirWinCnt(int count) {
             for (int i = showingWinCnt - 1; i >= count; i--) {
                 hide_panel(panels[i]);
             }
+            if (currentWin >= count)
+                currentWin = count - 1;
         } else {  // showingWinCnt < count
             for (int i = showingWinCnt; i < count; i++) {
                 show_panel(panels[i]);

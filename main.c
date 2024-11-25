@@ -179,6 +179,7 @@ void mainLoop(void) {
     uint64_t elapsedUSec;  // Iteration 걸린 시간
 
     int cwdFd;  // 현재 선택된 창의 Working Directory File Descriptor
+    DIR *newCwd;
     ssize_t cwdLen;
     // char *cwd;  // 현재 선택된 창의 Working Directory
     char fdPathBuf[MAX_PATH_LEN];  // Working Directory의 Buffer
@@ -251,6 +252,24 @@ void mainLoop(void) {
                     if (dirWinCnt == MAX_DIRWINS) {
                         // TODO: 오류 표시
                         break;
+                    }
+                    // 새 창의 Working Directory 설정
+                    curWin = getCurrentWindow();
+                    pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
+                    cwdFd = dirfd(dirListenerArgs[curWin].currentDir);
+                    if (cwdFd != -1) {
+                        cwdFd = dup(cwdFd);
+                    }
+                    pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
+                    if (cwdFd != -1) {
+                        newCwd = fdopendir(cwdFd);
+                        if (newCwd != NULL) {
+                            pthread_mutex_lock(&dirListenerArgs[dirWinCnt].dirMutex);
+                            if (dirListenerArgs[dirWinCnt].currentDir != NULL)
+                                closedir(dirListenerArgs[dirWinCnt].currentDir);
+                            dirListenerArgs[dirWinCnt].currentDir = newCwd;
+                            pthread_mutex_unlock(&dirListenerArgs[dirWinCnt].dirMutex);
+                        }
                     }
                     resumeThread(&dirListenerArgs[dirWinCnt].commonArgs);  // 새 창과 이어진 Thread 시작
                     dirWinCnt++;
@@ -376,8 +395,6 @@ void mainLoop(void) {
                     break;
             }
         }
-
-        // 제목 영역 업데이트
 
         // 현재 창의 Working Directory 가져옴
         curWin = getCurrentWindow();
