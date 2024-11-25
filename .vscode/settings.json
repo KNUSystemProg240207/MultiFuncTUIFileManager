@@ -1,9 +1,1 @@
-{
-    "files.associations": {
-        "*.yaml": "yaml",
-        "*.txt": "plaintext",
-        "dir_window.h": "c",
-        "list_process.h": "c",
-        "colors.h": "c"
-    }
-}
+{}

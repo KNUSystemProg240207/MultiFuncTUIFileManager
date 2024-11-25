@@ -78,7 +78,7 @@ void *runner(void *runnerArgument) {
 
     // 'Thread 작동 중' Flag 설정
     pthread_mutex_lock(&threadArgs->statusMutex);  // 상태 보호 Mutex 획득
-    threadArgs->statusFlags = THREAD_FLAG_RUNNING;
+    threadArgs->statusFlags |= THREAD_FLAG_RUNNING;
     pthread_mutex_unlock(&threadArgs->statusMutex);  // 상태 보호 Mutex 해제
 
     // Main Loop
