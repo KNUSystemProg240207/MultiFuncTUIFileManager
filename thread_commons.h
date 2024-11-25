@@ -8,8 +8,10 @@
 #include "config.h"
 
 
-#define THREAD_FLAG_RUNNING (1 << 0)  // 쓰레드 실행 여부
-#define THREAD_FLAG_STOP (1 << 8)  // 쓰레드 정지 요청
+#define THREAD_FLAG_RUNNING (1 << 0)  // Thread 실행 여부
+#define THREAD_FLAG_STOP (1 << 1)  // Thread 정지 요청
+#define THREAD_FLAG_PAUSE (1 << 2)  // Thread 일시정지 요청
+#define THREAD_FLAG_MSB 2  // thread_commons에서 사용하는 가장 큰 bit
 
 
 /**

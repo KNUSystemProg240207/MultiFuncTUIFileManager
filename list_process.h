@@ -5,7 +5,7 @@
 
 #include "thread_commons.h"
 
-#define LISTPROCESS_FLAG_PAUSE_THREAD (1 << 9)  // 프로세스 일시 중지 (다음 condvar signal 있을 때까지)
+#define LISTPROCESS_FLAG_PAUSE_THREAD (1 << THREAD_FLAG_MSB)  // 프로세스 일시 중지 (다음 condvar signal 있을 때까지)
 
 typedef struct _Process {
     pid_t pid;  // 프로세스 ID

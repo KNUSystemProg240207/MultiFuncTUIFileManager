@@ -241,13 +241,13 @@ void mainLoop(void) {
                     curWin = getCurrentWindow();
                     pthread_mutex_lock(&dirListenerArgs[curWin].commonArgs.statusMutex);
                     // 현재 기준이 이름순인지 확인
-                    if ((dirListenerArgs[curWin].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_NAME) {
+                    if ((dirListenerArgs[curWin].commonArgs.statusFlags & DIRLISTENER_FLAG_SORT_CRITERION_MASK) == DIRLISTENER_FLAG_SORT_NAME) {
                         // 기준이 같다면 방향 토글
-                        dirListenerArgs[curWin].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
+                        dirListenerArgs[curWin].commonArgs.statusFlags ^= DIRLISTENER_FLAG_SORT_REVERSE;
                     } else {
                         // 기준이 다르면 기준 초기화 및 오름차순 설정
-                        dirListenerArgs[curWin].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
-                        dirListenerArgs[curWin].commonArgs.statusFlags |= SORT_NAME;
+                        dirListenerArgs[curWin].commonArgs.statusFlags &= ~(DIRLISTENER_FLAG_SORT_CRITERION_MASK | DIRLISTENER_FLAG_SORT_REVERSE);
+                        dirListenerArgs[curWin].commonArgs.statusFlags |= DIRLISTENER_FLAG_SORT_NAME;
                     }
                     pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
                     pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
@@ -257,13 +257,13 @@ void mainLoop(void) {
                     curWin = getCurrentWindow();
                     pthread_mutex_lock(&dirListenerArgs[curWin].commonArgs.statusMutex);
                     // 현재 기준이 크기순인지 확인
-                    if ((dirListenerArgs[curWin].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_SIZE) {
+                    if ((dirListenerArgs[curWin].commonArgs.statusFlags & DIRLISTENER_FLAG_SORT_CRITERION_MASK) == DIRLISTENER_FLAG_SORT_SIZE) {
                         // 기준이 같다면 방향 토글
-                        dirListenerArgs[curWin].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
+                        dirListenerArgs[curWin].commonArgs.statusFlags ^= DIRLISTENER_FLAG_SORT_REVERSE;
                     } else {
                         // 기준이 다르면 기준 초기화 및 오름차순 설정
-                        dirListenerArgs[curWin].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
-                        dirListenerArgs[curWin].commonArgs.statusFlags |= SORT_SIZE;
+                        dirListenerArgs[curWin].commonArgs.statusFlags &= ~(DIRLISTENER_FLAG_SORT_CRITERION_MASK | DIRLISTENER_FLAG_SORT_REVERSE);
+                        dirListenerArgs[curWin].commonArgs.statusFlags |= DIRLISTENER_FLAG_SORT_SIZE;
                     }
                     pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
                     pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
@@ -273,13 +273,13 @@ void mainLoop(void) {
                     curWin = getCurrentWindow();
                     pthread_mutex_lock(&dirListenerArgs[curWin].commonArgs.statusMutex);
                     // 현재 기준이 날짜순인지 확인
-                    if ((dirListenerArgs[curWin].commonArgs.statusFlags & SORT_CRITERION_MASK) == SORT_DATE) {
+                    if ((dirListenerArgs[curWin].commonArgs.statusFlags & DIRLISTENER_FLAG_SORT_CRITERION_MASK) == DIRLISTENER_FLAG_SORT_DATE) {
                         // 기준이 같다면 방향 토글
-                        dirListenerArgs[curWin].commonArgs.statusFlags ^= SORT_DIRECTION_BIT;
+                        dirListenerArgs[curWin].commonArgs.statusFlags ^= DIRLISTENER_FLAG_SORT_REVERSE;
                     } else {
                         // 기준이 다르면 기준 초기화 및 오름차순 설정
-                        dirListenerArgs[curWin].commonArgs.statusFlags &= ~(SORT_CRITERION_MASK | SORT_DIRECTION_BIT);
-                        dirListenerArgs[curWin].commonArgs.statusFlags |= SORT_DATE;
+                        dirListenerArgs[curWin].commonArgs.statusFlags &= ~(DIRLISTENER_FLAG_SORT_CRITERION_MASK | DIRLISTENER_FLAG_SORT_REVERSE);
+                        dirListenerArgs[curWin].commonArgs.statusFlags |= DIRLISTENER_FLAG_SORT_DATE;
                     }
                     pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
                     pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
@@ -403,8 +403,6 @@ void stopThreads(void) {
     for (int i = 0; i < dirWinCnt && i < MAX_DIRWINS; i++) {
         pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
         dirListenerArgs[i].commonArgs.statusFlags |= THREAD_FLAG_STOP;
-        dirListenerArgs[i].commonArgs.statusFlags &= ~SORT_CRITERION_MASK;  // 정렬 기준 플래그 초기화
-        dirListenerArgs[i].commonArgs.statusFlags &= ~SORT_DIRECTION_BIT;  // 정렬 방향 플래그 초기화
         pthread_cond_signal(&dirListenerArgs[i].commonArgs.resumeThread);
         pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
     }
