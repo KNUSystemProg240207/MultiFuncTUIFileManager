@@ -196,7 +196,7 @@ int updateDirWins(void) {
 
         winH -= 4;  // 최대 출력 가능한 라인 넘버 -4
 
-        wbkgd(win->win, COLOR_PAIR(BGRND));  // 창 색깔 변경
+        if (isColorSafe) wbkgd(win->win, COLOR_PAIR(BGRND));  // 창 색깔 변경
         printFileHeader(win, winH, winW);  // 최상단 Header 출력
 
         // 라인 스크롤
@@ -230,7 +230,9 @@ int updateDirWins(void) {
                 wattroff(win->win, A_REVERSE);
             displayLine++;
         }
+        wmove(win->win, displayLine + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
         wclrtobot(win->win);  // 커서 아래 남는 공간: 지움
+        mvwprintw(win->win, 2, 2, "pthreadId == %lu", pthread_self());
         box(win->win, 0, 0);
         pthread_mutex_unlock(win->bufMutex);
     }
@@ -242,7 +244,8 @@ int updateDirWins(void) {
 
 /* 윈도우 헤더 출력 함수*/
 void printFileHeader(DirWin *win, int winH, int winW) {
-    wattron(win->win, COLOR_PAIR(HEADER));
+    // 색깔 적용
+    applyColor(win->win, HEADER);
 
     // 정렬 상태에 따른 헤더 출력 준비
     char nameHeader[30] = "    FILE NAME  ";
@@ -271,19 +274,23 @@ void printFileHeader(DirWin *win, int winH, int winW) {
     }
 
     /* 헤더 출력 파트 */
-    if (winW >= 55) {
+    if (getmaxx(win->win) >= 54) {
         // 최대 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-10s|%-19s|", nameHeader, sizeHeader, dateHeader);
-    } else if (winW >= 40) {
+    } else if (getmaxx(win->win) >= 40) {
         // 중간 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-19s|", nameHeader, dateHeader);
+    } else if (getmaxx(win->win) >= 35) {
+        mvwprintw(win->win, 1, 1, "%-20s|%-12s|", nameHeader, sizeHeader);
     } else {
         // 최소 너비
         mvwprintw(win->win, 1, 1, "%-20s|", nameHeader);
     }
 
     whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 채우기
-    wattroff(win->win, COLOR_PAIR(HEADER));
+
+    // 색깔 해제
+    removeColor(win->win, HEADER);
     mvwhline(win->win, 2, 1, 0, winW - 2);  // 구분선 출력
 }
 
@@ -321,20 +328,28 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     /* 파일 이름 너무 길면 자르기 */
     fileName = truncateFileName(fileName);
 
+
+    // 색깔 적용
+    applyColor(win->win, colorPair);
+
     /* 출력 파트 */
-    wattron(win->win, COLOR_PAIR(colorPair));
-    if (winW >= 55) {  // 최대 너비
-        format = "%-20s %10zu %13s %s";
-        mvwprintw(win->win, displayLine, 1, format, fileName, fileSize, lastModDate, lastModTime);
-    } else if (winW >= 40) {  // 중간 너비
+    if (getmaxx(win->win) >= 54) {  // 최대 너비
+        format = "%-20s %10s %13s %s";
+        mvwprintw(win->win, displayLine, 1, format, fileName, formatSizeDir(fileSize), lastModDate, lastModTime);
+    } else if (getmaxx(win->win) >= 36 + strlen(lastModTime)) {  // 중간 너비
         format = "%-20s %13s %s";
         mvwprintw(win->win, displayLine, 1, format, fileName, lastModDate, lastModTime);
-    } else {  // 최소 너비
+    } else if (getmaxx(win->win) >= 35) {  // 최소 너비
+        format = "%-20s %12s";
+        mvwprintw(win->win, displayLine, 1, format, fileName, formatSizeDir(fileSize));
+    } else {
         format = "%-20s";
         mvwprintw(win->win, displayLine, 1, format, fileName);
     }
     whline(win->win, ' ', getmaxx(win->win) - getcurx(win->win) - 1);  // 남은 공간 공백 처리 (박스용 -1)
-    wattroff(win->win, COLOR_PAIR(colorPair));
+
+    // 색깔 해제
+    removeColor(win->win, colorPair);
 }
 
 /* 정렬 상태 토글 함수 */
@@ -488,4 +503,19 @@ void setCurrentSelection(size_t index) {
 
 unsigned int getCurrentWindow(void) {
     return currentWin;
+}
+
+// 사이즈를 단위 포맷팅합니다.
+const char *formatSizeDir(unsigned long size) {  // const char *로 수정을 막음
+    static char formatted_size[16];
+    const char *units[] = { "B", "KB", "MB", "GB", "TB" };
+    int unit_index = 0;
+
+    while (size >= (1 << 10) && unit_index < 4) {
+        size >>= 10;  // 성능을 위해 비트 시프트로 연산, 2^10을 나누는 나눔(1024 단위로 나눔)
+        unit_index++;
+    }
+    /* 사이즈 형식으로 포매팅해서 스트링 리턴 */
+    snprintf(formatted_size, sizeof(formatted_size), "%lu%s", size, units[unit_index]);
+    return formatted_size;
 }

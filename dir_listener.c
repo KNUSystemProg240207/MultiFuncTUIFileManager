@@ -96,7 +96,14 @@ int dirListener(void *argsPtr) {
     }
     args->totalReadItems = readItems;
 
-    applySorting(args->dirEntries, args->commonArgs.statusFlags, readItems);  // 불러온 목록 정렬
+    if (args->totalReadItems > 0) {
+        applySorting(args->dirEntries, args->commonArgs.statusFlags, args->totalReadItems);
+
+    } else if (args->totalReadItems == 0) {
+        fprintf(stderr, "readItems: %ld totalReadItems: %ld\n", readItems, args->totalReadItems);
+    }
+
+    // applySorting(args->dirEntries, args->commonArgs.statusFlags, readItems);  // 불러온 목록 정렬
 
     pthread_mutex_unlock(&args->bufMutex);  // 결과값 보호 Mutex 해제
     pthread_mutex_unlock(&args->dirMutex);  // 현재 Directory 보호 Mutex 해제
@@ -126,6 +133,10 @@ ssize_t listEntries(DIR *dirToList, DirEntry *dirEntries, size_t bufLen) {
         }
         errno = 0;
         readItems++;
+    }
+    if (readItems == 0) {
+        fprintf(stderr, "Warning: No entries read from directory\n");
+        fprintf(stderr, "pthread id : %lu\n", pthread_self());
     }
     return readItems;
 }

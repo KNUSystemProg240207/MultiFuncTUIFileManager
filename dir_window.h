@@ -110,4 +110,11 @@ unsigned int getCurrentWindow(void);
  */
 void toggleSort(int mask, int shift);
 
+/**
+ * @brief 메모리 크기를 사람이 읽기 쉬운 형식(10KB, 1GB 등)으로 변환
+ * @param size 바이트 단위의 메모리 크기
+ * @return 사람이 읽기 쉬운 문자열 포맷 크기
+ */
+const char *formatSizeDir(unsigned long size);
+
 #endif

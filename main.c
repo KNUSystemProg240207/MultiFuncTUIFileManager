@@ -104,8 +104,8 @@ void initVariables(void) {
     pthread_mutex_init(&processThreadArgs.entriesMutex, NULL);
 
     // 메뉴얼 내용 입력
-    strcpy(manual1, "[^ / v] Move   [< / >] Switch   [Enter] Open   [w] NameSort   [e] SizeSort   [r] DateSort");
-    strcpy(manual2, "[c / x] Copy / Cut   [v] Paste   [Delete] Delete   [p] Process   [q] Quit");
+    strcpy(manual1, "[^ / v] Move         [< / >] Switch   [Enter] Open      [w] NameSort   [e] SizeSort   [r] DateSort");
+    strcpy(manual2, "[c / x] Copy / Cut   [v] Paste        [Delete] Delete   [p] Process    [q] Quit");
 }
 
 void initScreen(void) {
