@@ -15,6 +15,7 @@ typedef enum {
     DEFAULT,
     PRCSBGRND,
     PRCSFILE,
+    POPUP,
     PAIR_LAST
 } PAIR_COLOR;
 
@@ -30,7 +31,8 @@ extern bool isColorSafe;
 #define COLOR_GREEN_BLUE 21  // 초록빛 파랑색
 #define COLOR_ALL_BLUE 22  // 전체 파란색
 #define COLOR_DEEP_RED 23  // 다홍색
-#define COLOR_LAST 24  // 마지막 명시용 색깔(사용x)
+#define COLOR_LIGHT_GREEN 24  // 다홍색
+#define COLOR_LAST 25  // 마지막 명시용 색깔(사용x)
 
 
 /**

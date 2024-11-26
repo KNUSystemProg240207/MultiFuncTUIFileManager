@@ -69,6 +69,10 @@ void initColorSet() {
         isColorSafe = false;
         return;
     }
+    if (!calc255Color(COLOR_LIGHT_GREEN, 227, 255, 87)) {
+        isColorSafe = false;
+        return;
+    }
 
     // 색상 페어 초기화
     if (init_pair(DIRECTORY, COLOR_WHITE, COLOR_ORANGE) == ERR) {
@@ -113,6 +117,10 @@ void initColorSet() {
     }
     if (init_pair(PRCSFILE, COLOR_BLACK, COLOR_DEEP_RED) == ERR) {
         isColorSafe = false;  // 숨김파일
+        return;
+    }
+    if (init_pair(POPUP, COLOR_WHITE, COLOR_LIGHT_GREEN) == ERR) {
+        isColorSafe = false;  // 팝업
         return;
     }
     isColorSafe = true;  // 모든 페어가 성공적으로 초기화됨

@@ -28,8 +28,8 @@ static WINDOW *bottomBox;
 static PANEL *bottomPanel;
 
 // 매뉴얼 문자열을 bottom_area.c로 이동
-static const char *const MANUAL1 = "[^ / v] Move         [< / >] Switch   [Enter] Open      [w] NameSort   [e] SizeSort   [r] DateSort";
-static const char *const MANUAL2 = "[c / x] Copy / Cut   [v] Paste        [Delete] Delete   [p] Process    [q] Quit";
+static const char *const MANUAL1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename         [Delete] Delete   [w] NameSort   [e] SizeSort   [r] DateSort";
+static const char *const MANUAL2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path    [Enter] Open     [p] Process    [q] Quit ";
 
 
 WINDOW *initBottomBox(int width, int startY) {

@@ -2,6 +2,7 @@
 #include <panel.h>
 #include <string.h>
 
+#include "colors.h"
 #include "config.h"
 #include "popup_window.h"
 
@@ -17,14 +18,17 @@ void initPopupWindow() {
     getmaxyx(stdscr, screenH, screenW);
     int h = 3;  // 높이 1줄
     int w = screenW - 4;  // 좌우로 여백 2칸씩
-    int y = (screenH - h) / 2;  // 세로 중앙
+    int y = screenH - 7;  // 세로 중앙
     int x = 2;  // 가로 여백 2칸
 
     popupWindow = newwin(h, w, y, x);
     if (popupWindow == NULL) {
         return;
     }
-
+    // 팝업 배경색 설정
+    if (isColorSafe) {
+        wbkgd(popupWindow, COLOR_PAIR(POPUP));
+    }
     // 패널 생성
     popupWindowPanel = new_panel(popupWindow);
     hide_panel(popupWindowPanel);
@@ -56,6 +60,7 @@ void updatePopupWindow() {
     int width = getmaxx(popupWindow);
     int x = 1, y = 1;  // 여백 1칸
     int startIdx = 0;
+    applyColor(popupWindow, POPUP);
 
     mvwhline(popupWindow, 1, 1, ' ', width - 2);  // 입력된 문자 삭제
 
@@ -75,6 +80,7 @@ void updatePopupWindow() {
         wattroff(popupWindow, A_REVERSE);
     }
 
+    removeColor(popupWindow, POPUP);
     top_panel(popupWindowPanel);
 }
 
