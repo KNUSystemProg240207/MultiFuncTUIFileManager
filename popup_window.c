@@ -3,13 +3,16 @@
 #include <string.h>
 
 #include "config.h"
+#include "popup_window.h"
 
-static WINDOW *popupWin;  // 주소 입력 받는 Window
-static PANEL *popupWinPanel;
+
+static WINDOW *popupWindow;  // 주소 입력 받는 Window
+static PANEL *popupWindowPanel;
 static int charCount = 0;
-static char fileAddress[PATH_MAX + 1];
+static char inputBuf[PATH_MAX + 1];
 
-void initpopupWin() {
+
+void initPopupWindow() {
     int screenW, screenH;
     getmaxyx(stdscr, screenH, screenW);
     int h = 3;  // 높이 1줄
@@ -17,80 +20,72 @@ void initpopupWin() {
     int y = (screenH - h) / 2;  // 세로 중앙
     int x = 2;  // 가로 여백 2칸
 
-    popupWin = newwin(h, w, y, x);
-    if (popupWin == NULL) {
+    popupWindow = newwin(h, w, y, x);
+    if (popupWindow == NULL) {
         return;
     }
 
     // 패널 생성
-    popupWinPanel = new_panel(popupWin);
-    hide_panel(popupWinPanel);
+    popupWindowPanel = new_panel(popupWindow);
+    hide_panel(popupWindowPanel);
 }
-void updatePopupWin(char *title) {
-    werase(popupWin);  // 이전 내용 삭제
-    box(popupWin, 0, 0);  // 테두리 생성
 
-    int width = getmaxx(popupWin);
-    int x = 1, y = 1;  // 여백 1칸
-    int startIdx = 0;
-
-    if (charCount > width) {
-        startIdx = charCount - width;  // 마지막 문자 중심으로 잘라냄
+void showPopupWindow(char *title) {
+    werase(popupWindow);  // 이전 내용 삭제
+    box(popupWindow, 0, 0);  // 테두리 생성
+    if (title != NULL) {
+        wattron(popupWindow, A_REVERSE);
+        mvwaddstr(popupWindow, 0, 1, title);
+        wattroff(popupWindow, A_REVERSE);
     }
-
-    if(title != NULL){
-        wattron(popupWin, A_REVERSE);
-        mvwaddstr(popupWin, y-1, x, title); // 제목 역상으로 출력
-        wattroff(popupWin, A_REVERSE);
-    }
-
-    for (int i = startIdx; fileAddress[i] != '\0'; i++) {
-        if (x >= width - 1) {
-            break;  // 창 너비 초과 시 멈춤
-        }
-        mvwaddch(popupWin, y, x, fileAddress[i]);
-        x++;
-    }
-
-    // 커서 위치를 역상으로 표시 (버퍼가 비었으면 공백 표시)
-    if (charCount < PATH_MAX) {
-        wattron(popupWin, A_REVERSE);
-        mvwaddch(popupWin, y, x, ' ');
-        wattroff(popupWin, A_REVERSE);
-    }
-
-    top_panel(popupWinPanel);
+    show_panel(popupWindowPanel);
 }
 
 void hidePopupWindow() {
-    hide_panel(popupWinPanel);
-    fileAddress[0] = '\0';
+    hide_panel(popupWindowPanel);
+    memset(inputBuf, '\0', sizeof(inputBuf));
     charCount = 0;
 }
 
 void delPopupWindow() {
-    del_panel(popupWinPanel);
-    delwin(popupWin);
-
-    // pthread_mutex_lock(&procWindow->visibleMutex);
-    // procWindow->isWindowVisible = false;  // 프로세스 창 상태(닫힘)
-    // pthread_mutex_unlock(&procWindow->visibleMutex);
+    del_panel(popupWindowPanel);
+    delwin(popupWindow);
 }
 
-void getString(char* buffer){
-    strcpy(buffer, fileAddress);
-}
+void updatePopupWindow() {
+    int width = getmaxx(popupWindow);
+    int x = 1, y = 1;  // 여백 1칸
+    int startIdx = 0;
 
+    mvwhline(popupWindow, 1, 1, ' ', width - 2);  // 입력된 문자 삭제
 
-void addKey(char ch) {
-    if (charCount < PATH_MAX && charCount >= 0) {
-        fileAddress[charCount++] = ch;
-        fileAddress[charCount] = '\0';
+    if (charCount > width - 2) {  // 문자열이 긴 경우
+        startIdx = charCount - width + 2;  // 문자열의 마지막만 출력
+        if (charCount < PATH_MAX) {  // 버퍼에 남은 공간 존재하면 - 커서 공백 출력할 공간 예약
+            startIdx--;
+        }
     }
+
+    mvwaddstr(popupWindow, 1, 1, &inputBuf[startIdx]);
+
+    // 커서 위치를 역상으로 표시 (버퍼가 비었으면 공백 표시)
+    if (charCount < PATH_MAX) {
+        wattron(popupWindow, A_REVERSE);
+        waddch(popupWindow, ' ');
+        wattroff(popupWindow, A_REVERSE);
+    }
+
+    top_panel(popupWindowPanel);
 }
 
-void deleteKey() {
-    if (charCount <= PATH_MAX && charCount > 0) {
-        fileAddress[--charCount] = '\0';
-    }
+void putCharToPopup(char ch) {
+    inputBuf[charCount++] = ch;
+}
+
+void popCharFromPopup() {
+    inputBuf[--charCount] = '\0';
+}
+
+void getStringFromPopup(char *buffer) {
+    strcpy(buffer, inputBuf);
 }
