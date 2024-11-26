@@ -22,20 +22,6 @@ WINDOW* initBottomBox(int width, int startY);
 void delBottomBox(void);
 
 /**
- * 진행률 정보 표시
- *
- * @param infos 파일 작업 진행률 정보
- * @return 실행 중인 작업 수
- */
-int displayProgress(FileProgressInfo* infos);
-
-/**
- * 매뉴얼 텍스트 표시
- * 대괄호([])로 묶인 부분은 역상으로 표시
- */
-void displayManual(void);
-
-/**
  * 하단 영역 업데이트
  * 진행 중인 작업이 있으면 진행률 표시, 없으면 매뉴얼 표시
  *

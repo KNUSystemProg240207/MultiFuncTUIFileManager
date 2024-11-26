@@ -6,7 +6,7 @@
 static WINDOW *popupWin;  // 주소 입력 받는 Window
 static PANEL *popupWinPanel;
 static int charCount = 0;
-static char fileAddress[MAX_PATH_LEN + 1];
+static char fileAddress[PATH_MAX + 1];
 
 void initpopupWin() {
     int screenW, screenH;
@@ -46,7 +46,7 @@ char *updatePopupWin() {
     }
 
     // 커서 위치를 역상으로 표시 (버퍼가 비었으면 공백 표시)
-    if (charCount < MAX_PATH_LEN) {
+    if (charCount < PATH_MAX) {
         wattron(popupWin, A_REVERSE);
         mvwaddch(popupWin, y, x, ' ');
         wattroff(popupWin, A_REVERSE);
@@ -70,14 +70,14 @@ void delPopupWindow() {
 }
 
 void addKey(char ch) {
-    if (charCount < MAX_PATH_LEN && charCount >= 0) {
+    if (charCount < PATH_MAX && charCount >= 0) {
         fileAddress[charCount++] = ch;
         fileAddress[charCount] = '\0';
     }
 }
 
 void deleteKey() {
-    if (charCount <= MAX_PATH_LEN && charCount > 0) {
+    if (charCount <= PATH_MAX && charCount > 0) {
         fileAddress[--charCount] = '\0';
     }
 }

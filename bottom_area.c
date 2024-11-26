@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <curses.h>
 #include <panel.h>
-#include <stdbool.h>
 #include <stdlib.h>
 
 #include "bottom_area.h"
@@ -10,12 +9,28 @@
 #include "file_operator.h"
 
 
+/**
+ * 진행률 정보 표시
+ *
+ * @param infos 파일 작업 진행률 정보
+ * @return 실행 중인 작업 수
+ */
+static int displayProgress(FileProgressInfo *infos);
+
+/**
+ * 매뉴얼 텍스트 표시
+ * 대괄호([])로 묶인 부분은 역상으로 표시
+ */
+static void displayManual(void);
+
+
 static WINDOW *bottomBox;
 static PANEL *bottomPanel;
 
 // 매뉴얼 문자열을 bottom_area.c로 이동
 static const char *const MANUAL1 = "[^ / v] Move         [< / >] Switch   [Enter] Open      [w] NameSort   [e] SizeSort   [r] DateSort";
 static const char *const MANUAL2 = "[c / x] Copy / Cut   [v] Paste        [Delete] Delete   [p] Process    [q] Quit";
+
 
 WINDOW *initBottomBox(int width, int startY) {
     assert((bottomBox = newwin(2, width, startY, 0)));
@@ -111,8 +126,6 @@ int displayProgress(FileProgressInfo *infos) {
         );
         pthread_mutex_unlock(&infos[i].flagMutex);
     }
-
-    //    wrefresh(bottomBox);
 
     return runningWins;
 }

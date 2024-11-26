@@ -10,18 +10,18 @@
 #include "file_operator.h"
 
 
-/** 이름 정렬 상태를 나타내는 비트마스크 */
+// 이름 정렬 상태를 나타내는 비트마스크
 #define SORT_NAME_MASK 0x03  // 00000011
-/** 크기 정렬 상태를 나타내는 비트마스크 */
+// 크기 정렬 상태를 나타내는 비트마스크
 #define SORT_SIZE_MASK 0x0C  // 00001100
-/** 날짜 정렬 상태를 나타내는 비트마스크 */
+// 날짜 정렬 상태를 나타내는 비트마스크
 #define SORT_DATE_MASK 0x30  // 00110000
 
-/** 이름 정렬 상태를 위한 비트 쉬프트 */
+// 이름 정렬 상태를 위한 비트 쉬프트
 #define SORT_NAME_SHIFT 0
-/** 크기 정렬 상태를 위한 비트 쉬프트 */
+// 크기 정렬 상태를 위한 비트 쉬프트
 #define SORT_SIZE_SHIFT 2
-/** 날짜 정렬 상태를 위한 비트 쉬프트 */
+// 날짜 정렬 상태를 위한 비트 쉬프트
 #define SORT_DATE_SHIFT 4
 
 typedef struct _DirEntry DirEntry;
@@ -70,7 +70,7 @@ void selectNextWindow(void);
 
 /**
  * 창 개수 변경
- * 
+ *
  * @param count 새 창 개수 ( [1, MAX_DIRWINS) )
  * @return 성공: 0, 창 개수 범위 벗어남: -1
  */
@@ -109,12 +109,5 @@ unsigned int getCurrentWindow(void);
  * @param shift 비트 쉬프트 값 (SORT_NAME_SHIFT, SORT_SIZE_SHIFT, SORT_DATE_SHIFT 중 하나)
  */
 void toggleSort(int mask, int shift);
-
-/**
- * @brief 메모리 크기를 사람이 읽기 쉬운 형식(10KB, 1GB 등)으로 변환
- * @param size 바이트 단위의 메모리 크기
- * @return 사람이 읽기 쉬운 문자열 포맷 크기
- */
-const char *formatSizeDir(unsigned long size);
 
 #endif

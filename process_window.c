@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 
 #include "colors.h"
+#include "commons.h"
 #include "config.h"
 #include "list_process.h"
 #include "process_window.h"
@@ -16,6 +17,33 @@ static PANEL *panel;
 static pthread_mutex_t *bufMutex;
 static size_t *totalReadItems;
 static Process *processes;
+
+
+/**
+ * 프로세스 창의 테이블 헤더를 출력
+ *
+ * @param win 출력할 창(WINDOW 포인터)
+ * @param winW 창의 너비
+ */
+static void printTableHeader(WINDOW *win, int winW);
+
+/**
+ * 프로세스 정보를 출력
+ *
+ * @param win 출력할 창(WINDOW 포인터)
+ * @param winW 창의 너비
+ * @param processes 출력할 프로세스 배열
+ * @param maxItems 출력할 최대 항목 수
+ * @param totalItems 총 항목 수
+ */
+static void printProcessInfo(WINDOW *win, int winW, Process *processes, int maxItems, int totalItems);
+
+/**
+ * @brief 클럭 틱(tick)을 초(second)로 변환
+ * @param ticks 클럭 틱 값
+ * @return 변환된 초 단위 시간
+ */
+static unsigned long ticksToSeconds(unsigned long ticks);
 
 
 int initProcessWindow(
@@ -80,31 +108,20 @@ void updateProcessWindow() {
     pthread_mutex_lock(bufMutex);
 
     size_t itemsCnt = *totalReadItems;  // 읽어들인 총 항목 수
-
     int maxItemsToPrint = winH - 3;  // 상하단 여백 제외 창 높이에 비례한 출력 가능한 항목 수
-
     if (maxItemsToPrint > itemsCnt)
         maxItemsToPrint = itemsCnt;
 
     // 배경 색칠
-    if (isColorSafe) wbkgd(window, COLOR_PAIR(PRCSBGRND));
-
-    // 테이블 헤더 출력
-    printTableHeader(window, winW);
-
-    // 색상 적용
-    applyColor(window, PRCSFILE);
-
-    // 프로세스 정보 출력
-    printProcessInfo(window, winW, processes, maxItemsToPrint, *totalReadItems);
-
-    // 색상 해제
-    removeColor(window, PRCSFILE);
-
+    if (isColorSafe)
+        wbkgd(window, COLOR_PAIR(PRCSBGRND));
+    printTableHeader(window, winW);  // 테이블 헤더 출력
+    applyColor(window, PRCSFILE);  // 색상 적용
+    printProcessInfo(window, winW, processes, maxItemsToPrint, *totalReadItems);  // 프로세스 정보 출력
+    removeColor(window, PRCSFILE);  // 색상 해제
     whline(window, ' ', getmaxx(window) - getcurx(window) - 1);  // 남은 공간 공백 처리 (박스용 -1)
 
     pthread_mutex_unlock(bufMutex);
-
     top_panel(panel);
 }
 
@@ -142,21 +159,6 @@ void printProcessInfo(WINDOW *win, int winW, Process *processes, int maxItems, i
             mvwprintw(win, c + 2, 1, "%6d %-*.*s %6c %14s %9lus %9lus", processes[i].pid, winW - 55, winW - 55, processes[i].name, processes[i].state, formatSize(processes[i].rsize), ticksToSeconds(processes[i].utime), ticksToSeconds(processes[i].stime));
         }
     }
-}
-
-// 프로세스가 점유하고 있는 메모리 사이즈를 포맷팅합니다.
-const char *formatSize(unsigned long size) {  // const char *로 수정을 막음
-    static char formatted_size[16];
-    const char *units[] = { "B", "KB", "MB", "GB", "TB" };
-    int unit_index = 0;
-
-    while (size >= (1 << 10) && unit_index < 4) {
-        size >>= 10;  // 성능을 위해 비트 시프트로 연산, 2^10을 나누는 나눔
-        unit_index++;
-    }
-    /* 사이즈 형식으로 포매팅해서 스트링 리턴 */
-    snprintf(formatted_size, sizeof(formatted_size), "%lu%s", size, units[unit_index]);
-    return formatted_size;
 }
 
 // tick을 초 단위로 변경합니다.

@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 
 #include "colors.h"
+#include "commons.h"
 #include "config.h"
 #include "dir_entry_utils.h"
 #include "dir_window.h"
@@ -241,7 +242,7 @@ int updateDirWins(void) {
 }
 
 
-/* 윈도우 헤더 출력 함수*/
+// 윈도우 헤더 출력 함수
 void printFileHeader(DirWin *win, int winH, int winW) {
     // 색깔 적용
     applyColor(win->win, HEADER);
@@ -272,7 +273,7 @@ void printFileHeader(DirWin *win, int winH, int winW) {
         strcat(dateHeader, "^");
     }
 
-    /* 헤더 출력 파트 */
+    // 헤더 출력 파트
     if (getmaxx(win->win) >= 54) {
         // 최대 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-10s|%-19s|", nameHeader, sizeHeader, dateHeader);
@@ -293,7 +294,7 @@ void printFileHeader(DirWin *win, int winH, int winW) {
     mvwhline(win->win, 2, 1, 0, winW - 2);  // 구분선 출력
 }
 
-/* 파일 목록 출력 함수 */
+// 파일 목록 출력 함수
 void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     struct stat *fileStat = &(win->dirEntry[startIdx + line].statEntry);  // 파일 스테이터스
     char *fileName = win->dirEntry[startIdx + line].entryName;  // 파일 이름
@@ -303,13 +304,13 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     int displayLine = line + 3;  // 출력되는 실제 라인 넘버
     const char *format;  // 출력 포맷
 
-    /* 마지막 수정 시간 */
+    // 마지막 수정 시간
     struct tm tm;
     localtime_r(&fileStat->st_mtime, &tm);
     strftime(lastModDate, sizeof(lastModDate), "%y/%m/%d", &tm);
     strftime(lastModTime, sizeof(lastModTime), "%H:%M", &tm);
 
-    /* 색상 선택 */
+    // 색상 선택
     int colorPair = DEFAULT;
     if ((S_ISDIR(fileStat->st_mode)) && isHidden(fileName)) {
         colorPair = HIDDEN_FOLDER;
@@ -324,23 +325,23 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     } else if (isEXE(fileName)) {
         colorPair = EXE;
     }
-    /* 파일 이름 너무 길면 자르기 */
+    // 파일 이름 너무 길면 자르기
     fileName = truncateFileName(fileName);
 
 
     // 색깔 적용
     applyColor(win->win, colorPair);
 
-    /* 출력 파트 */
+    // 출력 파트
     if (getmaxx(win->win) >= 54) {  // 최대 너비
         format = "%-20s %10s %13s %s";
-        mvwprintw(win->win, displayLine, 1, format, fileName, formatSizeDir(fileSize), lastModDate, lastModTime);
+        mvwprintw(win->win, displayLine, 1, format, fileName, formatSize(fileSize), lastModDate, lastModTime);
     } else if (getmaxx(win->win) >= 36 + strlen(lastModTime)) {  // 중간 너비
         format = "%-20s %13s %s";
         mvwprintw(win->win, displayLine, 1, format, fileName, lastModDate, lastModTime);
     } else if (getmaxx(win->win) >= 35) {  // 최소 너비
         format = "%-20s %12s";
-        mvwprintw(win->win, displayLine, 1, format, fileName, formatSizeDir(fileSize));
+        mvwprintw(win->win, displayLine, 1, format, fileName, formatSize(fileSize));
     } else {
         format = "%-20s";
         mvwprintw(win->win, displayLine, 1, format, fileName);
@@ -351,7 +352,7 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     removeColor(win->win, colorPair);
 }
 
-/* 정렬 상태 토글 함수 */
+// 정렬 상태 토글 함수
 void toggleSort(int mask, int shift) {
 #define SORT_FLAG (windows[currentWin].sortFlag)
 
@@ -502,19 +503,4 @@ void setCurrentSelection(size_t index) {
 
 unsigned int getCurrentWindow(void) {
     return currentWin;
-}
-
-// 사이즈를 단위 포맷팅합니다.
-const char *formatSizeDir(unsigned long size) {  // const char *로 수정을 막음
-    static char formatted_size[16];
-    const char *units[] = { "B", "KB", "MB", "GB", "TB" };
-    int unit_index = 0;
-
-    while (size >= (1 << 10) && unit_index < 4) {
-        size >>= 10;  // 성능을 위해 비트 시프트로 연산, 2^10을 나누는 나눔(1024 단위로 나눔)
-        unit_index++;
-    }
-    /* 사이즈 형식으로 포매팅해서 스트링 리턴 */
-    snprintf(formatted_size, sizeof(formatted_size), "%lu%s", size, units[unit_index]);
-    return formatted_size;
 }
