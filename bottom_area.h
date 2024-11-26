@@ -27,6 +27,6 @@ void delBottomBox(void);
  *
  * @param infos 진행률 정보
  */
-void displayBottomBox(FileProgressInfo* infos);
+void updateBottomBox(FileProgressInfo* infos);
 
 #endif

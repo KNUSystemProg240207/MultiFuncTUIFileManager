@@ -33,7 +33,7 @@ static const char *const MANUAL2 = "[c / x] Copy / Cut   [v] Paste        [Delet
 
 
 WINDOW *initBottomBox(int width, int startY) {
-    assert((bottomBox = newwin(2, width, startY, 0)));
+    assert((bottomBox = newwin(3, width, startY, 0)));
     assert((bottomPanel = new_panel(bottomBox)));
     return bottomBox;
 }
@@ -45,30 +45,26 @@ void delBottomBox(void) {
 
 void displayManual(void) {
     int width = getmaxx(bottomBox);
-    int x = 1, y = 0;
 
     // 첫 번째 줄
-    for (int i = 0; MANUAL1[i] != '\0'; i++) {
-        if (x >= width - 1) break;
-
+    wmove(bottomBox, 1, 1);
+    for (int i = 0; MANUAL1[i] != '\0' && i < width - 2; i++) {
         if (MANUAL1[i] == '[') {
             wattron(bottomBox, A_REVERSE);
         }
-        mvwaddch(bottomBox, y, x++, MANUAL1[i]);
+        waddch(bottomBox, MANUAL1[i]);
         if (MANUAL1[i] == ']') {
             wattroff(bottomBox, A_REVERSE);
         }
     }
 
     // 두 번째 줄
-    x = 1, y = 1;
-    for (int i = 0; MANUAL2[i] != '\0'; i++) {
-        if (x >= width - 1) break;
-
+    wmove(bottomBox, 2, 1);
+    for (int i = 0; MANUAL2[i] != '\0' && i < width - 2; i++) {
         if (MANUAL2[i] == '[') {
             wattron(bottomBox, A_REVERSE);
         }
-        mvwaddch(bottomBox, y, x++, MANUAL2[i]);
+        waddch(bottomBox, MANUAL2[i]);
         if (MANUAL2[i] == ']') {
             wattroff(bottomBox, A_REVERSE);
         }
@@ -80,7 +76,6 @@ int displayProgress(FileProgressInfo *infos) {
     int x, y, w = width / 2 - 1;
     char operation;
 
-    werase(bottomBox);
     int runningWins = 0;
     for (int i = 0; i < MAX_FILE_OPERATORS; i++) {
         pthread_mutex_lock(&infos[i].flagMutex);
@@ -104,19 +99,19 @@ int displayProgress(FileProgressInfo *infos) {
         switch (runningWins) {
             case 1:
                 x = 1;
-                y = 0;
+                y = 1;
                 break;
             case 2:
                 x = width / 2 + 1;
-                y = 0;
+                y = 1;
                 break;
             case 3:
                 x = 1;
-                y = 1;
+                y = 2;
                 break;
             case 4:
                 x = width / 2 + 1;
-                y = 1;
+                y = 2;
                 break;
         }
         mvwprintw(
@@ -130,10 +125,9 @@ int displayProgress(FileProgressInfo *infos) {
     return runningWins;
 }
 
-void displayBottomBox(FileProgressInfo *infos) {
+void updateBottomBox(FileProgressInfo *infos) {
     werase(bottomBox);
-    if (displayProgress(infos) == 0) {
+    mvwhline(bottomBox, 0, 0, ACS_HLINE, getmaxx(bottomBox));
+    if (displayProgress(infos) == 0)
         displayManual();
-    }
-    wrefresh(bottomBox);
 }

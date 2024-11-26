@@ -130,6 +130,7 @@ int updateDirWins(void) {
 
     int winY, winX, winH, winW;
     int screenH, screenW;
+    int availableH;
     int ret;
     int lineMovement;
     int centerLine, currentLine;
@@ -194,26 +195,26 @@ int updateDirWins(void) {
         }
         win->lineMovementEvent = 0;  // Event 모두 삭제
 
-        winH -= 4;  // 최대 출력 가능한 라인 넘버 -4
+        availableH = winH - 4;  // 최대 출력 가능한 라인 넘버 -4
 
         if (isColorSafe)
             wbkgd(win->win, COLOR_PAIR(BGRND));  // 창 색깔 변경
         printFileHeader(win, winH, winW);  // 최상단 Header 출력
 
         // 라인 스크롤
-        centerLine = (winH - 1) / 2;  // 가운데 줄의 줄 번호 ( [0, winH) )
-        if (itemsCnt <= winH) {  // 항목 개수 적음 -> 빠르게 처리
+        centerLine = (availableH - 1) / 2;  // 가운데 줄의 줄 번호 ( [0, availableH) )
+        if (itemsCnt <= availableH) {  // 항목 개수 적음 -> 빠르게 처리
             startIdx = 0;
             itemsToPrint = itemsCnt;
         } else if (win->currentPos < centerLine) {  // 위쪽 item 선택됨
             startIdx = 0;
-            itemsToPrint = itemsCnt < winH ? itemsCnt : winH;
-        } else if (win->currentPos >= itemsCnt - (winH - centerLine - 1)) {  // 아래쪽 item 선택된 경우 (우변: 개수 - 커서 아래쪽에 출력될 item 수)
-            startIdx = itemsCnt - winH;
-            itemsToPrint = winH;
+            itemsToPrint = itemsCnt < availableH ? itemsCnt : availableH;
+        } else if (win->currentPos >= itemsCnt - (availableH - centerLine - 1)) {  // 아래쪽 item 선택된 경우 (우변: 개수 - 커서 아래쪽에 출력될 item 수)
+            startIdx = itemsCnt - availableH;
+            itemsToPrint = availableH;
         } else {  // 일반적인 경우
             startIdx = win->currentPos - centerLine;
-            itemsToPrint = winH;
+            itemsToPrint = availableH;
         }
 
         currentLine = win->currentPos - startIdx;  // 역상으로 출력할, 현재 선택된 줄
@@ -230,7 +231,7 @@ int updateDirWins(void) {
             if (winNo == currentWin && line == currentLine)
                 wattroff(win->win, A_REVERSE);
         }
-        wmove(win->win, line + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
+        wmove(win->win, winH - 1, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
         wclrtobot(win->win);  // 커서 아래 남는 공간: 지움
         box(win->win, 0, 0);
         pthread_mutex_unlock(win->bufMutex);

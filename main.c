@@ -125,7 +125,7 @@ void initScreen(void) {
     getmaxyx(stdscr, h, w);
 
     initTitleBar(w);  // 제목 창 (프로그램 이름 - 현재 경로 - 현재 시간) 생성
-    initBottomBox(w, h - 2);  // 아래쪽 단축키 창 생성
+    initBottomBox(w, h - 3);  // 아래쪽 단축키 창 생성
     CHECK_CURSES(mvhline(1, 0, ACS_HLINE, w));  // 제목 창 아래로 가로줄 그림
     CHECK_CURSES(mvhline(h - 3, 0, ACS_HLINE, w));  // 단축키 창 위로 가로줄 그림
 
@@ -502,12 +502,9 @@ void mainLoop(void) {
         }
         close(cwdFd);
 
-        updateTitleBar(pathBuf, (size_t)cwdLen);  // 타이틀바 업데이트
-        mvwhline(stdscr, getmaxy(stdscr) - 3, 0, ACS_HLINE, getmaxx(stdscr));  // 바텀 박스 상단 선 출력
-
+        updateTitleBar(pathBuf, (size_t)cwdLen);
+        updateBottomBox(fileProgresses);
         updateDirWins();  // 폴더 표시 창들 업데이트
-
-        displayBottomBox(fileProgresses);
 
         switch (state) {
             case PROCESS_WIN:

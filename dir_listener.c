@@ -94,12 +94,14 @@ int dirListener(void *argsPtr) {
         pthread_mutex_unlock(&args->bufMutex);  // 결과값 보호 Mutex 해제
         return -1;
     }
+    if (readItems == 0)
+        readItems = 0;
     args->totalReadItems = readItems;
+    pthread_mutex_unlock(&args->dirMutex);  // 현재 Directory 보호 Mutex 해제
 
     applySorting(args->dirEntries, args->commonArgs.statusFlags, readItems);  // 불러온 목록 정렬
 
     pthread_mutex_unlock(&args->bufMutex);  // 결과값 보호 Mutex 해제
-    pthread_mutex_unlock(&args->dirMutex);  // 현재 Directory 보호 Mutex 해제
     return readItems;
 }
 
@@ -109,7 +111,7 @@ ssize_t listEntries(DIR *dirToList, DirEntry *dirEntries, size_t bufLen) {
     errno = 0;  // errno 변수는 각 Thread별로 존재 -> Race Condition 없음
 
     rewinddir(dirToList);
-    for (struct dirent *ent = readdir(dirToList); ent != NULL && readItems < bufLen; ent = readdir(dirToList)) {  // 최대 buffer 길이 만큼의 항목들 읽어들임
+    for (struct dirent *ent = readdir(dirToList); readItems < bufLen; ent = readdir(dirToList)) {  // 최대 buffer 길이 만큼의 항목들 읽어들임
         if (ent == NULL) {  // 읽기 끝
             if (errno != 0) {  // 오류 시
                 return -1;
@@ -127,6 +129,8 @@ ssize_t listEntries(DIR *dirToList, DirEntry *dirEntries, size_t bufLen) {
         errno = 0;
         readItems++;
     }
+    if (readItems == 0)
+        readItems = 0;
     return readItems;
 }
 
