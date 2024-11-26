@@ -69,6 +69,14 @@ void selectPreviousWindow(void);
 void selectNextWindow(void);
 
 /**
+ * 창 개수 변경
+ * 
+ * @param count 새 창 개수 ( [1, MAX_DIRWINS) )
+ * @return 성공: 0, 창 개수 범위 벗어남: -1
+ */
+int setDirWinCnt(int count);
+
+/**
  * 현재 창의 선택된 폴더 Index 리턴
  *
  * @return 폴더 선택됨: (현재 선택의 Index), 폴더 아님: -1
@@ -95,11 +103,18 @@ void setCurrentSelection(size_t index);
 unsigned int getCurrentWindow(void);
 
 /**
- * 정렬 상태를 토글합니다.
+ * 정렬 상태를 토글
  *
  * @param mask 적용할 비트마스크 (SORT_NAME_MASK, SORT_SIZE_MASK, SORT_DATE_MASK 중 하나)
  * @param shift 비트 쉬프트 값 (SORT_NAME_SHIFT, SORT_SIZE_SHIFT, SORT_DATE_SHIFT 중 하나)
  */
 void toggleSort(int mask, int shift);
+
+/**
+ * @brief 메모리 크기를 사람이 읽기 쉬운 형식(10KB, 1GB 등)으로 변환
+ * @param size 바이트 단위의 메모리 크기
+ * @return 사람이 읽기 쉬운 문자열 포맷 크기
+ */
+const char *formatSizeDir(unsigned long size);
 
 #endif

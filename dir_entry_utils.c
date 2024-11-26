@@ -62,11 +62,11 @@ static int cmpDateDesc(const void *a, const void *b);
 
 
 char *truncateFileName(char *fileName) {
-    static char nameBuf[MAX_NAME_LEN + 1];
+    static char nameBuf[NAME_MAX + 1];
     size_t len = strlen(fileName);
 
-    strncpy(nameBuf, fileName, MAX_NAME_LEN);
-    nameBuf[MAX_NAME_LEN] = '\0';
+    strncpy(nameBuf, fileName, NAME_MAX);
+    nameBuf[NAME_MAX] = '\0';
 
     if (len > MAX_DISPLAY_LEN) {
         const char *dot = strrchr(fileName, '.');  // 마지막 '.' 찾기
@@ -132,21 +132,18 @@ void applySorting(DirEntry *dirEntries, uint16_t flags, size_t totalReadItems) {
 
     int (*compareFunc)(const void *, const void *) = NULL;
 
-    // 정렬 기준과 방향을 결정하는 비트 추출
-    uint16_t criterion = flags & SORT_CRITERION_MASK;  // 정렬 기준
-    uint16_t direction = flags & SORT_DIRECTION_BIT;  // 정렬 방향
-
-    // 이름 기준 정렬
-    if (criterion == SORT_NAME) {
-        compareFunc = (direction == 0) ? cmpNameAsc : cmpNameDesc;
-    }
-    // 크기 기준 정렬
-    else if (criterion == SORT_SIZE) {
-        compareFunc = (direction == 0) ? cmpSizeAsc : cmpSizeDesc;
-    }
-    // 날짜 기준 정렬
-    else if (criterion == SORT_DATE) {
-        compareFunc = (direction == 0) ? cmpDateAsc : cmpDateDesc;
+    uint16_t criterion = flags & DIRLISTENER_FLAG_SORT_CRITERION_MASK;  // 정렬 기준
+    uint16_t direction = flags & DIRLISTENER_FLAG_SORT_REVERSE;  // 내림차순 정렬?
+    switch (criterion) {
+        case DIRLISTENER_FLAG_SORT_SIZE:
+            compareFunc = direction ? cmpSizeDesc : cmpSizeAsc;
+            break;
+        case DIRLISTENER_FLAG_SORT_DATE:
+            compareFunc = direction ? cmpDateDesc : cmpDateAsc;
+            break;
+        default:
+            compareFunc = direction ? cmpNameDesc : cmpNameAsc;
+            break;
     }
 
     // 정렬 함수가 설정되었으면, DirEntry 배열을 정렬

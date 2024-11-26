@@ -5,11 +5,9 @@
 
 #include "thread_commons.h"
 
-#define LISTPROCESS_FLAG_PAUSE_THREAD (1 << 9)  // 프로세스 일시 중지 (다음 condvar signal 있을 때까지)
-
 typedef struct _Process {
     pid_t pid;  // 프로세스 ID
-    char name[MAX_NAME_LEN + 1];  // 프로세스 이름
+    char name[NAME_MAX + 1];  // 프로세스 이름
     char state;  // 프로세스 상태
     long rsize;  // '실제 메모리 점유량 (= rss * pageSize)
     unsigned long utime;  // 사용자 모드에서의 CPU 시간
@@ -40,8 +38,5 @@ typedef struct {
  * @return 성공: 0, 실패: -1
  */
 int startProcessThread(pthread_t *newThread, ProcessThreadArgs *args);
-
-int procThreadMain(void *argsPtr);
-int readProcInfo(ProcessThreadArgs *procWindow);
 
 #endif

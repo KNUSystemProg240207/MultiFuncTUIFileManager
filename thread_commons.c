@@ -101,27 +101,34 @@ void *runner(void *runnerArgument) {
         // 설정된 간격만큼 지연 및 종료 요청 처리
         pthread_mutex_lock(&threadArgs->statusMutex);  // 상태 보호 Mutex 획득
 
-        // 지연 전 종료 확인
+        // 대기 진입 전 종료 확인
         if (threadArgs->statusFlags & THREAD_FLAG_STOP) {  // 종료 요청되었으면: 중지
             goto EXIT_LOOP;
         }
 
-        elapsedUSec = getElapsedTime(startTime);  // 실제 지연 시간 계산
-        if (elapsedUSec > loopInterval) {  // 지연 필요하면
-            wakeupTime = getWakeupTime(loopInterval - elapsedUSec);  // 재개할 '절대 시간' 계산
-            ret = pthread_cond_timedwait(&threadArgs->resumeThread, &threadArgs->statusMutex, &wakeupTime);  // 정지 요청 기다리며, 대기
-            // 주의: 현재 statusMutex 획득된 상태 -> 코드 작성 시 유의
-            switch (ret) {
-                case 0:  // 재개 요청됨
-                case ETIMEDOUT:  // 대기 완료
-                case EINTR:  // 대기 중 Interrupt 발생
-                    pthread_mutex_unlock(&threadArgs->statusMutex);  // 상태 보호 Mutex 해제
-                    break;  // 실행 재개
-                default:
-                    goto HALT;  // 오류: 쓰레드 정지
-            }
+        if (threadArgs->statusFlags & THREAD_FLAG_PAUSE) {
+            // 일시정지 요청됨 -> 다음 요청 시까지 무조건 대기
+            threadArgs->statusFlags &= ~THREAD_FLAG_PAUSE;  // 일시정지 요청 '소비'
+            ret = pthread_cond_wait(&threadArgs->resumeThread, &threadArgs->statusMutex);  // 다음 요청시까지 대기
         } else {
-            pthread_mutex_unlock(&threadArgs->statusMutex);  // 상태 보호 Mutex 해제
+            elapsedUSec = getElapsedTime(startTime);  // 실제 지연 시간 계산
+            if (elapsedUSec > loopInterval) {  // 지연 필요하면
+                wakeupTime = getWakeupTime(loopInterval - elapsedUSec);  // 재개할 '절대 시간' 계산
+                ret = pthread_cond_timedwait(&threadArgs->resumeThread, &threadArgs->statusMutex, &wakeupTime);  // 다음 Delay까지 재개 요청 기다리며 대기
+            } else {  // 지연 필요없음 (직전 iteration이 너무 오래 걸림)
+                ret = ETIMEDOUT;  // 지연 끝난 것처럼 처리
+            }
+        }
+
+        // 주의: 현재 statusMutex 획득된 상태 -> 코드 작성 시 유의
+        switch (ret) {
+            case 0:  // 재개 요청됨
+            case ETIMEDOUT:  // 대기 완료
+            case EINTR:  // 대기 중 Interrupt 발생
+                pthread_mutex_unlock(&threadArgs->statusMutex);  // 상태 보호 Mutex 해제
+                break;  // 실행 재개
+            default:
+                goto HALT;  // 오류: 쓰레드 정지
         }
     }
 
@@ -147,6 +154,38 @@ HALT:
     pthread_mutex_unlock(&threadArgs->statusMutex);
 
     return NULL;
+}
+
+int stopThread(ThreadArgs *args) {
+    int ret;
+    if ((ret = pthread_mutex_lock(&args->statusMutex)) != 0)
+        return ret;
+    args->statusFlags |= THREAD_FLAG_STOP;
+    pthread_cond_signal(&args->resumeThread);  // 항상 오류 없음
+    if ((ret = pthread_mutex_unlock(&args->statusMutex)) != 0)
+        return ret;
+    return 0;
+}
+
+int pauseThread(ThreadArgs *args) {
+    int ret;
+    if ((ret = pthread_mutex_lock(&args->statusMutex)) != 0)
+        return ret;
+    args->statusFlags |= THREAD_FLAG_PAUSE;
+    if ((ret = pthread_mutex_unlock(&args->statusMutex)) != 0)
+        return ret;
+    return 0;
+}
+
+int resumeThread(ThreadArgs *args) {
+    int ret;
+    if ((ret = pthread_mutex_lock(&args->statusMutex)) != 0)
+        return ret;
+    args->statusFlags &= ~THREAD_FLAG_PAUSE;
+    pthread_cond_signal(&args->resumeThread);  // 항상 오류 없음
+    if ((ret = pthread_mutex_unlock(&args->statusMutex))!= 0)
+        return ret;
+    return 0;
 }
 
 struct timespec getWakeupTime(uint32_t wakeupUs) {

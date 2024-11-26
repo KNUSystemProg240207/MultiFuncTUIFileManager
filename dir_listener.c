@@ -85,7 +85,7 @@ int dirListener(void *argsPtr) {
     // 폴더 변경 처리
     pthread_mutex_lock(&args->dirMutex);  // 현재 Directory 보호 Mutex 획득
     if (changeDirRequested)
-        changeDir(&args->currentDir, args->dirEntries[args->chdirIdx].entryName);
+        changeDir(&args->currentDir, args->newCwdPath);
 
     // 현재 폴더 내용 가져옴
     pthread_mutex_lock(&args->bufMutex);  // 결과값 보호 Mutex 획득
@@ -119,8 +119,8 @@ ssize_t listEntries(DIR *dirToList, DirEntry *dirEntries, size_t bufLen) {
         if (strcmp(ent->d_name, ".") == 0) {  // 현재 디렉토리 "."는 받아오지 않음(정렬을 위함)
             continue;
         }
-        strncpy(dirEntries[readItems].entryName, ent->d_name, MAX_NAME_LEN);  // 이름 복사
-        dirEntries[readItems].entryName[MAX_NAME_LEN] = '\0';  // 끝에 null 문자 추가: 파일 이름 매우 긴 경우, strncpy()는 끝에 null문자 쓰지 않을 수도 있음
+        strncpy(dirEntries[readItems].entryName, ent->d_name, NAME_MAX);  // 이름 복사
+        dirEntries[readItems].entryName[NAME_MAX] = '\0';  // 끝에 null 문자 추가: 파일 이름 매우 긴 경우, strncpy()는 끝에 null문자 쓰지 않을 수도 있음
         if (fstatat(fdDir, ent->d_name, &(dirEntries[readItems].statEntry), AT_SYMLINK_NOFOLLOW) == -1) {  // stat 읽어들임
             return -1;
         }

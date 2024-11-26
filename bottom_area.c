@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <curses.h>
 #include <panel.h>
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "bottom_area.h"
 #include "commons.h"
@@ -14,8 +14,8 @@ static WINDOW *bottomBox;
 static PANEL *bottomPanel;
 
 // 매뉴얼 문자열을 bottom_area.c로 이동
-static const char *const MANUAL1 = "[^ / v] Move   [< / >] Switch   [Enter] Open   [w] NameSort   [e] SizeSort   [r] DateSort";
-static const char *const MANUAL2 = "[c / x] Copy / Cut   [v] Paste   [Delete] Delete   [p] Process   [q] Quit";
+static const char *const MANUAL1 = "[^ / v] Move         [< / >] Switch   [Enter] Open      [w] NameSort   [e] SizeSort   [r] DateSort";
+static const char *const MANUAL2 = "[c / x] Copy / Cut   [v] Paste        [Delete] Delete   [p] Process    [q] Quit";
 
 WINDOW *initBottomBox(int width, int startY) {
     assert((bottomBox = newwin(2, width, startY, 0)));
@@ -31,11 +31,11 @@ void delBottomBox(void) {
 void displayManual(void) {
     int width = getmaxx(bottomBox);
     int x = 1, y = 0;
-    
+
     // 첫 번째 줄
     for (int i = 0; MANUAL1[i] != '\0'; i++) {
         if (x >= width - 1) break;
-        
+
         if (MANUAL1[i] == '[') {
             wattron(bottomBox, A_REVERSE);
         }
@@ -44,12 +44,12 @@ void displayManual(void) {
             wattroff(bottomBox, A_REVERSE);
         }
     }
-    
+
     // 두 번째 줄
     x = 1, y = 1;
     for (int i = 0; MANUAL2[i] != '\0'; i++) {
         if (x >= width - 1) break;
-        
+
         if (MANUAL2[i] == '[') {
             wattron(bottomBox, A_REVERSE);
         }

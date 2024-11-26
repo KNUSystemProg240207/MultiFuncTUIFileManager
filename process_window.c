@@ -46,9 +46,6 @@ int initProcessWindow(
     totalReadItems = _totalReadItems;
     processes = _processes;
 
-    // pthread_mutex_lock(&procWindow->visibleMutex);
-    // procWindow->isWindowVisible = true;  // 프로세스 창 상태(열림)
-    // pthread_mutex_unlock(&procWindow->visibleMutex);
     return 0;
 }
 
@@ -59,10 +56,6 @@ void hideProcessWindow() {
 void delProcessWindow() {
     del_panel(panel);
     delwin(window);
-
-    // pthread_mutex_lock(&procWindow->visibleMutex);
-    // procWindow->isWindowVisible = false;  // 프로세스 창 상태(닫힘)
-    // pthread_mutex_unlock(&procWindow->visibleMutex);
 }
 
 // void toggleProcWin(ProcessWindow *procWindow) {
@@ -76,19 +69,16 @@ void delProcessWindow() {
 //     }
 // }
 
-int updateProcessWindow() {
+void updateProcessWindow() {
     int winH, winW;
 
     getmaxyx(window, winH, winW);
-    werase(window);  // <- 여기 한번 주목
+    werase(window);
     box(window, 0, 0);
 
     // 프로세스 창 업데이트
     pthread_mutex_lock(bufMutex);
 
-    wbkgd(window, COLOR_PAIR(PRCSBGRND));
-
-    getmaxyx(window, winH, winW);
     size_t itemsCnt = *totalReadItems;  // 읽어들인 총 항목 수
 
     int maxItemsToPrint = winH - 3;  // 상하단 여백 제외 창 높이에 비례한 출력 가능한 항목 수
@@ -96,38 +86,80 @@ int updateProcessWindow() {
     if (maxItemsToPrint > itemsCnt)
         maxItemsToPrint = itemsCnt;
 
-    // wclear(window);  // <- 여기 한번 주목
-    box(window, 0, 0);
+    // 배경 색칠
+    if (isColorSafe) wbkgd(window, COLOR_PAIR(PRCSBGRND));
 
-    if (winW < 20) {
-        mvwprintw(window, 1, 1, "%6s", "PID");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(window, c + 2, 1, "%6d", processes[i].pid);
-    } else if (winW < 30) {
-        mvwprintw(window, 1, 1, "%6s %14s", "PID", "Rsize");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(window, c + 2, 1, "%6d %14ld", processes[i].pid, processes[i].rsize);
-    } else if (winW < 40) {
-        mvwprintw(window, 1, 1, "%6s %14s %10s", "PID", "Rsize", "UTime");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(window, c + 2, 1, "%6d %14ld %10lu", processes[i].pid, processes[i].rsize, processes[i].utime);
-    } else if (winW < 50) {
-        mvwprintw(window, 1, 1, "%6s %14s %10s %10s", "PID", "Rsize", "UTime", "STime");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(window, c + 2, 1, "%6d %14ld %10lu %10lu", processes[i].pid, processes[i].rsize, processes[i].utime, processes[i].stime);
-    } else if (winW < 80) {
-        mvwprintw(window, 1, 1, "%6s %6s %14s %10s %10s", "PID", "State", "Rsize", "UTime", "STime");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(window, c + 2, 1, "%6d %6c %14ld %10lu %10lu", processes[i].pid, processes[i].state, processes[i].rsize, processes[i].utime, processes[i].stime);
-    } else {
-        mvwprintw(window, 1, 1, "%6s %-*.*s %6s %14s %10s %10s", "PID", winW - 55, winW - 55, "Name", "State", "Rsize", "UTime", "STime");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
-            mvwprintw(window, c + 2, 1, "%6d %-*.*s %6c %14ld %10lu %10lu", processes[i].pid, winW - 55, winW - 55, processes[i].name, processes[i].state, processes[i].rsize, processes[i].utime, processes[i].stime);
-    }
+    // 테이블 헤더 출력
+    printTableHeader(window, winW);
+
+    // 색상 적용
+    applyColor(window, PRCSFILE);
+
+    // 프로세스 정보 출력
+    printProcessInfo(window, winW, processes, maxItemsToPrint, *totalReadItems);
+
+    // 색상 해제
+    removeColor(window, PRCSFILE);
+
     whline(window, ' ', getmaxx(window) - getcurx(window) - 1);  // 남은 공간 공백 처리 (박스용 -1)
 
     pthread_mutex_unlock(bufMutex);
 
     top_panel(panel);
-    return 0;
+}
+
+// 테이블 헤더 출력
+void printTableHeader(WINDOW *win, int winW) {
+    if (winW < 20) {
+        mvwprintw(win, 1, 1, "%6s", "PID");
+    } else if (winW < 30) {
+        mvwprintw(win, 1, 1, "%6s %14s", "PID", "Rsize");
+    } else if (winW < 40) {
+        mvwprintw(win, 1, 1, "%6s %14s %10s", "PID", "Rsize", "UTime");
+    } else if (winW < 50) {
+        mvwprintw(win, 1, 1, "%6s %14s %10s %10s", "PID", "Rsize", "UTime", "STime");
+    } else if (winW < 80) {
+        mvwprintw(win, 1, 1, "%6s %6s %14s %10s %10s", "PID", "State", "Rsize", "UTime", "STime");
+    } else {
+        mvwprintw(win, 1, 1, "%6s %-*.*s %6s %14s %10s %10s", "PID", winW - 55, winW - 55, "Name", "State", "Rsize", "UTime", "STime");
+    }
+}
+
+// 프로세스 정보 출력
+void printProcessInfo(WINDOW *win, int winW, Process *processes, int maxItems, int totalItems) {
+    for (int c = 0, i = totalItems; c < maxItems; c++, i--) {
+        if (winW < 20) {
+            mvwprintw(win, c + 2, 1, "%6d", processes[i].pid);
+        } else if (winW < 30) {
+            mvwprintw(win, c + 2, 1, "%6d %14s", processes[i].pid, formatSize(processes[i].rsize));
+        } else if (winW < 40) {
+            mvwprintw(win, c + 2, 1, "%6d %14s %9lus", processes[i].pid, formatSize(processes[i].rsize), ticksToSeconds(processes[i].utime));
+        } else if (winW < 50) {
+            mvwprintw(win, c + 2, 1, "%6d %14s %9lus %9lus", processes[i].pid, formatSize(processes[i].rsize), ticksToSeconds(processes[i].utime), ticksToSeconds(processes[i].stime));
+        } else if (winW < 80) {
+            mvwprintw(win, c + 2, 1, "%6d %6c %14s %9lus %9lus", processes[i].pid, processes[i].state, formatSize(processes[i].rsize), ticksToSeconds(processes[i].utime), ticksToSeconds(processes[i].stime));
+        } else {
+            mvwprintw(win, c + 2, 1, "%6d %-*.*s %6c %14s %9lus %9lus", processes[i].pid, winW - 55, winW - 55, processes[i].name, processes[i].state, formatSize(processes[i].rsize), ticksToSeconds(processes[i].utime), ticksToSeconds(processes[i].stime));
+        }
+    }
+}
+
+// 프로세스가 점유하고 있는 메모리 사이즈를 포맷팅합니다.
+const char *formatSize(unsigned long size) {  // const char *로 수정을 막음
+    static char formatted_size[16];
+    const char *units[] = { "B", "KB", "MB", "GB", "TB" };
+    int unit_index = 0;
+
+    while (size >= (1 << 10) && unit_index < 4) {
+        size >>= 10;  // 성능을 위해 비트 시프트로 연산, 2^10을 나누는 나눔
+        unit_index++;
+    }
+    /* 사이즈 형식으로 포매팅해서 스트링 리턴 */
+    snprintf(formatted_size, sizeof(formatted_size), "%lu%s", size, units[unit_index]);
+    return formatted_size;
+}
+
+// tick을 초 단위로 변경합니다.
+unsigned long ticksToSeconds(unsigned long ticks) {
+    return ticks / sysconf(_SC_CLK_TCK);  // 시스템 틱을 초로 변환.
 }

@@ -11,14 +11,17 @@
 #define FRAME_INTERVAL_USEC (50 * 1000)  // Framerate 제한 (단위: μs)
 #define DIR_INTERVAL_USEC (1 * 1000 * 1000)  // 폴더 정보 새로고침 간격 (단위: μs)
 
-#define MAX_DIRWINS 1  // 최대 가능한 '탭' 수
-// #define MAX_DIRWINS 3
+#define MAX_DIRWINS 3  // 최대 가능한 '탭' 수
 #define MAX_DIR_ENTRIES 1000  // 한 폴더에 표시 가능한 최대 Item 수
-#define MAX_NAME_LEN 255  // 표시할 최대 이름 길이 (Limit보다 더 길면: 잘림)
+#ifndef NAME_MAX
+#define NAME_MAX 255  // 표시할 최대 이름 길이 (Limit보다 더 길면: 잘림)
+#endif
 
 #define MAX_DISPLAY_LEN 20
 #define MAX_PROCESSES 128  // 한 번에 표시 가능한 최대 프로세스 수
-#define MAX_PATH_LEN 255  // 폴더의 최대 경로 길이
+#ifndef PATH_MAX
+#define PATH_MAX 4096  // 폴더의 최대 경로 길이
+#endif
 
 #define MAX_FILE_OPERATORS 4
 

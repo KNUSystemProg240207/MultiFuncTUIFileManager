@@ -8,8 +8,10 @@
 #include "config.h"
 
 
-#define THREAD_FLAG_RUNNING (1 << 0)  // 쓰레드 실행 여부
-#define THREAD_FLAG_STOP (1 << 8)  // 쓰레드 정지 요청
+#define THREAD_FLAG_RUNNING (1 << 0)  // Thread 실행 여부
+#define THREAD_FLAG_STOP (1 << 1)  // Thread 정지 요청
+#define THREAD_FLAG_PAUSE (1 << 2)  // Thread 일시정지 요청
+#define THREAD_FLAG_MSB 2  // thread_commons에서 사용하는 가장 큰 bit
 
 
 /**
@@ -47,5 +49,26 @@ int startThread(
     ThreadArgs *threadArgs,
     void *targetFuncArgs
 );
+
+/**
+ * Thread 정지 요쳥 (주의: 즉시 정지되지 않으며, iteration 끝난 후 정지됨)
+ * 
+ * @param threadArgs 정지시키려는 Thread의 ThreadAargs 구조체
+ */
+int stopThread(ThreadArgs *args);
+
+/**
+ * Thread 일시 정지 요쳥 (주의: 즉시 일시정지되지 않으며, iteration 끝난 후 정지됨)
+ * 
+ * @param threadArgs 일시정지시키려는 Thread의 ThreadAargs 구조체
+ */
+int pauseThread(ThreadArgs *args);
+
+/**
+ * Thread 재개
+ * 
+ * @param threadArgs 일시정지시키려는 Thread의 ThreadAargs 구조체
+ */
+int resumeThread(ThreadArgs *args);
 
 #endif

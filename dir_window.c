@@ -44,8 +44,10 @@ typedef struct _DirWin DirWin;
 
 static DirWin windows[MAX_DIRWINS];  // 각 창의 runtime 정보 저장
 static PANEL *panels[MAX_DIRWINS];  // 패널 배열
-static unsigned int winCnt;  // 창 개수
-static unsigned int currentWin;  // 현재 창의 Index
+static int winCnt;  // 창 개수
+static int showingWinCnt;  // '보여지는' 창 개수
+static int currentWin;  // 현재 창의 Index
+static bool changeWinSize = false;  // 창 크기 변경 필요
 
 /**
  * 창 위치 계산
@@ -61,7 +63,7 @@ static unsigned int currentWin;  // 현재 창의 Index
 static int calculateWinPos(int *y, int *x, int *h, int *w, unsigned int winNo, unsigned int winCnt);
 
 /**
- * 디렉토리 창의 파일 목록 상단 헤더를 출력합니다.
+ * 디렉토리 창의 파일 목록 상단 헤더 출력
  *
  * @param win 디렉토리 표시 창
  * @param winH 창의 높이
@@ -70,7 +72,7 @@ static int calculateWinPos(int *y, int *x, int *h, int *w, unsigned int winNo, u
 static void printFileHeader(DirWin *win, int winH, int winW);
 
 /**
- * 디렉토리 항목 정보를 출력합니다.
+ * 디렉토리 항목 정보 출력
  *
  * @param win 디렉토리 표시 창
  * @param startIdx 출력 시작 인덱스
@@ -123,7 +125,11 @@ int initDirWin(
 }
 
 int updateDirWins(void) {
-    int ret, winH, winW;
+    static int prevScreenH = 0, prevScreenW = 0;
+
+    int winY, winX, winH, winW;
+    int screenH, screenW;
+    int ret;
     int lineMovement;
     int centerLine, currentLine;
     int itemsToPrint;
@@ -131,12 +137,32 @@ int updateDirWins(void) {
     size_t startIdx;
     DirWin *win;
 
+    getmaxyx(stdscr, screenH, screenW);
+    if (prevScreenH != screenH || prevScreenW != screenW) {
+        prevScreenH = screenH;
+        prevScreenW = screenW;
+        changeWinSize = true;
+    }
+
     // 각 창들 업데이트
     int eventStartPos;  // 이벤트 시작 위치
     int line;  // 내부 출력 for 문에서 사용할 변수
     int displayLine;  // 실제 출력 라인 수
-    for (int winNo = 0; winNo < winCnt; winNo++) {
+    for (int winNo = 0; winNo < showingWinCnt; winNo++) {
         win = windows + winNo;
+
+        if (changeWinSize) {
+            // 창 크기 변경 필요하면: 바꾸기
+            if (calculateWinPos(&winY, &winX, &winH, &winW, winNo, showingWinCnt) == -1) {
+                return -1;
+            }
+            wresize(win->win, winH, winW);
+            replace_panel(panels[winNo], win->win);
+            move_panel(panels[winNo], winY, winX);
+        } else {
+            // 창 크기 가져오기
+            getmaxyx(win->win, winH, winW);
+        }
 
         // Mutex 획득 시도: 실패 시, 파일 정보 업데이트 중: 해당 창 업데이트 건너뜀
         ret = pthread_mutex_trylock(win->bufMutex);
@@ -168,11 +194,9 @@ int updateDirWins(void) {
         }
         win->lineMovementEvent = 0;  // Event 모두 삭제
 
-        // 최상단에 출력될 항목의 index 계산
-        getmaxyx(win->win, winH, winW);
         winH -= 4;  // 최대 출력 가능한 라인 넘버 -4
 
-        wbkgd(win->win, COLOR_PAIR(BGRND));  // 창 색깔 변경
+        if (isColorSafe) wbkgd(win->win, COLOR_PAIR(BGRND));  // 창 색깔 변경
         printFileHeader(win, winH, winW);  // 최상단 Header 출력
 
         // 라인 스크롤
@@ -206,11 +230,12 @@ int updateDirWins(void) {
                 wattroff(win->win, A_REVERSE);
             displayLine++;
         }
-        wmove(win->win, displayLine + 3, 0);  // 커서 위치 이동
+        wmove(win->win, displayLine + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
         wclrtobot(win->win);  // 커서 아래 남는 공간: 지움
         box(win->win, 0, 0);
         pthread_mutex_unlock(win->bufMutex);
     }
+    changeWinSize = false;
 
     return 0;
 }
@@ -218,7 +243,8 @@ int updateDirWins(void) {
 
 /* 윈도우 헤더 출력 함수*/
 void printFileHeader(DirWin *win, int winH, int winW) {
-    wattron(win->win, COLOR_PAIR(HEADER));
+    // 색깔 적용
+    applyColor(win->win, HEADER);
 
     // 정렬 상태에 따른 헤더 출력 준비
     char nameHeader[30] = "    FILE NAME  ";
@@ -247,19 +273,23 @@ void printFileHeader(DirWin *win, int winH, int winW) {
     }
 
     /* 헤더 출력 파트 */
-    if (winW >= 55) {
+    if (getmaxx(win->win) >= 54) {
         // 최대 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-10s|%-19s|", nameHeader, sizeHeader, dateHeader);
-    } else if (winW >= 40) {
+    } else if (getmaxx(win->win) >= 40) {
         // 중간 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-19s|", nameHeader, dateHeader);
+    } else if (getmaxx(win->win) >= 35) {
+        mvwprintw(win->win, 1, 1, "%-20s|%-12s|", nameHeader, sizeHeader);
     } else {
         // 최소 너비
         mvwprintw(win->win, 1, 1, "%-20s|", nameHeader);
     }
 
     whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 채우기
-    wattroff(win->win, COLOR_PAIR(HEADER));
+
+    // 색깔 해제
+    removeColor(win->win, HEADER);
     mvwhline(win->win, 2, 1, 0, winW - 2);  // 구분선 출력
 }
 
@@ -297,20 +327,28 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     /* 파일 이름 너무 길면 자르기 */
     fileName = truncateFileName(fileName);
 
+
+    // 색깔 적용
+    applyColor(win->win, colorPair);
+
     /* 출력 파트 */
-    wattron(win->win, COLOR_PAIR(colorPair));
-    if (winW >= 55) {  // 최대 너비
-        format = "%-20s %10zu %13s %s";
-        mvwprintw(win->win, displayLine, 1, format, fileName, fileSize, lastModDate, lastModTime);
-    } else if (winW >= 40) {  // 중간 너비
+    if (getmaxx(win->win) >= 54) {  // 최대 너비
+        format = "%-20s %10s %13s %s";
+        mvwprintw(win->win, displayLine, 1, format, fileName, formatSizeDir(fileSize), lastModDate, lastModTime);
+    } else if (getmaxx(win->win) >= 36 + strlen(lastModTime)) {  // 중간 너비
         format = "%-20s %13s %s";
         mvwprintw(win->win, displayLine, 1, format, fileName, lastModDate, lastModTime);
-    } else {  // 최소 너비
+    } else if (getmaxx(win->win) >= 35) {  // 최소 너비
+        format = "%-20s %12s";
+        mvwprintw(win->win, displayLine, 1, format, fileName, formatSizeDir(fileSize));
+    } else {
         format = "%-20s";
         mvwprintw(win->win, displayLine, 1, format, fileName);
     }
     whline(win->win, ' ', getmaxx(win->win) - getcurx(win->win) - 1);  // 남은 공간 공백 처리 (박스용 -1)
-    wattroff(win->win, COLOR_PAIR(colorPair));
+
+    // 색깔 해제
+    removeColor(win->win, colorPair);
 }
 
 /* 정렬 상태 토글 함수 */
@@ -357,22 +395,29 @@ int calculateWinPos(int *y, int *x, int *h, int *w, unsigned int winNo, unsigned
             *w = screenW;
             return 0;
         case 2:
-            *y = 2;  // 타이틀 아래
-            *x = (winNo == 0) ? 0 : (screenW / 2);  // 첫 번째 창은 왼쪽, 두 번째 창은 오른쪽
-            *h = screenH - 5;  // 상단 제목 창과 하단 단축키 창 제외
-            *w = screenW / 2;
+            if (winNo != 0 && winNo != 1)
+                return -1;
+            *y = 2;
+            *x = winNo * (screenW / 2 + screenW % 2);
+            *h = screenH - 5;
+            *w = screenW / 2 + screenW % 2 * (1 - winNo);
             return 0;
         case 3:
-            *y = 2;  // 타이틀 아래
-            *x = winNo * (screenW / 3);  // 각 창은 1/3씩 너비 차지
-            *h = screenH - 5;  // 상단 제목 창과 하단 단축키 창 제외
-            *w = screenW / 3;
+            if (winNo < 0 || winNo > 2)
+                return -1;
+            *y = 2;
+            *x = winNo * (screenW / 3) + (screenW % 3 > 2 - winNo);
+            *h = screenH - 5;
+            if (winNo == 1) {
+                *w = screenW / 3 + (screenW % 3 == 1);
+            } else {
+                *w = screenW / 3 + (screenW % 3 == 2);
+            }
             return 0;
         default:
             return -1;
     }
 }
-
 
 /*
 currentPos 변수 자체는 다른 thread에서 (추가로, 다른 file에서도) 접근 안 함 -> 별도 보호 없이 값 써도 안전
@@ -397,16 +442,37 @@ void moveCursorDown(void) {
 
 void selectPreviousWindow(void) {
     if (currentWin == 0)
-        currentWin = winCnt - 1;
+        currentWin = showingWinCnt - 1;
     else
         currentWin--;
 }
 
 void selectNextWindow(void) {
-    if (currentWin == winCnt - 1)
+    if (currentWin == showingWinCnt - 1)
         currentWin = 0;
     else
         currentWin++;
+}
+
+int setDirWinCnt(int count) {
+    if (count < 1 || count > winCnt)
+        return -1;
+    if (count != showingWinCnt) {
+        changeWinSize = true;
+        if (showingWinCnt > count) {
+            for (int i = showingWinCnt - 1; i >= count; i--) {
+                hide_panel(panels[i]);
+            }
+            if (currentWin >= count)
+                currentWin = count - 1;
+        } else {  // showingWinCnt < count
+            for (int i = showingWinCnt; i < count; i++) {
+                show_panel(panels[i]);
+            }
+        }
+        showingWinCnt = count;
+    }
+    return 0;
 }
 
 ssize_t getCurrentSelectedDirectory(void) {
@@ -436,4 +502,19 @@ void setCurrentSelection(size_t index) {
 
 unsigned int getCurrentWindow(void) {
     return currentWin;
+}
+
+// 사이즈를 단위 포맷팅합니다.
+const char *formatSizeDir(unsigned long size) {  // const char *로 수정을 막음
+    static char formatted_size[16];
+    const char *units[] = { "B", "KB", "MB", "GB", "TB" };
+    int unit_index = 0;
+
+    while (size >= (1 << 10) && unit_index < 4) {
+        size >>= 10;  // 성능을 위해 비트 시프트로 연산, 2^10을 나누는 나눔(1024 단위로 나눔)
+        unit_index++;
+    }
+    /* 사이즈 형식으로 포매팅해서 스트링 리턴 */
+    snprintf(formatted_size, sizeof(formatted_size), "%lu%s", size, units[unit_index]);
+    return formatted_size;
 }
