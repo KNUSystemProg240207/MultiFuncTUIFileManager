@@ -232,7 +232,6 @@ int updateDirWins(void) {
         }
         wmove(win->win, displayLine + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
         wclrtobot(win->win);  // 커서 아래 남는 공간: 지움
-        mvwprintw(win->win, 2, 2, "pthreadId == %lu", pthread_self());
         box(win->win, 0, 0);
         pthread_mutex_unlock(win->bufMutex);
     }
