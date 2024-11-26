@@ -58,6 +58,8 @@ void updatePopupWin() {
 
 void hidePopupWindow() {
     hide_panel(popupWinPanel);
+    fileAddress[0] = '\0';
+    charCount = 0;
 }
 
 void delPopupWindow() {
@@ -71,9 +73,8 @@ void delPopupWindow() {
 
 void getString(char* buffer){
     strcpy(buffer, fileAddress);
-    fileAddress[0] = '\0';
-    charCount = 0;
 }
+
 
 void addKey(char ch) {
     if (charCount < MAX_PATH_LEN && charCount >= 0) {
