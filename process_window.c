@@ -101,27 +101,27 @@ int updateProcessWindow() {
 
     if (winW < 20) {
         mvwprintw(window, 1, 1, "%6s", "PID");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
+        for (int c = 0, i = *totalReadItems-1; c < maxItemsToPrint; c++, i--)
             mvwprintw(window, c + 2, 1, "%6d", processes[i].pid);
     } else if (winW < 30) {
         mvwprintw(window, 1, 1, "%6s %14s", "PID", "Rsize");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
+        for (int c = 0, i = *totalReadItems-1; c < maxItemsToPrint; c++, i--)
             mvwprintw(window, c + 2, 1, "%6d %14ld", processes[i].pid, processes[i].rsize);
     } else if (winW < 40) {
         mvwprintw(window, 1, 1, "%6s %14s %10s", "PID", "Rsize", "UTime");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
+        for (int c = 0, i = *totalReadItems-1; c < maxItemsToPrint; c++, i--)
             mvwprintw(window, c + 2, 1, "%6d %14ld %10lu", processes[i].pid, processes[i].rsize, processes[i].utime);
     } else if (winW < 50) {
         mvwprintw(window, 1, 1, "%6s %14s %10s %10s", "PID", "Rsize", "UTime", "STime");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
+        for (int c = 0, i = *totalReadItems-1; c < maxItemsToPrint; c++, i--)
             mvwprintw(window, c + 2, 1, "%6d %14ld %10lu %10lu", processes[i].pid, processes[i].rsize, processes[i].utime, processes[i].stime);
     } else if (winW < 80) {
         mvwprintw(window, 1, 1, "%6s %6s %14s %10s %10s", "PID", "State", "Rsize", "UTime", "STime");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
+        for (int c = 0, i = *totalReadItems-1; c < maxItemsToPrint; c++, i--)
             mvwprintw(window, c + 2, 1, "%6d %6c %14ld %10lu %10lu", processes[i].pid, processes[i].state, processes[i].rsize, processes[i].utime, processes[i].stime);
     } else {
         mvwprintw(window, 1, 1, "%6s %-*.*s %6s %14s %10s %10s", "PID", winW - 55, winW - 55, "Name", "State", "Rsize", "UTime", "STime");
-        for (int c = 0, i = *totalReadItems; c < maxItemsToPrint; c++, i--)
+        for (int c = 0, i = *totalReadItems-1; c < maxItemsToPrint; c++, i--)
             mvwprintw(window, c + 2, 1, "%6d %-*.*s %6c %14ld %10lu %10lu", processes[i].pid, winW - 55, winW - 55, processes[i].name, processes[i].state, processes[i].rsize, processes[i].utime, processes[i].stime);
     }
     whline(window, ' ', getmaxx(window) - getcurx(window) - 1);  // 남은 공간 공백 처리 (박스용 -1)
