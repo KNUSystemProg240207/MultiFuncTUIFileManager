@@ -2,6 +2,7 @@
 #include <curses.h>
 #include <panel.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "bottom_area.h"
 #include "commons.h"
@@ -12,6 +13,10 @@
 static WINDOW *bottomBox;
 static PANEL *bottomPanel;
 
+// 매뉴얼 문자열을 bottom_area.c로 이동
+static const char *const MANUAL1 = "[^ / v] Move   [< / >] Switch   [Enter] Open   [w] NameSort   [e] SizeSort   [r] DateSort";
+static const char *const MANUAL2 = "[c / x] Copy / Cut   [v] Paste   [Delete] Delete   [p] Process   [q] Quit";
+
 WINDOW *initBottomBox(int width, int startY) {
     assert((bottomBox = newwin(2, width, startY, 0)));
     assert((bottomPanel = new_panel(bottomBox)));
@@ -21,6 +26,38 @@ WINDOW *initBottomBox(int width, int startY) {
 void delBottomBox(void) {
     assert((del_panel(bottomPanel) != ERR));
     assert((delwin(bottomBox) != ERR));
+}
+
+void displayManual(void) {
+    int width = getmaxx(bottomBox);
+    int x = 1, y = 0;
+    
+    // 첫 번째 줄
+    for (int i = 0; MANUAL1[i] != '\0'; i++) {
+        if (x >= width - 1) break;
+        
+        if (MANUAL1[i] == '[') {
+            wattron(bottomBox, A_REVERSE);
+        }
+        mvwaddch(bottomBox, y, x++, MANUAL1[i]);
+        if (MANUAL1[i] == ']') {
+            wattroff(bottomBox, A_REVERSE);
+        }
+    }
+    
+    // 두 번째 줄
+    x = 1, y = 1;
+    for (int i = 0; MANUAL2[i] != '\0'; i++) {
+        if (x >= width - 1) break;
+        
+        if (MANUAL2[i] == '[') {
+            wattron(bottomBox, A_REVERSE);
+        }
+        mvwaddch(bottomBox, y, x++, MANUAL2[i]);
+        if (MANUAL2[i] == ']') {
+            wattroff(bottomBox, A_REVERSE);
+        }
+    }
 }
 
 int displayProgress(FileProgressInfo *infos) {
@@ -80,35 +117,10 @@ int displayProgress(FileProgressInfo *infos) {
     return runningWins;
 }
 
-void displayManual(char *manual1, char *manual2) {
-    int width = getmaxx(bottomBox);
-
-    int x = 1, y = 0;
-    for (int i = 0; manual1[i] != '\0'; i++) {
-        if (x >= width - 1) {  // 화면 너비 초과 시
-            break;
-        }
-        if (manual1[i] != '\n') {  // 줄바꿈 문자가 아니면 출력
-            mvwaddch(bottomBox, y, x, manual1[i]);  // 한 글자씩 출력
-            x++;  // 다음 위치로 이동
-        }
+void displayBottomBox(FileProgressInfo *infos) {
+    werase(bottomBox);
+    if (displayProgress(infos) == 0) {
+        displayManual();
     }
-
-    x = 1, y = 1;
-    for (int i = 0; manual2[i] != '\0'; i++) {
-        if (x >= width - 1) {  // 화면 너비 초과 시
-            break;
-        }
-        if (manual2[i] != '\n') {  // 줄바꿈 문자가 아니면 출력
-            mvwaddch(bottomBox, y, x, manual2[i]);  // 한 글자씩 출력
-            x++;  // 다음 위치로 이동
-        }
-    }
-
-    // wrefresh(bottomBox);  // 화면 업데이트
-}
-
-void displayBottomBox(FileProgressInfo *infos, char *manual1, char *manual2) {
-    if (displayProgress(infos) == 0)
-        displayManual(manual1, manual2);
+    wrefresh(bottomBox);
 }

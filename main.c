@@ -43,9 +43,6 @@ static int pipeFileOpCmd;
 
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
-char manual1[MAX_NAME_LEN];  // 메뉴얼1
-char manual2[MAX_NAME_LEN];  // 메뉴얼2
-
 char fileAddress[MAX_PATH_LEN + 1];
 
 static void initVariables(void);  // 변수들 초기화
@@ -94,10 +91,6 @@ void initVariables(void) {
     pthread_cond_init(&processThreadArgs.commonArgs.resumeThread, NULL);
     pthread_mutex_init(&processThreadArgs.commonArgs.statusMutex, NULL);
     pthread_mutex_init(&processThreadArgs.entriesMutex, NULL);
-
-    // 메뉴얼 내용 입력
-    strcpy(manual1, "[^ / v] Move   [< / >] Switch   [Enter] Open   [w] NameSort   [e] SizeSort   [r] DateSort");
-    strcpy(manual2, "[c / x] Copy / Cut   [v] Paste   [Delete] Delete   [p] Process   [q] Quit");
 }
 
 void initScreen(void) {
@@ -385,7 +378,7 @@ void mainLoop(void) {
 
         updateDirWins();  // 폴더 표시 창들 업데이트
 
-        displayBottomBox(fileProgresses, manual1, manual2);
+        displayBottomBox(fileProgresses);
 
         // pthread_mutex_lock(&processWindow.visibleMutex);
         // if (processWindow.isWindowVisible) {
