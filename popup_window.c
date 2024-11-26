@@ -1,5 +1,6 @@
 #include <curses.h>
 #include <panel.h>
+#include <string.h>
 
 #include "config.h"
 
@@ -25,7 +26,7 @@ void initpopupWin() {
     popupWinPanel = new_panel(popupWin);
     hide_panel(popupWinPanel);
 }
-char *updatePopupWin() {
+void updatePopupWin(char *title) {
     werase(popupWin);  // 이전 내용 삭제
     box(popupWin, 0, 0);  // 테두리 생성
 
@@ -35,6 +36,12 @@ char *updatePopupWin() {
 
     if (charCount > width) {
         startIdx = charCount - width;  // 마지막 문자 중심으로 잘라냄
+    }
+
+    if(title != NULL){
+        wattron(popupWin, A_REVERSE);
+        mvwaddstr(popupWin, y-1, x, title); // 제목 역상으로 출력
+        wattroff(popupWin, A_REVERSE);
     }
 
     for (int i = startIdx; fileAddress[i] != '\0'; i++) {
@@ -53,11 +60,12 @@ char *updatePopupWin() {
     }
 
     top_panel(popupWinPanel);
-    return fileAddress;
 }
 
 void hidePopupWindow() {
     hide_panel(popupWinPanel);
+    fileAddress[0] = '\0';
+    charCount = 0;
 }
 
 void delPopupWindow() {
@@ -68,6 +76,11 @@ void delPopupWindow() {
     // procWindow->isWindowVisible = false;  // 프로세스 창 상태(닫힘)
     // pthread_mutex_unlock(&procWindow->visibleMutex);
 }
+
+void getString(char* buffer){
+    strcpy(buffer, fileAddress);
+}
+
 
 void addKey(char ch) {
     if (charCount < PATH_MAX && charCount >= 0) {
