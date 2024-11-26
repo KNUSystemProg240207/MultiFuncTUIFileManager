@@ -148,7 +148,6 @@ int updateDirWins(void) {
     // 각 창들 업데이트
     int eventStartPos;  // 이벤트 시작 위치
     int line;  // 내부 출력 for 문에서 사용할 변수
-    int displayLine;  // 실제 출력 라인 수
     for (int winNo = 0; winNo < showingWinCnt; winNo++) {
         win = windows + winNo;
 
@@ -197,7 +196,8 @@ int updateDirWins(void) {
 
         winH -= 4;  // 최대 출력 가능한 라인 넘버 -4
 
-        if (isColorSafe) wbkgd(win->win, COLOR_PAIR(BGRND));  // 창 색깔 변경
+        if (isColorSafe)
+            wbkgd(win->win, COLOR_PAIR(BGRND));  // 창 색깔 변경
         printFileHeader(win, winH, winW);  // 최상단 Header 출력
 
         // 라인 스크롤
@@ -219,19 +219,18 @@ int updateDirWins(void) {
         currentLine = win->currentPos - startIdx;  // 역상으로 출력할, 현재 선택된 줄
 
         // 디렉토리 출력
-        for (line = 0, displayLine = 0; line < itemsToPrint; line++) {  // 항목 있는 공간: 출력
+        for (line = 0; line < itemsToPrint; line++) {  // 항목 있는 공간: 출력
             // "." 항목은 출력하지 않음, line 값은 증가시키지 않음
             if (strcmp(win->dirEntry[startIdx + line].entryName, ".") == 0) {
                 continue;  // 현재 폴더(".")는 출력하지 않음
             }
-            if (winNo == currentWin && displayLine == currentLine)  // 선택된 것: 역상으로 출력
+            if (winNo == currentWin && line == currentLine)  // 선택된 것: 역상으로 출력
                 wattron(win->win, A_REVERSE);
             printFileInfo(win, startIdx, line, winW);
-            if (winNo == currentWin && displayLine == currentLine)
+            if (winNo == currentWin && line == currentLine)
                 wattroff(win->win, A_REVERSE);
-            displayLine++;
         }
-        wmove(win->win, displayLine + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
+        wmove(win->win, line + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
         wclrtobot(win->win);  // 커서 아래 남는 공간: 지움
         box(win->win, 0, 0);
         pthread_mutex_unlock(win->bufMutex);
@@ -274,13 +273,13 @@ void printFileHeader(DirWin *win, int winH, int winW) {
     }
 
     // 헤더 출력 파트
-    if (getmaxx(win->win) >= 54) {
+    if (winW >= 54) {
         // 최대 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-10s|%-19s|", nameHeader, sizeHeader, dateHeader);
-    } else if (getmaxx(win->win) >= 40) {
+    } else if (winW >= 40) {
         // 중간 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-19s|", nameHeader, dateHeader);
-    } else if (getmaxx(win->win) >= 35) {
+    } else if (winW >= 35) {
         mvwprintw(win->win, 1, 1, "%-20s|%-12s|", nameHeader, sizeHeader);
     } else {
         // 최소 너비
@@ -333,13 +332,13 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     applyColor(win->win, colorPair);
 
     // 출력 파트
-    if (getmaxx(win->win) >= 54) {  // 최대 너비
+    if (winW >= 54) {  // 최대 너비
         format = "%-20s %10s %13s %s";
         mvwprintw(win->win, displayLine, 1, format, fileName, formatSize(fileSize), lastModDate, lastModTime);
-    } else if (getmaxx(win->win) >= 36 + strlen(lastModTime)) {  // 중간 너비
+    } else if (winW >= 41) {  // 중간 너비
         format = "%-20s %13s %s";
         mvwprintw(win->win, displayLine, 1, format, fileName, lastModDate, lastModTime);
-    } else if (getmaxx(win->win) >= 35) {  // 최소 너비
+    } else if (winW >= 35) {  // 최소 너비
         format = "%-20s %12s";
         mvwprintw(win->win, displayLine, 1, format, fileName, formatSize(fileSize));
     } else {
