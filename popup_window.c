@@ -26,7 +26,7 @@ void initpopupWin() {
     popupWinPanel = new_panel(popupWin);
     hide_panel(popupWinPanel);
 }
-void updatePopupWin() {
+void updatePopupWin(char *title) {
     werase(popupWin);  // 이전 내용 삭제
     box(popupWin, 0, 0);  // 테두리 생성
 
@@ -36,6 +36,12 @@ void updatePopupWin() {
 
     if (charCount > width) {
         startIdx = charCount - width;  // 마지막 문자 중심으로 잘라냄
+    }
+
+    if(title != NULL){
+        wattron(popupWin, A_REVERSE);
+        mvwaddstr(popupWin, y-1, x, title); // 제목 역상으로 출력
+        wattroff(popupWin, A_REVERSE);
     }
 
     for (int i = startIdx; fileAddress[i] != '\0'; i++) {

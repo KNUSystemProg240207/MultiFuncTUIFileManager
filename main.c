@@ -411,8 +411,10 @@ void mainLoop(void) {
             prevShowProcessWindow = false;
         }
 
+        char title[MAX_NAME_LEN];
+        strcpy(title, "Title");
         if (showPopupWindow) {
-            updatePopupWin();
+            updatePopupWin(title);
         }
 
         // 패널 업데이트
