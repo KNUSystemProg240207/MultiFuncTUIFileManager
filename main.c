@@ -263,7 +263,7 @@ static inline int normalKeyInput(int ch) {
             pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
             cwdFd = dirfd(dirListenerArgs[curWin].currentDir);
             if (cwdFd != -1) {
-                cwdFd = dup(cwdFd);
+                newCwd = openat(cwdFd, '.', directoryOpenArgs);
             }
             pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
             if (cwdFd != -1) {
