@@ -1,5 +1,6 @@
 #include <curses.h>
 #include <panel.h>
+#include <string.h>
 
 #include "config.h"
 
@@ -25,7 +26,7 @@ void initpopupWin() {
     popupWinPanel = new_panel(popupWin);
     hide_panel(popupWinPanel);
 }
-char *updatePopupWin() {
+void updatePopupWin() {
     werase(popupWin);  // 이전 내용 삭제
     box(popupWin, 0, 0);  // 테두리 생성
 
@@ -53,7 +54,6 @@ char *updatePopupWin() {
     }
 
     top_panel(popupWinPanel);
-    return fileAddress;
 }
 
 void hidePopupWindow() {
@@ -67,6 +67,12 @@ void delPopupWindow() {
     // pthread_mutex_lock(&procWindow->visibleMutex);
     // procWindow->isWindowVisible = false;  // 프로세스 창 상태(닫힘)
     // pthread_mutex_unlock(&procWindow->visibleMutex);
+}
+
+void getString(char* buffer){
+    strcpy(buffer, fileAddress);
+    fileAddress[0] = '\0';
+    charCount = 0;
 }
 
 void addKey(char ch) {

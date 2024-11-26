@@ -106,7 +106,7 @@ int readProcInfo(ProcessThreadArgs *args) {
     }
     closedir(dir);
 
-    // 읽어들인 총 프로세스 수를 저장
+    // 공유 변수에 읽어들인 정보 쓰기
     pthread_mutex_lock(&args->entriesMutex);  // 상태 보호 Mutex 잠금
     args->totalReadItems = readCount;
     for (int i = 0; i < readCount; i++)

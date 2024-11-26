@@ -207,7 +207,7 @@ void mainLoop(void) {
                     deleteKey();
                 } else if (ch == '\n' || ch == KEY_ENTER) {  // Enter를 누르면
                     // 문자열 반환 및 창 닫기
-                    char *fileAddress = updatePopupWin();
+                    getString(fileAddress);
                     hidePopupWindow();
                     showPopupWindow = !showPopupWindow;  // 창 상태 변경
                     // TODO: enteredAddress를 사용하여 추가 작업 수행
