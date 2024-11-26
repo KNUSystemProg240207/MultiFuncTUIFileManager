@@ -16,15 +16,17 @@
  */
 WINDOW* initBottomBox(int width, int startY);
 
+/**
+ * 하단 Window 삭제
+ */
 void delBottomBox(void);
 
 /**
- * 화면 하단 진행률 표시 Window 업데이트
+ * 하단 영역 업데이트
+ * 진행 중인 작업이 있으면 진행률 표시, 없으면 매뉴얼 표시
  *
  * @param infos 진행률 정보
  */
-int displayProgress(FileProgressInfo* infos);
-void displayManual(char* manual1, char* manual2);
-void displayBottomBox(FileProgressInfo* infos, char* manual1, char* manual2);
+void displayBottomBox(FileProgressInfo* infos);
 
 #endif

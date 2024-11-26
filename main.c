@@ -54,9 +54,6 @@ static ProgramState state;
 static int pipeFileOpCmd;  // File operator thread로 명령 전달 위한 pipe의 write end
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
-char manual1[NAME_MAX];  // 메뉴얼1
-char manual2[NAME_MAX];  // 메뉴얼2
-
 static void initVariables(void);  // 변수들 초기화
 static void initScreen(void);  // ncurses 관련 초기화 & subwindow들 생성
 static void initThreads(void);  // thread 관련 초기화
@@ -102,10 +99,6 @@ void initVariables(void) {
     pthread_cond_init(&processThreadArgs.commonArgs.resumeThread, NULL);
     pthread_mutex_init(&processThreadArgs.commonArgs.statusMutex, NULL);
     pthread_mutex_init(&processThreadArgs.entriesMutex, NULL);
-
-    // 메뉴얼 내용 입력
-    strcpy(manual1, "[^ / v] Move   [< / >] Switch   [Enter] Open   [w] NameSort   [e] SizeSort   [r] DateSort");
-    strcpy(manual2, "[c / x] Copy / Cut   [v] Paste   [Delete] Delete   [p] Process   [q] Quit");
 }
 
 void initScreen(void) {
@@ -263,7 +256,7 @@ static inline int normalKeyInput(int ch) {
             pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
             cwdFd = dirfd(dirListenerArgs[curWin].currentDir);
             if (cwdFd != -1) {
-                newCwd = openat(cwdFd, '.', directoryOpenArgs);
+                cwdFd = openat(cwdFd, ".", directoryOpenArgs);
             }
             pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
             if (cwdFd != -1) {
@@ -514,7 +507,7 @@ void mainLoop(void) {
 
         updateDirWins();  // 폴더 표시 창들 업데이트
 
-        displayBottomBox(fileProgresses, manual1, manual2);
+        displayBottomBox(fileProgresses);
 
         switch (state) {
             case PROCESS_WIN:

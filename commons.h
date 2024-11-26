@@ -54,5 +54,12 @@
  */
 uint64_t getElapsedTime(struct timespec baseTime);
 
+/**
+ * 크기를 1G, 500M 등의 형식으로 변환
+ *
+ * @param size 변환하고자 하는 크기
+ * @return 변환된 문자열
+ */
+char *formatSize(size_t size);
 
 #endif

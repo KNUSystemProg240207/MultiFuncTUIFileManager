@@ -16,3 +16,17 @@ uint64_t getElapsedTime(struct timespec baseTime) {
 
     return elapsedTime;
 }
+
+char *formatSize(size_t size) {
+    static char formatted_size[16];
+    const char *units[] = { "B", "KB", "MB", "GB", "TB" };
+    int unit_index = 0;
+
+    while (size >= (1 << 10) && unit_index < 4) {
+        size >>= 10;  // 성능을 위해 비트 시프트로 연산, 2^10을 나누는 나눔
+        unit_index++;
+    }
+    // 사이즈 형식으로 포매팅해서 스트링 리턴
+    snprintf(formatted_size, sizeof(formatted_size), "%lu%s", size, units[unit_index]);
+    return formatted_size;
+}

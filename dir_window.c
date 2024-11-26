@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 
 #include "colors.h"
+#include "commons.h"
 #include "config.h"
 #include "dir_entry_utils.h"
 #include "dir_window.h"
@@ -196,7 +197,7 @@ int updateDirWins(void) {
 
         winH -= 4;  // 최대 출력 가능한 라인 넘버 -4
 
-        wbkgd(win->win, COLOR_PAIR(BGRND));  // 창 색깔 변경
+        if (isColorSafe) wbkgd(win->win, COLOR_PAIR(BGRND));  // 창 색깔 변경
         printFileHeader(win, winH, winW);  // 최상단 Header 출력
 
         // 라인 스크롤
@@ -230,6 +231,7 @@ int updateDirWins(void) {
                 wattroff(win->win, A_REVERSE);
             displayLine++;
         }
+        wmove(win->win, displayLine + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
         wclrtobot(win->win);  // 커서 아래 남는 공간: 지움
         box(win->win, 0, 0);
         pthread_mutex_unlock(win->bufMutex);
@@ -240,9 +242,10 @@ int updateDirWins(void) {
 }
 
 
-/* 윈도우 헤더 출력 함수*/
+// 윈도우 헤더 출력 함수
 void printFileHeader(DirWin *win, int winH, int winW) {
-    wattron(win->win, COLOR_PAIR(HEADER));
+    // 색깔 적용
+    applyColor(win->win, HEADER);
 
     // 정렬 상태에 따른 헤더 출력 준비
     char nameHeader[30] = "    FILE NAME  ";
@@ -270,24 +273,28 @@ void printFileHeader(DirWin *win, int winH, int winW) {
         strcat(dateHeader, "^");
     }
 
-    /* 헤더 출력 파트 */
-    if (winW >= 55) {
+    // 헤더 출력 파트
+    if (getmaxx(win->win) >= 54) {
         // 최대 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-10s|%-19s|", nameHeader, sizeHeader, dateHeader);
-    } else if (winW >= 40) {
+    } else if (getmaxx(win->win) >= 40) {
         // 중간 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-19s|", nameHeader, dateHeader);
+    } else if (getmaxx(win->win) >= 35) {
+        mvwprintw(win->win, 1, 1, "%-20s|%-12s|", nameHeader, sizeHeader);
     } else {
         // 최소 너비
         mvwprintw(win->win, 1, 1, "%-20s|", nameHeader);
     }
 
     whline(win->win, ' ', winW - getcurx(win->win) - 1);  // 남은 공간 공백 채우기
-    wattroff(win->win, COLOR_PAIR(HEADER));
+
+    // 색깔 해제
+    removeColor(win->win, HEADER);
     mvwhline(win->win, 2, 1, 0, winW - 2);  // 구분선 출력
 }
 
-/* 파일 목록 출력 함수 */
+// 파일 목록 출력 함수
 void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     struct stat *fileStat = &(win->dirEntry[startIdx + line].statEntry);  // 파일 스테이터스
     char *fileName = win->dirEntry[startIdx + line].entryName;  // 파일 이름
@@ -297,13 +304,13 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     int displayLine = line + 3;  // 출력되는 실제 라인 넘버
     const char *format;  // 출력 포맷
 
-    /* 마지막 수정 시간 */
+    // 마지막 수정 시간
     struct tm tm;
     localtime_r(&fileStat->st_mtime, &tm);
     strftime(lastModDate, sizeof(lastModDate), "%y/%m/%d", &tm);
     strftime(lastModTime, sizeof(lastModTime), "%H:%M", &tm);
 
-    /* 색상 선택 */
+    // 색상 선택
     int colorPair = DEFAULT;
     if ((S_ISDIR(fileStat->st_mode)) && isHidden(fileName)) {
         colorPair = HIDDEN_FOLDER;
@@ -318,26 +325,34 @@ void printFileInfo(DirWin *win, int startIdx, int line, int winW) {
     } else if (isEXE(fileName)) {
         colorPair = EXE;
     }
-    /* 파일 이름 너무 길면 자르기 */
+    // 파일 이름 너무 길면 자르기
     fileName = truncateFileName(fileName);
 
-    /* 출력 파트 */
-    wattron(win->win, COLOR_PAIR(colorPair));
-    if (winW >= 55) {  // 최대 너비
-        format = "%-20s %10zu %13s %s";
-        mvwprintw(win->win, displayLine, 1, format, fileName, fileSize, lastModDate, lastModTime);
-    } else if (winW >= 40) {  // 중간 너비
+
+    // 색깔 적용
+    applyColor(win->win, colorPair);
+
+    // 출력 파트
+    if (getmaxx(win->win) >= 54) {  // 최대 너비
+        format = "%-20s %10s %13s %s";
+        mvwprintw(win->win, displayLine, 1, format, fileName, formatSize(fileSize), lastModDate, lastModTime);
+    } else if (getmaxx(win->win) >= 36 + strlen(lastModTime)) {  // 중간 너비
         format = "%-20s %13s %s";
         mvwprintw(win->win, displayLine, 1, format, fileName, lastModDate, lastModTime);
-    } else {  // 최소 너비
+    } else if (getmaxx(win->win) >= 35) {  // 최소 너비
+        format = "%-20s %12s";
+        mvwprintw(win->win, displayLine, 1, format, fileName, formatSize(fileSize));
+    } else {
         format = "%-20s";
         mvwprintw(win->win, displayLine, 1, format, fileName);
     }
     whline(win->win, ' ', getmaxx(win->win) - getcurx(win->win) - 1);  // 남은 공간 공백 처리 (박스용 -1)
-    wattroff(win->win, COLOR_PAIR(colorPair));
+
+    // 색깔 해제
+    removeColor(win->win, colorPair);
 }
 
-/* 정렬 상태 토글 함수 */
+// 정렬 상태 토글 함수
 void toggleSort(int mask, int shift) {
 #define SORT_FLAG (windows[currentWin].sortFlag)
 

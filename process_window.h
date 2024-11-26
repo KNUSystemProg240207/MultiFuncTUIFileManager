@@ -11,6 +11,6 @@
 int initProcessWindow(pthread_mutex_t *_bufMutex, size_t *_totalReadItems, Process *_processes);
 void hideProcessWindow();
 void delProcessWindow();
-int updateProcessWindow();
+void updateProcessWindow();
 
 #endif
