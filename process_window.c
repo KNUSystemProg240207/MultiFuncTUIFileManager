@@ -144,7 +144,7 @@ void printTableHeader(WINDOW *win, int winW) {
 
 // 프로세스 정보 출력
 void printProcessInfo(WINDOW *win, int winW, Process *processes, int maxItems, int totalItems) {
-    for (int c = 0, i = totalItems; c < maxItems; c++, i--) {
+    for (int c = 0, i = *totalReadItems - 1; c < maxItems; c++, i--) {
         if (winW < 20) {
             mvwprintw(win, c + 2, 1, "%6d", processes[i].pid);
         } else if (winW < 30) {

@@ -79,15 +79,18 @@ int procThreadMain(void *argsPtr) {
 
         if (readCount < MAX_PROCESSES) {  // 배열이 아직 가득 차지 않은 경우 직접 추가
             size_t insertPos = findInsertPosition(elemPointers, readCount, temp.rsize);
-            memmove(&elemPointers[0], &elemPointers[1], insertPos * sizeof(Process *));
+            if (insertPos != readCount) {  // memmove가 필요할 때만 호출, insertPos가 127일 때 에러발생
+                memmove(&elemPointers[insertPos + 1], &elemPointers[insertPos], (readCount - insertPos) * sizeof(Process *));
+            }
             elements[readCount] = temp;
-            elemPointers[readCount] = &elements[readCount];
+            elemPointers[insertPos] = &elements[readCount];
             readCount++;
         } else if (temp.rsize > elemPointers[0]->rsize) {
-            size_t insertPos = findInsertPosition(elemPointers, MAX_PROCESSES, temp.rsize);
+            Process *pointerBuffer = elemPointers[0];
+            size_t insertPos = findInsertPosition(elemPointers, MAX_PROCESSES - 1, temp.rsize);  // readCount와 동일하게 실제 요소 수를 인자로 주기 위해 MAX_PROCESSES-1
             memmove(&elemPointers[0], &elemPointers[1], insertPos * sizeof(Process *));
-            *elemPointers[0] = temp;  // 새로운 데이터로 갱신
-            elemPointers[insertPos] = elemPointers[0];
+            *pointerBuffer = temp;  // 새로운 데이터로 갱신
+            elemPointers[insertPos] = pointerBuffer;
         }
     }
     closedir(dir);
@@ -104,20 +107,28 @@ int procThreadMain(void *argsPtr) {
 
 size_t findInsertPosition(Process **readItems, size_t size, unsigned long rsize) {
     size_t low = 0, high = size;
+    if (size == 0)
+        return 0;
+
+    // 이진 탐색
     while (low < high) {
         size_t mid = (low + high) / 2;
-        // if (readItems[mid] == NULL) {  // NULL 방어 코드
-        //     fprintf(stderr, "Null pointer detected at position %zu\n", mid);
-        //     return mid;  // NULL을 발견한 위치에 삽입
-        // }
         if (rsize > readItems[mid]->rsize) {
             low = mid + 1;
         } else {
             high = mid;
         }
     }
-    if (low > size - 1) {
-        return size - 1;
+    if (size == MAX_PROCESSES) {
+        if (rsize > readItems[low]->rsize && low != size) {
+            return low + 1;  // 배열 끝에 삽입될 의도, 삽입될 위치가 끝일 경우 제외
+        }
+        return low;  // 현재 위치에서 대체
     }
-    return low;  // 삽입 위치 반환
+
+    // 배열이 가득 차지 않은 경우
+    if (rsize > readItems[low]->rsize || low == 0) {
+        return low;  // 배열 끝에 삽입, 삽입될 위치가 0인 경우
+    }
+    return low - 1;  // 마지막 요소를 이동시켜 삽입
 }
