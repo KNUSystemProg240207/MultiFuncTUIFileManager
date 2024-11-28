@@ -94,17 +94,6 @@ void delProcessWindow() {
     delwin(window);
 }
 
-// void toggleProcWin(ProcessWindow *procWindow) {
-//     pthread_mutex_lock(&procWindow->visibleMutex);
-//     if (procWindow->isWindowVisible) {
-//         pthread_mutex_unlock(&procWindow->visibleMutex);
-//         closeProcWin(procWindow);
-//     } else {
-//         pthread_mutex_unlock(&procWindow->visibleMutex);
-//         initProcessWindow(procWindow);
-//     }
-// }
-
 void setProcessWinSize(int *winH, int *winW) {
     static int prevScreenH = 0, prevScreenW = 0;
     int screenH, screenW;
@@ -136,7 +125,6 @@ void setProcessWinSize(int *winH, int *winW) {
 void updateProcessWindow() {
     int winH, winW;
 
-    // getmaxyx(window, winH, winW);
     setProcessWinSize(&winH, &winW);
     werase(window);
     box(window, 0, 0);
