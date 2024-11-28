@@ -510,6 +510,7 @@ void mainLoop(void) {
         updateDirWins();  // 폴더 표시 창들 업데이트
         updateBottomBox(fileProgresses);
 
+
         switch (state) {
             case PROCESS_WIN:
                 if (prevState != PROCESS_WIN) {
@@ -523,14 +524,14 @@ void mainLoop(void) {
                     showPopupWindow("Rename");
                     prevState = RENAME_POPUP;
                 }
-                updatePopupWindow();
+                updatePopupWindow("Rename");
                 break;
             case CHDIR_POPUP:
                 if (prevState != CHDIR_POPUP) {
                     showPopupWindow("Enter new path");
                     prevState = CHDIR_POPUP;
                 }
-                updatePopupWindow();
+                updatePopupWindow("Enter new path");
                 break;
             default:
                 if (prevState == PROCESS_WIN) {
