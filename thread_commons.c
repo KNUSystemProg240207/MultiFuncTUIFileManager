@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -60,6 +61,10 @@ int startThread(
 }
 
 void *runner(void *runnerArgument) {
+    sigset_t sigmask;
+    sigfillset(&sigmask);
+    pthread_sigmask(SIG_BLOCK, &sigmask, NULL);
+
     RunnerArgument *argument = (RunnerArgument *)runnerArgument;  // Cast
     // Thread의 runtime information 저장
     int (*onInit)(void *) = argument->onInit;
@@ -183,7 +188,7 @@ int resumeThread(ThreadArgs *args) {
         return ret;
     args->statusFlags &= ~THREAD_FLAG_PAUSE;
     pthread_cond_signal(&args->resumeThread);  // 항상 오류 없음
-    if ((ret = pthread_mutex_unlock(&args->statusMutex))!= 0)
+    if ((ret = pthread_mutex_unlock(&args->statusMutex)) != 0)
         return ret;
     return 0;
 }

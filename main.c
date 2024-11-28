@@ -63,8 +63,18 @@ static void stopThreads(void);  // 실행 중인 Thread들 정지
 static void cleanup(void);  // atexit()에 전달할 함수: 프로그램 종료 직전, main() 반환 직후에 수행됨
 
 
+static inline void ctrlCHandler(int signal) {
+    ungetch(CTRL_KEY('c'));
+}
+
 int main(int argc, char **argv) {
-    signal(SIGINT, SIG_IGN);
+    struct sigaction ctrlCSignal = {
+        .sa_handler = ctrlCHandler,
+        .sa_flags = SA_RESTART
+    };
+    sigfillset(&ctrlCSignal.sa_mask);
+    sigaction(SIGINT, &ctrlCSignal, NULL);
+
     atexit(cleanup);
 
     initVariables();
@@ -193,6 +203,8 @@ static inline int normalKeyInput(int ch) {
     static FileTask fileDelTask = {
         .type = DELETE,
     };
+
+    char tmp[256];
 
     int cwdFd;  // 현재 선택된 창의 Working Directory File Descriptor
     DIR *newCwd;
@@ -335,27 +347,24 @@ static inline int normalKeyInput(int ch) {
             break;
 
         // 복사, 잘라내기, 붙여넣기
-        case 'c':
-        case 'C':  // 복사
-        case 'x':
-        case 'X':  // 잘라내기
+        case CTRL_KEY('c'):  // 복사
+        case CTRL_KEY('x'):  // 잘라내기
             // 파일 정보 저장
             // 기존에 Source로 선택된 Item 있었으면: 해당 dirfd close (여기서 값 덮어쓰게 됨)
             if (fileTask.src.dirFd != -1) {
                 close(fileTask.src.dirFd);
                 fileTask.src.dirFd = -1;
             }
-            fileTask.type = (ch == 'c' || ch == 'C') ? COPY : MOVE;  // 복사/삭제 결정
+            fileTask.type = (ch == CTRL_KEY('c')) ? COPY : MOVE;  // 복사/삭제 결정
             fileTask.src = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
             // 현재 폴더의 fd 가져옴
             curWin = getCurrentWindow();
             pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
             fileTask.src.dirFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
             pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
-            displayBottomMsg((ch == 'c' || ch == 'C') ? "File copied" : "File cutted", FRAME_PER_SECOND);
+            displayBottomMsg((ch == CTRL_KEY('c')) ? "File copied" : "File cutted", FRAME_PER_SECOND);
             break;
-        case 'v':
-        case 'V':  // 붙여넣기: 미리 복사/잘라내기 된 파일 있으면 수행, 없으면 오류 표시
+        case CTRL_KEY('v'):  // 붙여넣기: 미리 복사/잘라내기 된 파일 있으면 수행, 없으면 오류 표시
             if (fileTask.src.dirFd == -1) {  // 선택된 파일 없음
                 displayBottomMsg("No file selected", FRAME_PER_SECOND);
                 break;
@@ -391,8 +400,8 @@ static inline int normalKeyInput(int ch) {
             return 1;  // Main Loop 빠져나감
 
         default:
-            mvwhline(stdscr, getmaxy(stdscr) - 3, 0, ACS_HLINE, getmaxy(stdscr));
-            mvwprintw(stdscr, getmaxy(stdscr) - 3, 2, "0x%x 0x%lx 0x%lx", ch, ch & ~BUTTON_CTRL, ~BUTTON_CTRL);
+            sprintf(tmp,"0x%x 0x%x", ch, CTRL_KEY(ch));
+            displayBottomMsg(tmp, FRAME_PER_SECOND / 2);
             break;
     }
     return 0;

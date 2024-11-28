@@ -87,6 +87,7 @@ bool checkAndResizeArea(int *newAreaWidth) {
     wresize(bottomBox, 3, w);  // 높이 3, 너비 stdscr 사이즈 윈도우 생성
     replace_panel(bottomPanel, bottomBox);  // 교체
     move_panel(bottomPanel, h - 3, 0);  // 옮기기
+    top_panel(bottomPanel);
 
     return true;
 }
@@ -125,24 +126,24 @@ void displayManual(int screenW) {
     const char *manual1, *manual2;
 
     // 창 크기에 따라 출력 내용 결정
-    if (screenW >= 120) {  // 전체 출력 7열
-        manual1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process   [w] NameSort   [e] SizeSort";
-        manual2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path   [Enter ] Open     [q] Quit      [r] DateSort";
-    } else if (screenW >= 105) {  // 6열
-        manual1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process   [w] NameSort";
-        manual2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path   [Enter ] Open     [q] Quit      [r] DateSort";
-    } else if (screenW >= 90) {  // 5열
-        manual1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process";
-        manual2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path   [Enter ] Open     [q] Quit";
-    } else if (screenW >= 75) {  // 4열
-        manual1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename         [Delete] Delete";
-        manual2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path   [Enter ] Open";
-    } else if (screenW >= 60) {  // 3열
-        manual1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename";
-        manual2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path";
+    if (screenW >= 121) {  // 전체 출력 7열
+        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process   [w] NameSort   [e] SizeSort";
+        manual2 = "[< / >] Switch   [  ^v   ] Paste        [F4] Move to Path   [Enter ] Open     [q] Quit      [r] DateSort";
+    } else if (screenW >= 106) {  // 6열
+        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process   [w] NameSort";
+        manual2 = "[< / >] Switch   [  ^v   ] Paste        [F4] Move to Path   [Enter ] Open     [q] Quit      [r] DateSort";
+    } else if (screenW >= 91) {  // 5열
+        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process";
+        manual2 = "[< / >] Switch   [  ^v   ] Paste        [F4] Move to Path   [Enter ] Open     [q] Quit";
+    } else if (screenW >= 77) {  // 4열
+        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut   [F2] Rename         [Delete] Delete";
+        manual2 = "[< / >] Switch   [  ^v   ] Paste        [F4] Move to Path   [Enter ] Open";
+    } else if (screenW >= 59) {  // 3열
+        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut   [F2] Rename";
+        manual2 = "[< / >] Switch   [  ^v   ] Paste        [F4] Move to Path";
     } else {  // 최소 출력 2열
-        manual1 = "[^ / v] Move     [c / x] Copy / Cut";
-        manual2 = "[< / >] Switch   [  v  ] Paste";
+        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut";
+        manual2 = "[< / >] Switch   [  ^v   ] Paste";
     }
 
     // 첫 번째 줄 출력
