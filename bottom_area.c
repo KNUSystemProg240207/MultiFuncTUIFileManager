@@ -13,15 +13,25 @@
  * 진행률 정보 표시
  *
  * @param infos 파일 작업 진행률 정보
+ * @param width 최대 출력 너비
  * @return 실행 중인 작업 수
  */
-static int displayProgress(FileProgressInfo *infos);
+static int displayProgress(FileProgressInfo *infos, int width);
 
 /**
  * 매뉴얼 텍스트 표시
+ *
  * 대괄호([])로 묶인 부분은 역상으로 표시
+ * @param width 최대 출력 너비
  */
-static void displayManual(void);
+static void displayManual(int width);
+
+/**
+ * 바텀 박스의 사이즈를 설정함
+ * 이전 크기와 비교하여, 다르면, 재설정
+ * @param width 최대 출력 너비의 포인터
+ */
+static void setBottomBoxSize(int *width);
 
 
 static WINDOW *bottomBox;
@@ -38,34 +48,7 @@ void delBottomBox(void) {
     assert((delwin(bottomBox) != ERR));
 }
 
-void displayManual(void) {
-    /*
-    버그 발생
-        터미널 높이를 아예 안보일 정도로 줄였다가 다시 늘리면, 정상 출력이 되지만
-        그냥 상태에서 터미널 높이를 LINES 12줄 정도 이하로 줄이면, 절반이 출력이 안 됨
-    */
-    static int prevScreenH = 0, prevScreenW = 0;
-    int screenH, screenW;
-    int width;
-    // 현재 화면 크기 가져오기
-    getmaxyx(stdscr, screenH, screenW);
-    width = getmaxx(bottomBox);
-
-    // 화면 크기 변경 감지
-    bool changeWinSize = false;
-    if (prevScreenH != screenH || prevScreenW != screenW) {
-        prevScreenW = screenW;
-        changeWinSize = true;
-    }
-
-    // 창 크기 변경 시 레이아웃 재배치
-    if (changeWinSize) {
-        wresize(bottomBox, 3, screenW);  // 높이 3, 너비 stdscr 사이즈 윈도우 생성
-        replace_panel(bottomPanel, bottomBox);  // 교체
-        move_panel(bottomPanel, screenH - 3, 0);  // 옮기기
-        width = screenW;
-    }
-
+void displayManual(int width) {
     const char *manual1, *manual2;
 
     // 창 크기에 따라 출력 내용 결정
@@ -115,8 +98,7 @@ void displayManual(void) {
     mvwhline(bottomBox, 0, 0, ACS_HLINE, getmaxx(bottomBox));  // 바텀박스 위 가로줄
 }
 
-int displayProgress(FileProgressInfo *infos) {
-    int width = getmaxx(bottomBox);
+int displayProgress(FileProgressInfo *infos, int width) {
     int x, y, w = width / 2 - 1;
     char operation;
 
@@ -169,8 +151,32 @@ int displayProgress(FileProgressInfo *infos) {
     return runningWins;
 }
 
+void setBottomBoxSize(int *width) {
+    static int prevScreenH = 0, prevScreenW = 0;
+    int screenH, screenW;
+    // 현재 화면 크기 가져오기
+    getmaxyx(stdscr, screenH, screenW);
+    *width = getmaxx(bottomBox);
+
+    if (prevScreenH != screenH || prevScreenW != screenW) {
+        // 최신화
+        prevScreenH = screenH;
+        prevScreenW = screenW;
+
+        // 윈도우, 패널 레이아웃 재배치
+        wresize(bottomBox, 3, screenW);  // 높이 3, 너비 stdscr 사이즈 윈도우 생성
+        replace_panel(bottomPanel, bottomBox);  // 교체
+        move_panel(bottomPanel, screenH - 3, 0);  // 옮기기
+        top_panel(bottomPanel);  // 다른 창에 가려지는 거 방지
+
+        *width = screenW;
+    }
+}
+
 void updateBottomBox(FileProgressInfo *infos) {
+    int width;
+    setBottomBoxSize(&width);
     werase(bottomBox);
-    if (displayProgress(infos) == 0)
-        displayManual();
+    if (displayProgress(infos, width) == 0)
+        displayManual(width);
 }

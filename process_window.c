@@ -45,6 +45,14 @@ static void printProcessInfo(WINDOW *win, int winW, Process *processes, int maxI
  */
 static unsigned long ticksToSeconds(unsigned long ticks);
 
+/**
+ * 프로세스 창 크기 업데이트
+ *
+ * @param winH 업데이트 받을 창의 높이
+ * @param winW 업데이트 받을 창의 너비
+ */
+static void setProcessWinSize(int *winH, int *winW);
+
 
 int initProcessWindow(
     pthread_mutex_t *_bufMutex,
@@ -97,10 +105,39 @@ void delProcessWindow() {
 //     }
 // }
 
+void setProcessWinSize(int *winH, int *winW) {
+    static int prevScreenH = 0, prevScreenW = 0;
+    int screenH, screenW;
+    // 현재 화면 크기 가져오기
+    getmaxyx(stdscr, screenH, screenW);
+    int y = 2,
+        x = 0,
+        h = screenH - 5,
+        w = screenW;
+
+    // 이전 창 크기와 비교
+    if (prevScreenH != screenH || prevScreenW != screenW) {
+        // 최신화
+        prevScreenH = screenH;
+        prevScreenW = screenW;
+
+        // 윈도우, 패널 레이아웃 재배치
+        wresize(window, h, w);
+        replace_panel(panel, window);
+        move_panel(panel, y, x);
+
+        *winW = screenW;
+        *winH = screenH;
+    } else {
+        getmaxyx(window, *winH, *winW);  // 이전 창 크기와 같으면, 그대로 전달
+    }
+}
+
 void updateProcessWindow() {
     int winH, winW;
 
-    getmaxyx(window, winH, winW);
+    // getmaxyx(window, winH, winW);
+    setProcessWinSize(&winH, &winW);
     werase(window);
     box(window, 0, 0);
 

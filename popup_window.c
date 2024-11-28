@@ -36,7 +36,6 @@ void initPopupWindow() {
 
 void showPopupWindow(char *title) {
     werase(popupWindow);  // 이전 내용 삭제
-    box(popupWindow, 0, 0);  // 테두리 생성
     if (title != NULL) {
         wattron(popupWindow, A_REVERSE);
         mvwaddstr(popupWindow, 0, 1, title);
@@ -56,9 +55,44 @@ void delPopupWindow() {
     delwin(popupWindow);
 }
 
-void updatePopupWindow() {
-    int width = getmaxx(popupWindow);
-    int x = 1, y = 1;  // 여백 1칸
+void setPopUpSize(int *width) {
+    static int prevScreenH = 0, prevScreenW = 0;
+    int screenH, screenW;
+    // 현재 화면 크기 가져오기
+    getmaxyx(stdscr, screenH, screenW);
+    int h = 3;  // 높이 1줄
+    int w = screenW - 4;  // 좌우로 여백 2칸씩
+    int y = screenH - 7;  // 세로 중앙
+    int x = 2;  // 가로 여백 2칸
+
+    // 이전 창 크기와 비교
+    if (prevScreenH != screenH || prevScreenW != screenW) {
+        // 최신화
+        prevScreenH = screenH;
+        prevScreenW = screenW;
+
+        // 윈도우, 패널 레이아웃 재배치
+        wresize(popupWindow, h, w);
+        replace_panel(popupWindowPanel, popupWindow);
+        move_panel(popupWindowPanel, y, x);
+
+        *width = screenH;
+    } else {
+        *width = getmaxx(popupWindow);  // 이전 창 크기와 같으면, 그대로 전달
+    }
+}
+
+void updatePopupWindow(char *title) {
+    int width;
+    // = getmaxx(popupWindow);
+    setPopUpSize(&width);
+    box(popupWindow, 0, 0);  // 테두리 생성
+    if (title != NULL) {
+        wattron(popupWindow, A_REVERSE);
+        mvwaddstr(popupWindow, 0, 1, title);
+        wattroff(popupWindow, A_REVERSE);
+    }
+    // int x = 1, y = 1;  // 여백 1칸
     int startIdx = 0;
     applyColor(popupWindow, POPUP);
 
