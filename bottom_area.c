@@ -2,30 +2,52 @@
 #include <curses.h>
 #include <panel.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "bottom_area.h"
 #include "commons.h"
 #include "config.h"
 #include "file_operator.h"
 
+/**
+ * '하단 영역' 크기 조절 필요하면 조절
+ *
+ * @param newAreaWidth '하단 영역'의 너비 (항상 돌려줌)
+ * @return 크기 조정 여부
+ */
+static bool checkAndResizeArea(int *newAreaWidth);
+
+/**
+ * 구분용 수평선을 '하단 영역' 최상단에 그린 후, message 있으면 표시
+ *
+ * @param winWidth '하단 영역'의 크기
+ */
+static void printHLineAndMsg(int winWidth);
 
 /**
  * 진행률 정보 표시
  *
  * @param infos 파일 작업 진행률 정보
+ * @param winWidth '하단 영역'의 크기
  * @return 실행 중인 작업 수
  */
-static int displayProgress(FileProgressInfo *infos);
+static int displayProgress(FileProgressInfo *infos, int winWidth);
 
 /**
  * 매뉴얼 텍스트 표시
  * 대괄호([])로 묶인 부분은 역상으로 표시
+ *
+ * @param winWidth '하단 영역'의 크기
  */
-static void displayManual(void);
+static void displayManual(int screenW);
 
 
 static WINDOW *bottomBox;
 static PANEL *bottomPanel;
+static char msgBuf[MAX_BOTTOMBOX_MSG_LEN + 1];
+static int msgLen;
+static int msgLeftFrames;
+
 
 WINDOW *initBottomBox(int width, int startY) {
     assert((bottomBox = newwin(3, width, startY, 0)));
@@ -38,50 +60,84 @@ void delBottomBox(void) {
     assert((delwin(bottomBox) != ERR));
 }
 
-void displayManual(void) {
+void updateBottomBox(FileProgressInfo *infos) {
+    int winWidth;
+    werase(bottomBox);
+    checkAndResizeArea(&winWidth);
+    if (displayProgress(infos, winWidth) == 0)
+        displayManual(winWidth);
+    printHLineAndMsg(winWidth);
+}
+
+bool checkAndResizeArea(int *newAreaWidth) {
+    static int prevH = 0, prevW = 0;
+    int h, w;
+
+    getmaxyx(stdscr, h, w);
+    *newAreaWidth = w;
+
+    // 화면 크기 변경 감지
+    if (prevH == h && prevW == w)
+        return false;
+
+    prevH = h;
+    prevW = w;
+
+    // 레이아웃 재배치
+    wresize(bottomBox, 3, w);  // 높이 3, 너비 stdscr 사이즈 윈도우 생성
+    replace_panel(bottomPanel, bottomBox);  // 교체
+    move_panel(bottomPanel, h - 3, 0);  // 옮기기
+
+    return true;
+}
+
+void displayBottomMsg(char *msg, int framesToShow) {
+    strncpy(msgBuf, msg, MAX_BOTTOMBOX_MSG_LEN);
+    msgBuf[MAX_BOTTOMBOX_MSG_LEN] = '\0';
+    msgLen = strlen(msgBuf);
+    msgLeftFrames = framesToShow;
+}
+
+void clearBottomMsg() {
+    msgLeftFrames = 0;
+}
+
+void printHLineAndMsg(int winWidth) {
+    mvwhline(bottomBox, 0, 0, ACS_HLINE, winWidth);
+    if (msgLeftFrames > 0) {
+        msgLeftFrames--;
+        int printWidth = msgLen;
+        if (printWidth > winWidth - 6)
+            printWidth = winWidth - 6;
+        wattron(bottomBox, A_REVERSE);
+        mvwaddnstr(bottomBox, 0, (winWidth - printWidth) / 2, msgBuf, printWidth);
+        wattroff(bottomBox, A_REVERSE);
+    }
+}
+
+void displayManual(int screenW) {
     /*
     버그 발생
         터미널 높이를 아예 안보일 정도로 줄였다가 다시 늘리면, 정상 출력이 되지만
         그냥 상태에서 터미널 높이를 LINES 12줄 정도 이하로 줄이면, 절반이 출력이 안 됨
     */
-    static int prevScreenH = 0, prevScreenW = 0;
-    int screenH, screenW;
-    int width;
-    // 현재 화면 크기 가져오기
-    getmaxyx(stdscr, screenH, screenW);
-    width = getmaxx(bottomBox);
-
-    // 화면 크기 변경 감지
-    bool changeWinSize = false;
-    if (prevScreenH != screenH || prevScreenW != screenW) {
-        prevScreenW = screenW;
-        changeWinSize = true;
-    }
-
-    // 창 크기 변경 시 레이아웃 재배치
-    if (changeWinSize) {
-        wresize(bottomBox, 3, screenW);  // 높이 3, 너비 stdscr 사이즈 윈도우 생성
-        replace_panel(bottomPanel, bottomBox);  // 교체
-        move_panel(bottomPanel, screenH - 3, 0);  // 옮기기
-        width = screenW;
-    }
 
     const char *manual1, *manual2;
 
     // 창 크기에 따라 출력 내용 결정
-    if (width >= 120) {  // 전체 출력 7열
+    if (screenW >= 120) {  // 전체 출력 7열
         manual1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process   [w] NameSort   [e] SizeSort";
         manual2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path   [Enter ] Open     [q] Quit      [r] DateSort";
-    } else if (width >= 105) {  // 6열
+    } else if (screenW >= 105) {  // 6열
         manual1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process   [w] NameSort";
         manual2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path   [Enter ] Open     [q] Quit      [r] DateSort";
-    } else if (width >= 90) {  // 5열
+    } else if (screenW >= 90) {  // 5열
         manual1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process";
         manual2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path   [Enter ] Open     [q] Quit";
-    } else if (width >= 75) {  // 4열
+    } else if (screenW >= 75) {  // 4열
         manual1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename         [Delete] Delete";
         manual2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path   [Enter ] Open";
-    } else if (width >= 60) {  // 3열
+    } else if (screenW >= 60) {  // 3열
         manual1 = "[^ / v] Move     [c / x] Copy / Cut   [F2] Rename";
         manual2 = "[< / >] Switch   [  v  ] Paste        [F4] Move to Path";
     } else {  // 최소 출력 2열
@@ -91,7 +147,7 @@ void displayManual(void) {
 
     // 첫 번째 줄 출력
     wmove(bottomBox, 1, 1);
-    for (int i = 0; manual1[i] != '\0' && i < width - 2; i++) {
+    for (int i = 0; manual1[i] != '\0' && i < screenW - 2; i++) {
         if (manual1[i] == '[') {
             wattron(bottomBox, A_REVERSE);
         }
@@ -103,7 +159,7 @@ void displayManual(void) {
 
     // 두 번째 줄 출력
     wmove(bottomBox, 2, 1);
-    for (int i = 0; manual2[i] != '\0' && i < width - 2; i++) {
+    for (int i = 0; manual2[i] != '\0' && i < screenW - 2; i++) {
         if (manual2[i] == '[') {
             wattron(bottomBox, A_REVERSE);
         }
@@ -112,12 +168,10 @@ void displayManual(void) {
             wattroff(bottomBox, A_REVERSE);
         }
     }
-    mvwhline(bottomBox, 0, 0, ACS_HLINE, getmaxx(bottomBox));  // 바텀박스 위 가로줄
 }
 
-int displayProgress(FileProgressInfo *infos) {
-    int width = getmaxx(bottomBox);
-    int x, y, w = width / 2 - 1;
+int displayProgress(FileProgressInfo *infos, int winWidth) {
+    int x, y, w = winWidth / 2 - 1;
     char operation;
 
     int runningWins = 0;
@@ -146,7 +200,7 @@ int displayProgress(FileProgressInfo *infos) {
                 y = 1;
                 break;
             case 2:
-                x = width / 2 + 1;
+                x = winWidth / 2 + 1;
                 y = 1;
                 break;
             case 3:
@@ -154,7 +208,7 @@ int displayProgress(FileProgressInfo *infos) {
                 y = 2;
                 break;
             case 4:
-                x = width / 2 + 1;
+                x = winWidth / 2 + 1;
                 y = 2;
                 break;
         }
@@ -167,10 +221,4 @@ int displayProgress(FileProgressInfo *infos) {
     }
 
     return runningWins;
-}
-
-void updateBottomBox(FileProgressInfo *infos) {
-    werase(bottomBox);
-    if (displayProgress(infos) == 0)
-        displayManual();
 }

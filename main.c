@@ -233,12 +233,10 @@ static inline int normalKeyInput(int ch) {
 
         // 이름 변경 창 토글
         case KEY_F(2):
-            // TODO: 이름 변경 창 보이기
             state = RENAME_POPUP;
             break;
         // 경로 변경 창 토글
         case KEY_F(4):
-            // TODO: 경로 변경 창 보이기
             state = CHDIR_POPUP;
             break;
 
@@ -250,7 +248,7 @@ static inline int normalKeyInput(int ch) {
         // 창 열기
         case CTRL_KEY('t'):
             if (dirWinCnt == MAX_DIRWINS) {
-                // TODO: 오류 표시
+                displayBottomMsg("Already opened max window", FRAME_PER_SECOND);
                 break;
             }
             // 새 창의 Working Directory 설정
@@ -278,7 +276,7 @@ static inline int normalKeyInput(int ch) {
         // 현재 창 닫기
         case CTRL_KEY('r'):
             if (dirWinCnt == 1) {
-                // TODO: 오류 표시
+                displayBottomMsg("There is only one window", FRAME_PER_SECOND);
                 break;
             }
             dirWinCnt--;
@@ -354,11 +352,12 @@ static inline int normalKeyInput(int ch) {
             pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
             fileTask.src.dirFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
             pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
+            displayBottomMsg((ch == 'c' || ch == 'C') ? "File copied" : "File cutted", FRAME_PER_SECOND);
             break;
         case 'v':
         case 'V':  // 붙여넣기: 미리 복사/잘라내기 된 파일 있으면 수행, 없으면 오류 표시
             if (fileTask.src.dirFd == -1) {  // 선택된 파일 없음
-                // TODO: 오류 표시
+                displayBottomMsg("No file selected", FRAME_PER_SECOND);
                 break;
             }
             fileTask.dst = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
@@ -371,6 +370,7 @@ static inline int normalKeyInput(int ch) {
             // pipe에 명령 쓰기
             write(pipeFileOpCmd, &fileTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
             fileTask.src.dirFd = -1;  // '덮어쓰기'될 fd 아님: 다음 Copy/Move 대상 지정 시, close 방지
+            displayBottomMsg("File action requested", FRAME_PER_SECOND);
             break;
         case KEY_DC:  // Delete 키
             // fileTask.type = DELETE;  // '삭제' 전용 변수: 종류 대입 불필요
@@ -382,6 +382,7 @@ static inline int normalKeyInput(int ch) {
             pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
             // pipe에 명령 쓰기
             write(pipeFileOpCmd, &fileDelTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
+            displayBottomMsg("File delete requested", FRAME_PER_SECOND);
             break;
 
         // 종료
@@ -457,6 +458,7 @@ void mainLoop(void) {
                         pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
                         // pipe에 명령 쓰기
                         write(pipeFileOpCmd, &fileRenameTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
+                        displayBottomMsg("Rename requested", FRAME_PER_SECOND);
                         // 창 닫기
                         state = NORMAL;
                     } else if (ch == KEY_F(2)) {
@@ -482,6 +484,7 @@ void mainLoop(void) {
                         pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
                         pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
                         setCurrentSelection(0);
+                        displayBottomMsg("Change working directory requested", FRAME_PER_SECOND);
                         // 창 닫기
                         state = NORMAL;
                     } else if (ch == KEY_F(4)) {

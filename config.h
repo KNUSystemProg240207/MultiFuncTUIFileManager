@@ -9,6 +9,7 @@
 
 // Delay들
 #define FRAME_INTERVAL_USEC (50 * 1000)  // Framerate 제한 (단위: μs)
+#define FRAME_PER_SECOND ((1000 * 1000) / FRAME_INTERVAL_USEC)  // 1초당 프레임 수
 #define DIR_INTERVAL_USEC (1 * 1000 * 1000)  // 폴더 정보 새로고침 간격 (단위: μs)
 
 #define MAX_DIRWINS 3  // 최대 가능한 '탭' 수
@@ -28,6 +29,8 @@
 // 날짜 및 시간 출력 형식
 #define DATETIME_FORMAT "%2.2d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d"  // 날짜-시간 문자열 형식 (printf 형식)
 #define DATETIME_LEN 19  // 날짜-시간 문자열 길이
+
+#define MAX_BOTTOMBOX_MSG_LEN NAME_MAX  // 하단 영역 메시지의 최대 길이 (화면 Size와 상관 없이)
 
 // struct dt -> 문자열 변환: 형식 지정 (buf 최소 길이: DATETIME_LEN + 1)
 #define DT_TO_STR(buf, dt) sprintf((buf), DATETIME_FORMAT, (dt)->tm_year + 1900, (dt)->tm_mon + 1, (dt)->tm_mday, (dt)->tm_hour, (dt)->tm_min, (dt)->tm_sec)

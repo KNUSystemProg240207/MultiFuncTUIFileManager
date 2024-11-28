@@ -29,4 +29,19 @@ void delBottomBox(void);
  */
 void updateBottomBox(FileProgressInfo* infos);
 
+/**
+ * 하단 영역에 출력될 메시지 설정
+ * 다음 updateBottomBox때부터 실제로 출력됨
+ * 
+ * @param msg 출력할 (null-terminated) 문자열
+ * @param framesToShow 보여줄 시간, Frame (=updateBottomBox 호출 횟수) 단위
+ */
+void displayBottomMsg(char *msg, int framesToShow);
+
+/**
+ * 하단 영역에 출력된 메시지가 있으면, 지움
+ * 다음 updateBottomBox때 실제로 지워짐
+ */
+void clearBottomMsg();
+
 #endif

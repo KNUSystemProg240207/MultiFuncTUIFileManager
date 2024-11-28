@@ -386,7 +386,6 @@ int calculateWinPos(int *y, int *x, int *h, int *w, unsigned int winNo, unsigned
     getmaxyx(stdscr, screenH, screenW);
 
     // 창의 개수에 따라 분기
-    // TODO: 세로줄로 각 창 구분 반영
     switch (winCnt) {
         case 1:  // 창 1개 존재
             if (winNo != 0)
