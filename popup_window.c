@@ -14,7 +14,7 @@ static char popupTitleBuf[MAX_POPUP_TITLE_LEN + 1];
 static char inputBuf[PATH_MAX + 1];
 
 
-void initPopupWindow() {
+void initPopupWindow(void) {
     int screenW, screenH;
     getmaxyx(stdscr, screenH, screenW);
     int h = 3;  // 높이 1줄
@@ -46,13 +46,13 @@ void showPopupWindow(char *title) {
     show_panel(popupWindowPanel);
 }
 
-void hidePopupWindow() {
+void hidePopupWindow(void) {
     hide_panel(popupWindowPanel);
     memset(inputBuf, '\0', sizeof(inputBuf));
     charCount = 0;
 }
 
-void delPopupWindow() {
+void delPopupWindow(void) {
     del_panel(popupWindowPanel);
     delwin(popupWindow);
 }
@@ -118,7 +118,7 @@ void putCharToPopup(char ch) {
     inputBuf[charCount++] = ch;
 }
 
-void popCharFromPopup() {
+void popCharFromPopup(void) {
     inputBuf[--charCount] = '\0';
 }
 

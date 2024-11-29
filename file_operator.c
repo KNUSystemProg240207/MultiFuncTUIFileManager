@@ -61,6 +61,10 @@ int fileOperator(void *argsPtr) {
             removeFile(&command.src, args->progressInfo);
             // DELETE: dst.dirFd 유효하지 않음 -> close()하면 안 됨
             break;
+        case MKDIR:
+            mkdirat(command.src.dirFd, command.src.name, 0755);
+            // MKDIR: dst.dirFd 유효하지 않음 -> close()하면 안 됨
+            break;
     }
 
     close(command.src.dirFd);  // 항상 쓰임 -> 항상 close()

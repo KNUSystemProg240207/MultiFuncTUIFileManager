@@ -7,15 +7,15 @@
 #include "config.h"
 
 // 외부에서 접근할 함수 선언
-void initPopupWindow();
+void initPopupWindow(void);
 void showPopupWindow(char *title);
-void hidePopupWindow();
-void delPopupWindow();
+void hidePopupWindow(void);
+void delPopupWindow(void);
 
-void updatePopupWindow();
+void updatePopupWindow(void);
 
 void putCharToPopup(char ch);
-void popCharFromPopup();
+void popCharFromPopup(void);
 void getStringFromPopup(char *buffer);
 
 #endif

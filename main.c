@@ -33,7 +33,8 @@ typedef enum _ProgramState {
     NORMAL,
     PROCESS_WIN,
     RENAME_POPUP,
-    CHDIR_POPUP
+    CHDIR_POPUP,
+    MKDIR_POPUP
 } ProgramState;
 
 
@@ -248,8 +249,12 @@ static inline int normalKeyInput(int ch) {
             state = RENAME_POPUP;
             break;
         // 경로 변경 창 토글
-        case KEY_F(4):
+        case 0x1f:  // CTRL_KEY('/')
             state = CHDIR_POPUP;
+            break;
+        // 폴더 생성 창 토글
+        case CTRL_KEY('n'):
+            state = MKDIR_POPUP;
             break;
 
         // 프로세스 창 토글
@@ -400,7 +405,7 @@ static inline int normalKeyInput(int ch) {
             return 1;  // Main Loop 빠져나감
 
         default:
-            sprintf(tmp,"0x%x 0x%x", ch, CTRL_KEY(ch));
+            sprintf(tmp, "0x%x 0x%x", ch, CTRL_KEY(ch));
             displayBottomMsg(tmp, FRAME_PER_SECOND / 2);
             break;
     }
@@ -416,9 +421,7 @@ void mainLoop(void) {
     // char *cwd;  // 현재 선택된 창의 Working Directory
     char fdPathBuf[PATH_MAX];  // Working Directory의 Buffer
     char pathBuf[PATH_MAX];  // 각종 경로 저장 Buffer
-    FileTask fileRenameTask = {
-        .type = MOVE,
-    };
+    FileTask fileTask = {};
 
     unsigned int curWin;  // 현재 창
 
@@ -456,17 +459,18 @@ void mainLoop(void) {
                         // 팝업창에서 새 이름 가져오기
                         getStringFromPopup(pathBuf);
                         // 이름 변경 요청
-                        fileRenameTask.src = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
-                        fileRenameTask.dst = fileRenameTask.src;  // 나머지 정보는 같음
-                        strcpy(fileRenameTask.dst.name, pathBuf);  // 새 이름으로 변경
+                        fileTask.type = MOVE;
+                        fileTask.src = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
+                        fileTask.dst = fileTask.src;  // 나머지 정보는 같음
+                        strcpy(fileTask.dst.name, pathBuf);  // 새 이름으로 변경
                         // 현재 폴더의 fd 가져옴
                         curWin = getCurrentWindow();
                         pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
-                        fileRenameTask.src.dirFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
-                        fileRenameTask.dst.dirFd = fileRenameTask.src.dirFd;
+                        fileTask.src.dirFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
+                        fileTask.dst.dirFd = fileTask.src.dirFd;
                         pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
                         // pipe에 명령 쓰기
-                        write(pipeFileOpCmd, &fileRenameTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
+                        write(pipeFileOpCmd, &fileTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
                         displayBottomMsg("Rename requested", FRAME_PER_SECOND);
                         // 창 닫기
                         state = NORMAL;
@@ -482,8 +486,8 @@ void mainLoop(void) {
                         // } else if (ch == KEY_LEFT) {
                         // } else if (ch == KEY_RIGHT) {
                     } else if (ch == '\n') {
-                        // 팝업창에서 경로 가져오기
                         // Working directory 변경 수행
+                        // 팝업창에서 경로 가져오기
                         curWin = getCurrentWindow();
                         pthread_mutex_lock(&dirListenerArgs[curWin].bufMutex);
                         getStringFromPopup(dirListenerArgs[curWin].newCwdPath);
@@ -496,7 +500,35 @@ void mainLoop(void) {
                         displayBottomMsg("Change working directory requested", FRAME_PER_SECOND);
                         // 창 닫기
                         state = NORMAL;
-                    } else if (ch == KEY_F(4)) {
+                    } else if (ch == 0x1f) {  // CTRL_KEY('/')
+                        state = NORMAL;  // 창 닫기
+                    }
+                    break;
+                case MKDIR_POPUP:
+                    if (' ' <= ch && ch <= '~') {
+                        putCharToPopup(ch);
+                    } else if (ch == KEY_BACKSPACE) {
+                        popCharFromPopup();
+                        // } else if (ch == KEY_LEFT) {
+                        // } else if (ch == KEY_RIGHT) {
+                    } else if (ch == '\n') {
+                        // 폴더 생성 요청
+                        // 팝업창에서 새 이름 가져오기
+                        getStringFromPopup(pathBuf);
+                        // 폴더 생성 요청
+                        fileTask.type = MKDIR;
+                        strcpy(fileTask.src.name, pathBuf);  // 새 이름 설정
+                        // 현재 폴더의 fd 가져옴
+                        curWin = getCurrentWindow();
+                        pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
+                        fileTask.src.dirFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
+                        pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
+                        // pipe에 명령 쓰기
+                        write(pipeFileOpCmd, &fileTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
+                        displayBottomMsg("Rename requested", FRAME_PER_SECOND);
+                        // 창 닫기
+                        state = NORMAL;
+                    } else if (ch == CTRL_KEY('n')) {
                         state = NORMAL;  // 창 닫기
                     }
                     break;
@@ -541,12 +573,19 @@ void mainLoop(void) {
                 }
                 updatePopupWindow();
                 break;
+            case MKDIR_POPUP:
+                if (prevState != MKDIR_POPUP) {
+                    showPopupWindow("Enter new directory name");
+                    prevState = MKDIR_POPUP;
+                }
+                updatePopupWindow();
+                break;
             default:
                 if (prevState == PROCESS_WIN) {
                     hideProcessWindow();
                     pauseThread(&processThreadArgs.commonArgs);
                     prevState = NORMAL;
-                } else if (prevState == RENAME_POPUP || prevState == CHDIR_POPUP) {
+                } else if (prevState == RENAME_POPUP || prevState == CHDIR_POPUP || prevState == MKDIR_POPUP) {
                     hidePopupWindow();
                     prevState = NORMAL;
                 }

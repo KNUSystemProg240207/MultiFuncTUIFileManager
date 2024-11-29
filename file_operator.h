@@ -20,7 +20,8 @@
 typedef enum _FileOperation {
     COPY,
     MOVE,
-    DELETE
+    DELETE,
+    MKDIR
 } FileOperation;
 
 typedef struct _SrcDstFile {
