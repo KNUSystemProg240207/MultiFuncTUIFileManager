@@ -547,7 +547,11 @@ void mainLoop(void) {
         }
         close(cwdFd);
 
-        updateTitleBar(pathBuf, (size_t)cwdLen);
+        if (cwdLen == -1) {
+            updateTitleBar("-----", (size_t)5);
+        } else {
+            updateTitleBar(pathBuf, (size_t)cwdLen);
+        }
         updateDirWins();  // 폴더 표시 창들 업데이트
         updateBottomBox(fileProgresses);
 
