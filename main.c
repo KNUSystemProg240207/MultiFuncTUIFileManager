@@ -447,6 +447,10 @@ void mainLoop(void) {
                         goto CLEANUP;
                     if (ch == 'p' || ch == 'P' || ch == '\n' || ch == KEY_ENTER)
                         state = NORMAL;
+                    if (ch == KEY_DOWN)
+                        moveProcCursorDown();
+                    if (ch == KEY_UP)
+                        moveProcCursorUp();
                     break;
                 case RENAME_POPUP:
                     if (' ' <= ch && ch <= '~') {
