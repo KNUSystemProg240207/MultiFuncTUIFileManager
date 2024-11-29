@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -D_GNU_SOURCE -fdiagnostics-color=always -std=gnu99 -Wall -fanalyzer -g
 LFLAGS = -lncurses -lpanel -lpthread
-TARGET = demo.out
+TARGET = file-manager.out
 # 주의: Source 추가 시 해당 object file, header file 추가
 OBJS = main.o commons.o dir_window.o title_bar.o bottom_area.o thread_commons.o dir_listener.o file_operator.o file_functions.o colors.o dir_entry_utils.o process_window.o list_process.o popup_window.o
 HEADERS = config.h commons.h dir_window.h title_bar.h bottom_area.h thread_commons.h dir_listener.h file_operator.h file_functions.h colors.h dir_entry_utils.h process_window.h list_process.h popup_window.h
