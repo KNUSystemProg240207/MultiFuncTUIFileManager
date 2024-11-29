@@ -18,6 +18,9 @@ static pthread_mutex_t *bufMutex;
 static size_t *totalReadItems;
 static Process *processes;
 
+static uint64_t lineMovementEvent = 0;  // 커서 이동 이벤트 저장
+static size_t currentPos = 0;
+
 
 /**
  * 프로세스 창의 테이블 헤더를 출력
@@ -36,7 +39,7 @@ static void printTableHeader(WINDOW *win, int winW);
  * @param maxItems 출력할 최대 항목 수
  * @param totalItems 총 항목 수
  */
-static void printProcessInfo(WINDOW *win, int winW, Process *processes, int maxItems, int totalItems);
+static void printProcessInfo(WINDOW *win, int winW, Process process, int line);
 
 /**
  * @brief 클럭 틱(tick)을 초(second)로 변환
@@ -124,6 +127,12 @@ void setProcessWinSize(int *winH, int *winW) {
 
 void updateProcessWindow() {
     int winH, winW;
+    int eventStartPos;
+    int availableH;
+    int lineMovement;
+    int centerLine;
+    int itemsToPrint;
+    size_t startIdx;
 
     setProcessWinSize(&winH, &winW);
     werase(window);
@@ -133,16 +142,66 @@ void updateProcessWindow() {
     pthread_mutex_lock(bufMutex);
 
     size_t itemsCnt = *totalReadItems;  // 읽어들인 총 항목 수
+
+    for (eventStartPos = 0; (lineMovementEvent & (UINT64_C(2) << eventStartPos)) != 0; eventStartPos += 2);
+    while (eventStartPos > 0) {
+        eventStartPos -= 2;
+        lineMovement = (lineMovementEvent >> eventStartPos) & 0x03;
+        switch (lineMovement) {
+            case 0x02:  // '한 칸 위로 이동' Event
+                if (currentPos > 0)  // 위로 이동 가능하면
+                    currentPos--;
+                else
+                    currentPos = 0;  // Corner case 처리: 최소 Index
+                break;
+            case 0x03:  // '한 칸 아래로 이동' Event
+                if (currentPos < itemsCnt - 1)  // 아래로 이동 가능하면
+                    currentPos++;
+                else
+                    currentPos = itemsCnt - 1;  // Corner case 처리: 최대 Index
+                break;
+        }
+    }
+    lineMovementEvent = 0;  // 이벤트 초기화
+
+
     int maxItemsToPrint = winH - 3;  // 상하단 여백 제외 창 높이에 비례한 출력 가능한 항목 수
     if (maxItemsToPrint > itemsCnt)
         maxItemsToPrint = itemsCnt;
 
-    // 배경 색칠
+    availableH = winH - 3;  // 최대 출력 가능한 라인 넘버 -3
+
+    // 라인 스크롤
+    centerLine = (availableH - 1) / 2;  // 가운데 줄의 줄 번호 ( [0, availableH) )
+    if (itemsCnt <= availableH) {  // 항목 개수 적음 -> 빠르게 처리
+        startIdx = itemsCnt - 1;  // 가장 마지막 데이터부터 출력
+        itemsToPrint = itemsCnt;
+    } else if (currentPos < centerLine) {  // 위쪽 item 선택됨
+        startIdx = itemsCnt - 1;  // 가장 마지막 데이터부터 출력
+        itemsToPrint = availableH;  // 창 크기만큼 출력
+    } else if (currentPos >= itemsCnt - (availableH - centerLine - 1)) {  // 아래쪽 item 선택된 경우 (우변: 개수 - 커서 아래쪽에 출력될 item 수)
+        startIdx = availableH - 1;  // 출력할 데이터의 마지막 항목으로 설정
+        itemsToPrint = availableH;
+    } else {  // 일반적인 경우
+        startIdx = itemsCnt - currentPos - 1 + centerLine;  // currentPos 기준으로 중앙 정렬
+        itemsToPrint = availableH;
+    }
+
     if (isColorSafe)
-        wbkgd(window, COLOR_PAIR(PRCSBGRND));
+    wbkgd(window, COLOR_PAIR(PRCSBGRND));
     printTableHeader(window, winW);  // 테이블 헤더 출력
     applyColor(window, PRCSFILE);  // 색상 적용
-    printProcessInfo(window, winW, processes, maxItemsToPrint, *totalReadItems);  // 프로세스 정보 출력
+
+    for (int i = 0; i < itemsToPrint; i++) {
+        size_t processIndex = startIdx - i;  // 화면 출력 시작 인덱스 기준으로 출력
+        if (processIndex >= itemsCnt)  // 데이터 범위 초과 방지
+            break;
+        if (processIndex == itemsCnt-1 - currentPos)  // 현재 선택된 프로세스 강조
+            wattron(window, A_REVERSE);
+        printProcessInfo(window, winW, processes[processIndex], i + 2);  // 단일 프로세스 정보 출력
+        if (processIndex == itemsCnt-1 - currentPos)
+            wattroff(window, A_REVERSE);
+    }
     removeColor(window, PRCSFILE);  // 색상 해제
     whline(window, ' ', getmaxx(window) - getcurx(window) - 1);  // 남은 공간 공백 처리 (박스용 -1)
 
@@ -168,23 +227,36 @@ void printTableHeader(WINDOW *win, int winW) {
 }
 
 // 프로세스 정보 출력
-void printProcessInfo(WINDOW *win, int winW, Process *processes, int maxItems, int totalItems) {
-    for (int c = 0, i = *totalReadItems - 1; c < maxItems; c++, i--) {
-        if (winW < 20) {
-            mvwprintw(win, c + 2, 1, "%6d", processes[i].pid);
-        } else if (winW < 30) {
-            mvwprintw(win, c + 2, 1, "%6d %14s", processes[i].pid, formatSize(processes[i].rsize));
-        } else if (winW < 40) {
-            mvwprintw(win, c + 2, 1, "%6d %14s %9lus", processes[i].pid, formatSize(processes[i].rsize), ticksToSeconds(processes[i].utime));
-        } else if (winW < 50) {
-            mvwprintw(win, c + 2, 1, "%6d %14s %9lus %9lus", processes[i].pid, formatSize(processes[i].rsize), ticksToSeconds(processes[i].utime), ticksToSeconds(processes[i].stime));
-        } else if (winW < 80) {
-            mvwprintw(win, c + 2, 1, "%6d %6c %14s %9lus %9lus", processes[i].pid, processes[i].state, formatSize(processes[i].rsize), ticksToSeconds(processes[i].utime), ticksToSeconds(processes[i].stime));
-        } else {
-            mvwprintw(win, c + 2, 1, "%6d %-*.*s %6c %14s %9lus %9lus", processes[i].pid, winW - 55, winW - 55, processes[i].name, processes[i].state, formatSize(processes[i].rsize), ticksToSeconds(processes[i].utime), ticksToSeconds(processes[i].stime));
-        }
+void printProcessInfo(WINDOW *win, int winW, Process process, int line) {
+    if (winW < 20) {
+        mvwprintw(win, line, 1, "%6d", process.pid);
+    } else if (winW < 30) {
+        mvwprintw(win, line, 1, "%6d %14s", process.pid, formatSize(process.rsize));
+    } else if (winW < 40) {
+        mvwprintw(win, line, 1, "%6d %14s %9lus", process.pid, formatSize(process.rsize), ticksToSeconds(process.utime));
+    } else if (winW < 50) {
+        mvwprintw(win, line, 1, "%6d %14s %9lus %9lus", process.pid, formatSize(process.rsize), ticksToSeconds(process.utime), ticksToSeconds(process.stime));
+    } else if (winW < 80) {
+        mvwprintw(win, line, 1, "%6d %6c %14s %9lus %9lus", process.pid, process.state, formatSize(process.rsize), ticksToSeconds(process.utime), ticksToSeconds(process.stime));
+    } else {
+        mvwprintw(win, line, 1, "%6d %-*.*s %6c %14s %9lus %9lus", process.pid, winW - 55, winW - 55, process.name, process.state, formatSize(process.rsize), ticksToSeconds(process.utime), ticksToSeconds(process.stime));
     }
 }
+
+void moveProcCursorUp() {
+    // 이미 공간 다 썼다면 (= MSB가 1) -> 이후 수신된 이벤트 버림
+    if (lineMovementEvent & (UINT64_C(0x80) << (7 * 8)))
+        return;
+    lineMovementEvent = lineMovementEvent << 2 | 0x02;  // <한 칸 위로> Event 저장
+}
+
+void moveProcCursorDown() {
+    // 이미 공간 다 썼다면 (= MSB가 1) -> 이후 수신된 이벤트 버림
+    if (lineMovementEvent & (UINT64_C(0x80) << (7 * 8)))
+        return;
+    lineMovementEvent = lineMovementEvent << 2 | 0x03;  // <한 칸 아래로> Event 저장
+}
+
 
 // tick을 초 단위로 변경합니다.
 unsigned long ticksToSeconds(unsigned long ticks) {
