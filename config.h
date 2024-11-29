@@ -4,7 +4,7 @@
 #include <limits.h>
 
 // 프로그램 이름 (왼쪽 상단에 표시됨)
-#define PROG_NAME "Demo"
+#define PROG_NAME "MultiFuncFileManager"
 #define PROG_NAME_LEN (sizeof(PROG_NAME) - 1)
 
 // Delay들
