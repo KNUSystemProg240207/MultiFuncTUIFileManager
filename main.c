@@ -23,6 +23,7 @@
 #include "list_process.h"
 #include "popup_window.h"
 #include "process_window.h"
+#include "selection_window.h"
 #include "title_bar.h"
 
 
@@ -34,7 +35,8 @@ typedef enum _ProgramState {
     PROCESS_WIN,
     RENAME_POPUP,
     CHDIR_POPUP,
-    MKDIR_POPUP
+    MKDIR_POPUP,
+    TEST_SELECTION_POPUP
 } ProgramState;
 
 
@@ -139,6 +141,7 @@ void initScreen(void) {
     initTitleBar(w);  // 제목 창 (프로그램 이름 - 현재 경로 - 현재 시간) 생성
     initBottomBox(w, h - 3);  // 아래쪽 단축키 창 생성
     initPopupWindow();
+    initSelectionWindow();
     CHECK_CURSES(mvhline(1, 0, ACS_HLINE, w));  // 제목 창 아래로 가로줄 그림
     CHECK_CURSES(mvhline(h - 3, 0, ACS_HLINE, w));  // 단축키 창 위로 가로줄 그림
 
@@ -404,6 +407,9 @@ static inline int normalKeyInput(int ch) {
         case 'Q':
             return 1;  // Main Loop 빠져나감
 
+        case 'z':
+            state = TEST_SELECTION_POPUP;
+            break;
         default:
             sprintf(tmp, "0x%x 0x%x", ch, CTRL_KEY(ch));
             displayBottomMsg(tmp, FRAME_PER_SECOND / 2);
@@ -532,6 +538,19 @@ void mainLoop(void) {
                         state = NORMAL;  // 창 닫기
                     }
                     break;
+                case TEST_SELECTION_POPUP:
+                    if (ch == KEY_LEFT) {
+                        selectionWindowSelPrevious();
+                    } else if (ch == KEY_RIGHT) {
+                        selectionWindowSelNext();
+                    } else if (ch == '\n') {
+                        char buf[2] = { selectionWindowGetSel() + '0', '\0' };
+                        displayBottomMsg(buf, FRAME_PER_SECOND);
+                        state = NORMAL;  // 창 닫기
+                    } else if (ch == 'z') {
+                        state = NORMAL;  // 창 닫기
+                    }
+                    break;
             }
         }
 
@@ -584,6 +603,13 @@ void mainLoop(void) {
                 }
                 updatePopupWindow();
                 break;
+            case TEST_SELECTION_POPUP:
+                if (prevState != TEST_SELECTION_POPUP) {
+                    showSelectionWindow("Test  Selection", 3, "foo", "bar", "baz");
+                    prevState = TEST_SELECTION_POPUP;
+                }
+                updateSelectionWindow();
+                break;
             default:
                 if (prevState == PROCESS_WIN) {
                     hideProcessWindow();
@@ -591,6 +617,9 @@ void mainLoop(void) {
                     prevState = NORMAL;
                 } else if (prevState == RENAME_POPUP || prevState == CHDIR_POPUP || prevState == MKDIR_POPUP) {
                     hidePopupWindow();
+                    prevState = NORMAL;
+                } else if (prevState == TEST_SELECTION_POPUP) {
+                    hideSelectionWindow();
                     prevState = NORMAL;
                 }
                 break;
