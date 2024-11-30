@@ -33,6 +33,10 @@
 #define MAX_BOTTOMBOX_MSG_LEN 64  // 하단 영역 메시지의 최대 길이 (화면 Size와 상관 없이)
 #define MAX_POPUP_TITLE_LEN 64  // 하단 영역 메시지의 최대 길이 (화면 Size와 상관 없이)
 
+#define MAX_SELECTION_TITLE_LEN 32  // 선택 팝업 창 제목 최대 길이
+#define MAX_SELECTIONS 3  // 선택 팝업 창 최대 선택 개수
+#define MAX_SELECTION_LEN 16  // 선택 팝업 창 항목 1개당 최대 문자열 길이
+
 // struct dt -> 문자열 변환: 형식 지정 (buf 최소 길이: DATETIME_LEN + 1)
 #define DT_TO_STR(buf, dt) sprintf((buf), DATETIME_FORMAT, (dt)->tm_year + 1900, (dt)->tm_mon + 1, (dt)->tm_mday, (dt)->tm_hour, (dt)->tm_min, (dt)->tm_sec)
 

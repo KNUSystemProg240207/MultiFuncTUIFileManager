@@ -15,4 +15,8 @@ void updateProcessWindow();
 void moveProcCursorUp();
 void moveProcCursorDown();
 
+void selectPreviousProcess();
+void selectNextProcess();
+void getSelectedProcess(pid_t *pid, char *nameBuf, size_t bufLen);
+
 #endif
