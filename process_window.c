@@ -144,29 +144,6 @@ void updateProcessWindow() {
     processLineMovementEvent();
 
     size_t itemsCnt = *totalReadItems;  // 읽어들인 총 항목 수
-
-    for (eventStartPos = 0; (lineMovementEvent & (UINT64_C(2) << eventStartPos)) != 0; eventStartPos += 2);
-    while (eventStartPos > 0) {
-        eventStartPos -= 2;
-        lineMovement = (lineMovementEvent >> eventStartPos) & 0x03;
-        switch (lineMovement) {
-            case 0x02:  // '한 칸 위로 이동' Event
-                if (currentPos > 0)  // 위로 이동 가능하면
-                    currentPos--;
-                else
-                    currentPos = 0;  // Corner case 처리: 최소 Index
-                break;
-            case 0x03:  // '한 칸 아래로 이동' Event
-                if (currentPos < itemsCnt - 1)  // 아래로 이동 가능하면
-                    currentPos++;
-                else
-                    currentPos = itemsCnt - 1;  // Corner case 처리: 최대 Index
-                break;
-        }
-    }
-    lineMovementEvent = 0;  // 이벤트 초기화
-
-
     int maxItemsToPrint = winH - 3;  // 상하단 여백 제외 창 높이에 비례한 출력 가능한 항목 수
     if (maxItemsToPrint > itemsCnt)
         maxItemsToPrint = itemsCnt;

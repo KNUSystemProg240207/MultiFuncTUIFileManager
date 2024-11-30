@@ -455,10 +455,6 @@ void mainLoop(void) {
                         goto CLEANUP;
                     if (ch == 'p' || ch == 'P')
                         state = NORMAL;
-                    if (ch == KEY_DOWN)
-                        moveProcCursorDown();
-                    if (ch == KEY_UP)
-                        moveProcCursorUp();
                     break;
                 case PROCESS_TERM_POPUP:
                     if (ch == KEY_LEFT) {
