@@ -12,7 +12,9 @@ int initProcessWindow(pthread_mutex_t *_bufMutex, size_t *_totalReadItems, Proce
 void hideProcessWindow();
 void delProcessWindow();
 void updateProcessWindow();
-void moveProcCursorUp();
-void moveProcCursorDown();
+
+void selectPreviousProcess();
+void selectNextProcess();
+void getSelectedProcess(pid_t *pid, char *nameBuf, size_t bufLen);
 
 #endif

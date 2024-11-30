@@ -2,6 +2,7 @@
 #include <panel.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
 
@@ -55,6 +56,8 @@ static unsigned long ticksToSeconds(unsigned long ticks);
  * @param winW 업데이트 받을 창의 너비
  */
 static void setProcessWinSize(int *winH, int *winW);
+
+static void processLineMovementEvent(void);
 
 
 int initProcessWindow(
@@ -127,9 +130,7 @@ void setProcessWinSize(int *winH, int *winW) {
 
 void updateProcessWindow() {
     int winH, winW;
-    int eventStartPos;
     int availableH;
-    int lineMovement;
     int centerLine;
     int itemsToPrint;
     size_t startIdx;
@@ -140,31 +141,9 @@ void updateProcessWindow() {
 
     // 프로세스 창 업데이트
     pthread_mutex_lock(bufMutex);
+    processLineMovementEvent();
 
     size_t itemsCnt = *totalReadItems;  // 읽어들인 총 항목 수
-
-    for (eventStartPos = 0; (lineMovementEvent & (UINT64_C(2) << eventStartPos)) != 0; eventStartPos += 2);
-    while (eventStartPos > 0) {
-        eventStartPos -= 2;
-        lineMovement = (lineMovementEvent >> eventStartPos) & 0x03;
-        switch (lineMovement) {
-            case 0x02:  // '한 칸 위로 이동' Event
-                if (currentPos > 0)  // 위로 이동 가능하면
-                    currentPos--;
-                else
-                    currentPos = 0;  // Corner case 처리: 최소 Index
-                break;
-            case 0x03:  // '한 칸 아래로 이동' Event
-                if (currentPos < itemsCnt - 1)  // 아래로 이동 가능하면
-                    currentPos++;
-                else
-                    currentPos = itemsCnt - 1;  // Corner case 처리: 최대 Index
-                break;
-        }
-    }
-    lineMovementEvent = 0;  // 이벤트 초기화
-
-
     int maxItemsToPrint = winH - 3;  // 상하단 여백 제외 창 높이에 비례한 출력 가능한 항목 수
     if (maxItemsToPrint > itemsCnt)
         maxItemsToPrint = itemsCnt;
@@ -188,7 +167,7 @@ void updateProcessWindow() {
     }
 
     if (isColorSafe)
-    wbkgd(window, COLOR_PAIR(PRCSBGRND));
+        wbkgd(window, COLOR_PAIR(PRCSBGRND));
     printTableHeader(window, winW);  // 테이블 헤더 출력
     applyColor(window, PRCSFILE);  // 색상 적용
 
@@ -196,10 +175,10 @@ void updateProcessWindow() {
         size_t processIndex = startIdx - i;  // 화면 출력 시작 인덱스 기준으로 출력
         if (processIndex >= itemsCnt)  // 데이터 범위 초과 방지
             break;
-        if (processIndex == itemsCnt-1 - currentPos)  // 현재 선택된 프로세스 강조
+        if (processIndex == itemsCnt - 1 - currentPos)  // 현재 선택된 프로세스 강조
             wattron(window, A_REVERSE);
         printProcessInfo(window, winW, processes[processIndex], i + 2);  // 단일 프로세스 정보 출력
-        if (processIndex == itemsCnt-1 - currentPos)
+        if (processIndex == itemsCnt - 1 - currentPos)
             wattroff(window, A_REVERSE);
     }
     removeColor(window, PRCSFILE);  // 색상 해제
@@ -243,18 +222,55 @@ void printProcessInfo(WINDOW *win, int winW, Process process, int line) {
     }
 }
 
-void moveProcCursorUp() {
+void selectPreviousProcess() {
     // 이미 공간 다 썼다면 (= MSB가 1) -> 이후 수신된 이벤트 버림
     if (lineMovementEvent & (UINT64_C(0x80) << (7 * 8)))
         return;
     lineMovementEvent = lineMovementEvent << 2 | 0x02;  // <한 칸 위로> Event 저장
 }
 
-void moveProcCursorDown() {
+void selectNextProcess() {
     // 이미 공간 다 썼다면 (= MSB가 1) -> 이후 수신된 이벤트 버림
     if (lineMovementEvent & (UINT64_C(0x80) << (7 * 8)))
         return;
     lineMovementEvent = lineMovementEvent << 2 | 0x03;  // <한 칸 아래로> Event 저장
+}
+
+void getSelectedProcess(pid_t *pid, char *nameBuf, size_t bufLen) {
+    pthread_mutex_lock(bufMutex);
+    processLineMovementEvent();
+    int killIndex = *totalReadItems - currentPos - 1;
+    *pid = processes[killIndex].pid;
+    strncpy(nameBuf, processes[killIndex].name, bufLen - 1);
+    nameBuf[bufLen - 1] = '\0';
+    pthread_mutex_unlock(bufMutex);
+}
+
+void processLineMovementEvent(void) {
+    size_t itemsCnt = *totalReadItems;  // 읽어들인 총 항목 수
+
+    int eventStartPos;
+    int lineMovement;
+    for (eventStartPos = 0; (lineMovementEvent & (UINT64_C(2) << eventStartPos)) != 0; eventStartPos += 2);
+    while (eventStartPos > 0) {
+        eventStartPos -= 2;
+        lineMovement = (lineMovementEvent >> eventStartPos) & 0x03;
+        switch (lineMovement) {
+            case 0x02:  // '한 칸 위로 이동' Event
+                if (currentPos > 0)  // 위로 이동 가능하면
+                    currentPos--;
+                else
+                    currentPos = 0;  // Corner case 처리: 최소 Index
+                break;
+            case 0x03:  // '한 칸 아래로 이동' Event
+                if (currentPos < itemsCnt - 1)  // 아래로 이동 가능하면
+                    currentPos++;
+                else
+                    currentPos = itemsCnt - 1;  // Corner case 처리: 최대 Index
+                break;
+        }
+    }
+    lineMovementEvent = 0;  // 이벤트 초기화
 }
 
 

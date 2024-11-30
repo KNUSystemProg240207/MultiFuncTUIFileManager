@@ -33,10 +33,10 @@
 typedef enum _ProgramState {
     NORMAL,
     PROCESS_WIN,
+    PROCESS_TERM_POPUP,
     RENAME_POPUP,
     CHDIR_POPUP,
-    MKDIR_POPUP,
-    TEST_SELECTION_POPUP
+    MKDIR_POPUP
 } ProgramState;
 
 
@@ -405,9 +405,6 @@ static inline int normalKeyInput(int ch) {
         case 'Q':
             return 1;  // Main Loop 빠져나감
 
-        case 'z':
-            state = TEST_SELECTION_POPUP;
-            break;
         default:
             sprintf(tmp, "0x%x 0x%x", ch, CTRL_KEY(ch));
             displayBottomMsg(tmp, FRAME_PER_SECOND / 2);
@@ -422,14 +419,15 @@ void mainLoop(void) {
 
     int cwdFd;  // 현재 선택된 창의 Working Directory File Descriptor
     ssize_t cwdLen;
-    // char *cwd;  // 현재 선택된 창의 Working Directory
-    char fdPathBuf[PATH_MAX];  // Working Directory의 Buffer
+    char tmpBuf[PATH_MAX];  // 각종 임시 문자열 저장 Buffer
     char pathBuf[PATH_MAX];  // 각종 경로 저장 Buffer
+    pid_t selectionPid = 0;  // 선택한 Process PID
     FileTask fileTask = {};
 
     unsigned int curWin;  // 현재 창
 
-    ProgramState prevState = state;
+    state = NORMAL;
+    ProgramState prevState = NORMAL;
 
 // 아래에서, dirFd 변수들에 대해 fd leak 경고 발생
 // File Operator Thread에서 close() -> 여기서 close()하면, Thread쪽에서 오류 발생
@@ -447,14 +445,45 @@ void mainLoop(void) {
                         goto CLEANUP;
                     break;
                 case PROCESS_WIN:
+                    if (ch == KEY_DOWN)
+                        selectNextProcess();
+                    if (ch == KEY_UP)
+                        selectPreviousProcess();
+                    if (ch == '\n' || ch == KEY_ENTER)
+                        state = PROCESS_TERM_POPUP;
                     if (ch == 'q' || ch == 'Q')
                         goto CLEANUP;
-                    if (ch == 'p' || ch == 'P' || ch == '\n' || ch == KEY_ENTER)
+                    if (ch == 'p' || ch == 'P')
                         state = NORMAL;
-                    if (ch == KEY_DOWN)
-                        moveProcCursorDown();
-                    if (ch == KEY_UP)
-                        moveProcCursorUp();
+                    break;
+                case PROCESS_TERM_POPUP:
+                    if (ch == KEY_LEFT) {
+                        selectionWindowSelPrevious();
+                    } else if (ch == KEY_RIGHT) {
+                        selectionWindowSelNext();
+                    } else if (ch == '\n') {
+                        switch (selectionWindowGetSel()) {
+                            case 0:  // Kill
+                                if (kill(selectionPid, SIGKILL) == -1) {
+                                    displayBottomMsg("Failed to kill process", FRAME_PER_SECOND);
+                                } else {
+                                    displayBottomMsg("Sucessfully killed process", FRAME_PER_SECOND);
+                                }
+                                break;
+                            case 1:  // Stop
+                                if (kill(selectionPid, SIGTERM) == -1) {
+                                    displayBottomMsg("Failed to terminate process", FRAME_PER_SECOND);
+                                } else {
+                                    displayBottomMsg("Sucessfully terminateed process", FRAME_PER_SECOND);
+                                }
+                                break;
+                            case 2:  // Cancel
+                                break;
+                            default:
+                                assert(false);
+                        }
+                        state = PROCESS_WIN;  // 창 닫기
+                    }
                     break;
                 case RENAME_POPUP:
                     if (' ' <= ch && ch <= '~') {
@@ -464,13 +493,12 @@ void mainLoop(void) {
                         // } else if (ch == KEY_LEFT) {
                         // } else if (ch == KEY_RIGHT) {
                     } else if (ch == '\n') {
-                        // 팝업창에서 새 이름 가져오기
-                        getStringFromPopup(pathBuf);
                         // 이름 변경 요청
                         fileTask.type = MOVE;
                         fileTask.src = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
                         fileTask.dst = fileTask.src;  // 나머지 정보는 같음
-                        strcpy(fileTask.dst.name, pathBuf);  // 새 이름으로 변경
+                        // 팝업창에서 새 이름 가져오기
+                        getStringFromPopup(fileTask.dst.name);
                         // 현재 폴더의 fd 가져옴
                         curWin = getCurrentWindow();
                         pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
@@ -521,11 +549,9 @@ void mainLoop(void) {
                         // } else if (ch == KEY_RIGHT) {
                     } else if (ch == '\n') {
                         // 폴더 생성 요청
-                        // 팝업창에서 새 이름 가져오기
-                        getStringFromPopup(pathBuf);
-                        // 폴더 생성 요청
                         fileTask.type = MKDIR;
-                        strcpy(fileTask.src.name, pathBuf);  // 새 이름 설정
+                        // 팝업창에서 새 이름 가져오기
+                        getStringFromPopup(fileTask.src.name);
                         // 현재 폴더의 fd 가져옴
                         curWin = getCurrentWindow();
                         pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
@@ -540,19 +566,6 @@ void mainLoop(void) {
                         state = NORMAL;  // 창 닫기
                     }
                     break;
-                case TEST_SELECTION_POPUP:
-                    if (ch == KEY_LEFT) {
-                        selectionWindowSelPrevious();
-                    } else if (ch == KEY_RIGHT) {
-                        selectionWindowSelNext();
-                    } else if (ch == '\n') {
-                        char buf[2] = { selectionWindowGetSel() + '0', '\0' };
-                        displayBottomMsg(buf, FRAME_PER_SECOND);
-                        state = NORMAL;  // 창 닫기
-                    } else if (ch == 'z') {
-                        state = NORMAL;  // 창 닫기
-                    }
-                    break;
             }
         }
 
@@ -561,10 +574,10 @@ void mainLoop(void) {
         pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
         cwdFd = dup(dirfd(dirListenerArgs[curWin].currentDir));
         pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
-        if (snprintf(fdPathBuf, PATH_MAX, "/proc/self/fd/%d", cwdFd) == PATH_MAX) {
+        if (snprintf(tmpBuf, PATH_MAX, "/proc/self/fd/%d", cwdFd) == PATH_MAX) {
             cwdLen = -1;
         } else {
-            cwdLen = readlink(fdPathBuf, pathBuf, PATH_MAX);
+            cwdLen = readlink(tmpBuf, pathBuf, PATH_MAX);
         }
         close(cwdFd);
 
@@ -578,11 +591,25 @@ void mainLoop(void) {
 
         switch (state) {
             case PROCESS_WIN:
-                if (prevState != PROCESS_WIN) {
+                if (prevState == PROCESS_TERM_POPUP) {
+                    hideSelectionWindow();
+                    prevState = PROCESS_WIN;
+                } else if (prevState != PROCESS_WIN) {
                     resumeThread(&processThreadArgs.commonArgs);
                     prevState = PROCESS_WIN;
                 }
                 updateProcessWindow();
+                break;
+            case PROCESS_TERM_POPUP:
+                if (prevState != PROCESS_TERM_POPUP) {
+                    getSelectedProcess(&selectionPid, pathBuf, sizeof(pathBuf));
+                    snprintf(tmpBuf, sizeof(tmpBuf) - 1, "KILL or STOP %.8s[%jd]?", pathBuf, (intmax_t)selectionPid);
+                    tmpBuf[sizeof(tmpBuf) - 1] = '\0';
+                    showSelectionWindow(tmpBuf, 3, "Kill", "Stop", "Cancel");
+                    prevState = PROCESS_TERM_POPUP;
+                }
+                updateProcessWindow();
+                updateSelectionWindow();
                 break;
             case RENAME_POPUP:
                 if (prevState != RENAME_POPUP) {
@@ -605,23 +632,14 @@ void mainLoop(void) {
                 }
                 updatePopupWindow();
                 break;
-            case TEST_SELECTION_POPUP:
-                if (prevState != TEST_SELECTION_POPUP) {
-                    showSelectionWindow("Test  Selection", 3, "foo", "bar", "baz");
-                    prevState = TEST_SELECTION_POPUP;
-                }
-                updateSelectionWindow();
-                break;
             default:
+                assert(prevState != PROCESS_TERM_POPUP);
                 if (prevState == PROCESS_WIN) {
                     hideProcessWindow();
                     pauseThread(&processThreadArgs.commonArgs);
                     prevState = NORMAL;
                 } else if (prevState == RENAME_POPUP || prevState == CHDIR_POPUP || prevState == MKDIR_POPUP) {
                     hidePopupWindow();
-                    prevState = NORMAL;
-                } else if (prevState == TEST_SELECTION_POPUP) {
-                    hideSelectionWindow();
                     prevState = NORMAL;
                 }
                 break;
