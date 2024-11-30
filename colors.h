@@ -1,5 +1,6 @@
 #ifndef __COLORS_H_INCLUDED__
 #define __COLORS_H_INCLUDED__
+
 #include <ncurses.h>
 
 typedef enum {
@@ -39,7 +40,7 @@ extern bool isColorSafe;
  * 색상을 초기화하고, 전역 변수 isColorSafe를 설정
  * - 사용자 정의 색상을 정의하고 색상 페어를 설정
  */
-void initColorSet();
+void initColors(void);
 
 /**
  * 창에 색상을 적용

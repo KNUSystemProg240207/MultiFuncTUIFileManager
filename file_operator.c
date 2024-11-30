@@ -30,9 +30,9 @@ int fileOperator(void *argsPtr) {
     FileOperatorArgs *args = (FileOperatorArgs *)argsPtr;
     FileTask command;
 
-    pthread_mutex_lock(&args->pipeReadMutex);
+    pthread_mutex_lock(args->pipeReadMutex);
     int ret = read(args->pipeEnd, &command, sizeof(FileTask));
-    pthread_mutex_unlock(&args->pipeReadMutex);
+    pthread_mutex_unlock(args->pipeReadMutex);
     switch (ret) {
         case 0:  // EOF: Write End가 Close됨 -> 종료
             pthread_mutex_lock(&args->commonArgs.statusMutex);

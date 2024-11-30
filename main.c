@@ -45,6 +45,9 @@ PANEL *titlePanel, *bottomPanel;  // 패널 추가
 
 mode_t directoryOpenArgs;  // fdopendir()에 전달할 directory file descriptor를 open()할 때 쓸 argument: Thread 시작 전 저장되어야 함
 
+static int pipeFileOpCmd;  // File operator thread로 명령 전달 위한 pipe의 write end
+pthread_mutex_t pipeReadMutex;  // 파일 작업 pipe의 read end 보호 mutex
+
 static pthread_t threadListDir[MAX_DIRWINS];
 static pthread_t threadFileOperators[MAX_FILE_OPERATORS];
 static pthread_t threadProcess;
@@ -55,7 +58,6 @@ static FileOperatorArgs fileOpArgs[MAX_FILE_OPERATORS];
 static ProcessThreadArgs processThreadArgs;
 
 static ProgramState state;
-static int pipeFileOpCmd;  // File operator thread로 명령 전달 위한 pipe의 write end
 static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
 
 static void initVariables(void);  // 변수들 초기화
@@ -97,6 +99,7 @@ int main(int argc, char **argv) {
 
 void initVariables(void) {
     // 변수들 기본값으로 초기화
+    pthread_mutex_init(&pipeReadMutex, NULL);
     for (int i = 0; i < MAX_DIRWINS; i++) {
         pthread_cond_init(&dirListenerArgs[i].commonArgs.resumeThread, NULL);
         pthread_mutex_init(&dirListenerArgs[i].commonArgs.statusMutex, NULL);
@@ -106,8 +109,8 @@ void initVariables(void) {
     for (int i = 0; i < MAX_FILE_OPERATORS; i++) {
         pthread_cond_init(&fileOpArgs[i].commonArgs.resumeThread, NULL);
         pthread_mutex_init(&fileOpArgs[i].commonArgs.statusMutex, NULL);
-        pthread_mutex_init(&fileOpArgs[i].pipeReadMutex, NULL);
         pthread_mutex_init(&fileProgresses[i].flagMutex, NULL);
+        fileOpArgs[i].pipeReadMutex = &pipeReadMutex;  // 한 pipe의 read end를 여러 개의 Thread가 공유 -> 한 번에 한 곳에서만 읽어야 함
         fileOpArgs[i].progressInfo = fileProgresses;
     }
     pthread_cond_init(&processThreadArgs.commonArgs.resumeThread, NULL);
@@ -127,12 +130,7 @@ void initScreen(void) {
     CHECK_CURSES(keypad(stdscr, TRUE));  // 특수 키를 일반 키처럼 입력받을 수 있게 함
     CHECK_CURSES(curs_set(0));  // 커서 숨김
 
-    CHECK_FALSE1(has_colors(), "Doesn't support color\n", 1);  // Color 지원 검사
-    CHECK_CURSES(start_color());  // Color 시작
-    if (can_change_color() == TRUE) {
-        CHECK_CURSES(init_color(COLOR_WHITE, 1000, 1000, 1000));  // 흰색을 '진짜' 흰색으로: 일부 환경에서, COLOR_WHITE가 회색인 경우 있음
-        initColorSet();
-    }
+    initColors();
 
     // 창 크기 가져옴
     int h, w;

@@ -6,7 +6,7 @@
       "type": "cppdbg",
       "request": "launch",
       // "program": "${fileDirname}/${fileBasenameNoExtension}",
-      "program": "${workspaceFolder}/demo.out",
+      "program": "${workspaceFolder}/file-manager.out",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${fileDirname}",
@@ -31,7 +31,7 @@
       "name": "GDB (Attach)",
       "type": "cppdbg",
       "request": "attach",
-      "program": "${workspaceFolder}/demo.out",
+      "program": "${workspaceFolder}/file-manager.out",
       "MIMode": "gdb",
       "setupCommands": [
         {
