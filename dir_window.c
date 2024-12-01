@@ -278,7 +278,7 @@ void printFileHeader(DirWin *win, int winH, int winW) {
     if (winW >= 54) {
         // 최대 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-10s|%-19s|", nameHeader, sizeHeader, dateHeader);
-    } else if (winW >= 40) {
+    } else if (winW >= 41) {
         // 중간 너비
         mvwprintw(win->win, 1, 1, "%-20s|%-19s|", nameHeader, dateHeader);
     } else if (winW >= 35) {
