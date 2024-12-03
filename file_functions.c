@@ -54,7 +54,6 @@ static int doCopyFile(int srcFd, int dstFd, size_t fileSize, FileProgressInfo *p
     char buf[COPY_FILE_BUF_SIZE];
 #endif
 
-
     while (totalCopied < fileSize) {
 #if defined(_GNU_SOURCE) && (__LP64__ || (defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64))
         copied = copy_file_range(srcFd, &off_in, dstFd, &off_out, COPY_CHUNK_SIZE, 0);
@@ -89,37 +88,95 @@ static int doCopyFile(int srcFd, int dstFd, size_t fileSize, FileProgressInfo *p
     return (totalCopied == fileSize) ? 0 : -1;
 }
 
+static inline int doCopy(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress) {
+    int ret;
+    switch (src->mode & S_IFMT) {
+        case S_IFREG:
+            // 일반 파일 -> 복사 수행
+            int srcFd = openat(src->dirFd, src->name, O_RDONLY);
+            if (srcFd == -1) {
+                return -1;
+            }
+            int dstFd = openat(dst->dirFd, dst->name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (dstFd == -1) {
+                close(srcFd);
+                return -1;
+            }
+            ret = doCopyFile(srcFd, dstFd, src->fileSize, progress);
+            close(srcFd);
+            close(dstFd);
+            if (ret == -1)
+                unlinkat(dst->dirFd, dst->name, 0);
+            return ret;
+        case S_IFDIR:
+            // 폴더 -> 재귀적으로 복사
+            if (mkdirat(dst->dirFd, dst->name, src->mode) == -1)  // 폴더 생성 실패 -> 내용물 복사 불가
+                return -1;
+
+            // 필요한 Descriptor open()
+            int srcDirFd = openat(src->dirFd, src->name, directoryOpenArgs);
+            if (srcDirFd == -1)
+                return -1;
+            int dstDirFd = openat(dst->dirFd, dst->name, directoryOpenArgs);
+            if (dstDirFd == -1) {
+                close(srcDirFd);
+                return -1;
+            }
+            DIR *srcDir = fdopendir(srcDirFd);
+            if (srcDir == NULL) {
+                close(srcDirFd);
+                close(dstDirFd);
+                return -1;
+            }
+
+            // 하위 항목 재귀적으로 복사
+            bool failed = false;
+            SrcDstInfo childSrc, childDst;
+            struct stat entryStat;
+            for (struct dirent *entry = readdir(srcDir); entry != NULL; entry = readdir(srcDir)) {
+                if (
+                    ((entry->d_name[0] == '.') && (entry->d_name[1] == '\0'))
+                    || ((entry->d_name[0] == '.') && (entry->d_name[1] == '.') && (entry->d_name[2] == '\0'))
+                )  // '.', '..' 건너뜀
+                    continue;
+
+                // 파일 크기 확인 필요 -> 항상 stat() 호출 필요
+                if (fstatat(srcDirFd, entry->d_name, &entryStat, AT_SYMLINK_NOFOLLOW) == -1) {
+                    int tmp = errno;
+                    failed = true;
+                    continue;
+                }
+                childSrc.devNo = -1;  // 이 함수에서는 미사용
+                childSrc.mode = entryStat.st_mode;
+                childSrc.dirFd = srcDirFd;
+                strcpy(childSrc.name, entry->d_name);
+                childSrc.fileSize = entryStat.st_size;
+
+                childDst = childSrc;  // 나머지 정보는 같음
+                childDst.dirFd = dstDirFd;  // 목적지 폴더 설정
+                if (doCopy(&childSrc, &childDst, progress) == -1) {  // 하위 Item 대해 Recursive하게 복사 시도
+                    failed = true;
+                }
+            }
+            closedir(srcDir);
+            close(dstDirFd);
+            if (failed)
+                return -1;
+            return 0;
+        default:
+            // 다른 종류: 지원 X
+            return -1;
+    }
+}
+
 int copyFile(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress) {
     SET_FILE_OPERATION_FLAG(progress, src->name, PROGRESS_COPY);
-
-    int srcFd = openat(src->dirFd, src->name, O_RDONLY);
-    if (srcFd == -1) {
-        CLEAR_FILE_OPERATION_FLAG(progress);
-        return -1;
-    }
-    int dstFd = openat(dst->dirFd, dst->name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (dstFd == -1) {
-        close(srcFd);
-        CLEAR_FILE_OPERATION_FLAG(progress);
-        return -1;
-    }
-
-    // 복사 수행
-    int result = doCopyFile(srcFd, dstFd, src->fileSize, progress);
-
-    close(srcFd);
-    close(dstFd);
-
-    if (result == -1) {
-        unlinkat(dst->dirFd, dst->name, 0);
-    }
+    int ret = doCopy(src, dst, progress);
     CLEAR_FILE_OPERATION_FLAG(progress);
-    return result;
+    return ret;
 }
 
 int moveFile(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress) {
-    // 같은 디바이스인 경우, 진행률 표시 X
-    // 다른 디바이스인 경우, 복사 함수를 통해 진행률 표시
     SET_FILE_OPERATION_FLAG(progress, src->name, PROGRESS_MOVE);
 
     // 같은 디바이스면 rename
@@ -128,31 +185,10 @@ int moveFile(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress) {
         return 0;
     }
 
-    // 다른 디바이스면, 혹은 윗 단계 실패 시: 복사 후 원본 삭제
-    int srcFd = openat(src->dirFd, src->name, O_RDONLY);
-    if (srcFd == -1) {
-        CLEAR_FILE_OPERATION_FLAG(progress);
-        return -1;
-    }
-    int dstFd = openat(dst->dirFd, dst->name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (dstFd == -1) {
-        CLEAR_FILE_OPERATION_FLAG(progress);
-        close(srcFd);
-        return -1;
-    }
-
-    // 복사 수행
-    int result = doCopyFile(srcFd, dstFd, src->fileSize, progress);
-
-    close(srcFd);
-    close(dstFd);
-
-    if (result == -1) {
-        int ret = unlinkat(dst->dirFd, dst->name, 0);
-        CLEAR_FILE_OPERATION_FLAG(progress);
-        return ret;
-    }
-    int ret = unlinkat(src->dirFd, src->name, 0);
+    // 다른 디바이스면, 혹은 윗 단계 실패 시: 복사 시도, 성공 시 원본 삭제
+    int ret = doCopy(src, dst, progress);
+    if (ret == 0)
+        ret = removeFile(src, progress);  // 폴더 삭제 -> 아래 함수 사용
     CLEAR_FILE_OPERATION_FLAG(progress);
     return ret;
 }
@@ -184,7 +220,7 @@ int removeFile(SrcDstInfo *src, FileProgressInfo *progress) {
         if (
             ((entry->d_name[0] == '.') && (entry->d_name[1] == '\0'))
             || ((entry->d_name[0] == '.') && (entry->d_name[1] == '.') && (entry->d_name[2] == '\0'))
-        )
+        )  // '.', '..' 건너뜀
             continue;
         childInfo.devNo = -1;  // 이 함수에서는 안 쓰임
         childInfo.dirFd = curDirFd;
@@ -229,7 +265,7 @@ int removeFile(SrcDstInfo *src, FileProgressInfo *progress) {
                 break;
 #endif
             default:  // 아마도 DT_UNKNOWN -> stat()으로 파일 종류 확인
-                if (fstatat(curDirFd, entry->d_name, &entryStat, AT_SYMLINK_FOLLOW) == -1) {
+                if (fstatat(curDirFd, entry->d_name, &entryStat, AT_SYMLINK_NOFOLLOW) == -1) {
                     failed = true;
                     continue;
                 }

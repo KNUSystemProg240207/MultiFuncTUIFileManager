@@ -380,8 +380,7 @@ static inline int normalKeyInput(int ch) {
             fileTask.type = (ch == CTRL_KEY('c')) ? COPY : MOVE;  // 복사/삭제 결정
             fileTask.src = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
             // 지원하는 Type인지 확인
-            // if (!S_ISREG(fileTask.src.mode) && !S_ISDIR(fileTask.src.mode)) {
-            if (!S_ISREG(fileTask.src.mode)) {
+            if (!S_ISREG(fileTask.src.mode) && !S_ISDIR(fileTask.src.mode)) {
                 // 지원하지 않으면: 오류 표시
                 showSelectionWindow("Unsupported type!", 1, "Cancel");
                 state = WARNING_POPUP;
