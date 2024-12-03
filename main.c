@@ -44,7 +44,7 @@ typedef enum _ProgramState {
 WINDOW *titleBar, *bottomBox;
 PANEL *titlePanel, *bottomPanel;  // 패널 추가
 
-mode_t directoryOpenArgs;  // fdopendir()에 전달할 directory file descriptor를 open()할 때 쓸 argument: Thread 시작 전 저장되어야 함
+int directoryOpenArgs;  // fdopendir()에 전달할 directory file descriptor를 open()할 때 쓸 argument: Thread 시작 전 저장되어야 함
 
 static int pipeFileOpCmd;  // File operator thread로 명령 전달 위한 pipe의 write end
 pthread_mutex_t pipeReadMutex;  // 파일 작업 pipe의 read end 보호 mutex
@@ -290,7 +290,7 @@ static inline int normalKeyInput(int ch) {
             pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
             cwdFd = dirfd(dirListenerArgs[curWin].currentDir);
             if (cwdFd != -1) {
-                cwdFd = openat(cwdFd, ".", directoryOpenArgs);
+                cwdFd = openat(cwdFd, ".", directoryOpenArgs);  // readdir() 호출함 -> offset 등 공유하면 안 됨
             }
             pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
             if (cwdFd != -1) {
@@ -415,8 +415,7 @@ static inline int normalKeyInput(int ch) {
             // fileTask.type = DELETE;  // '삭제' 전용 변수: 종류 대입 불필요
             fileDelTask.src = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
             // 지원하는 Type인지 확인
-            // if (!S_ISREG(fileDelTask.src.mode) && !S_ISDIR(fileDelTask.src.mode)) {
-            if (!S_ISREG(fileDelTask.src.mode)) {
+            if (!S_ISREG(fileDelTask.src.mode) && !S_ISDIR(fileDelTask.src.mode)) {
                 // 지원하지 않으면: 오류 표시
                 showSelectionWindow("Unsupported type!", 1, "Cancel");
                 state = WARNING_POPUP;

@@ -15,7 +15,7 @@
 #include "thread_commons.h"
 
 static unsigned int threadCnt = 0;  // 생성된 Thread 개수
-extern mode_t directoryOpenArgs;  // main.c 참조
+extern int directoryOpenArgs;  // main.c 참조
 
 /**
  * (Thread의 loop 함수) 폴더 정보 반복해서 가져옴

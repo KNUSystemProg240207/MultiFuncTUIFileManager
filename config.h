@@ -23,6 +23,7 @@
 #ifndef PATH_MAX
 #define PATH_MAX 4096  // 폴더의 최대 경로 길이
 #endif
+#define COPY_FILE_BUF_SIZE (4 * 1024)  // 4KB; copy_file_range 사용 불가한 경우, read() -> write()로 fallback됨
 
 #define MAX_FILE_OPERATORS 4
 

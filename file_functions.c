@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -6,7 +7,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
+#include "config.h"
 #include "file_functions.h"
 
 #define COPY_CHUNK_SIZE (1024 * 1024)  // 1MB 단위로 복사
@@ -25,6 +28,10 @@
         pthread_mutex_unlock(&(progress)->flagMutex); \
     } while (0)
 
+
+extern int directoryOpenArgs;
+
+
 /**
  * COPY_CHUNK_SIZE 단위로 분할 복사, 진행률 갱신
  *
@@ -36,18 +43,41 @@
  * @return 성공: 0, 실패: -1
  */
 static int doCopyFile(int srcFd, int dstFd, size_t fileSize, FileProgressInfo *progress) {
+    size_t totalCopied = 0;
+#if defined(_GNU_SOURCE) && (__LP64__ || (defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64))
+    // copy_file_range 사용 가능하면 사용 (kernel에서 바로 복사 -> 성능상 유리)
     off_t off_in = 0, off_out = 0;
-    size_t totalCopied = 0, chunk;
     ssize_t copied;
+#else
+    // 불가능할 시: read() -> write()로 fallback
+    ssize_t readBytes, writtenBytes, totalWrittenBytes;
+    char buf[COPY_FILE_BUF_SIZE];
+#endif
+
 
     while (totalCopied < fileSize) {
-        chunk = ((fileSize - totalCopied) < COPY_CHUNK_SIZE) ? (fileSize - totalCopied) : COPY_CHUNK_SIZE;
-        copied = copy_file_range(srcFd, &off_in, dstFd, &off_out, chunk, 0);
-        if (copied == -1) {
+#if defined(_GNU_SOURCE) && (__LP64__ || (defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64))
+        copied = copy_file_range(srcFd, &off_in, dstFd, &off_out, COPY_CHUNK_SIZE, 0);
+        if (copied == -1)
             return -1;
-        }
-
+        if (copied == 0)
+            break;
         totalCopied += copied;
+#else
+        readBytes = read(srcFd, buf, COPY_FILE_BUF_SIZE);
+        if (readBytes == -1)
+            return -1;
+        if (readBytes == 0)
+            break;
+        totalWrittenBytes = 0;
+        while (totalWrittenBytes < readBytes) {
+            writtenBytes = write(dstFd, &buf[totalWrittenBytes], readBytes - totalWrittenBytes);
+            if (writtenBytes == -1)
+                return -1;
+            totalWrittenBytes += writtenBytes;
+        }
+        totalCopied += readBytes;
+#endif
 
         // 진행률 업데이트
         pthread_mutex_lock(&progress->flagMutex);
@@ -98,7 +128,7 @@ int moveFile(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress) {
         return 0;
     }
 
-    // 다른 디바이스면 복사 후 원본 삭제
+    // 다른 디바이스면, 혹은 윗 단계 실패 시: 복사 후 원본 삭제
     int srcFd = openat(src->dirFd, src->name, O_RDONLY);
     if (srcFd == -1) {
         CLEAR_FILE_OPERATION_FLAG(progress);
@@ -128,9 +158,93 @@ int moveFile(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress) {
 }
 
 int removeFile(SrcDstInfo *src, FileProgressInfo *progress) {
-    // 삭제: atomic 작업 -> 시작만 표시
+    int ret;
+    if (!S_ISDIR(src->mode)) {
+        // 폴더 아닌 것 삭제: blocking -> 시작만 표시
+        SET_FILE_OPERATION_FLAG(progress, src->name, PROGRESS_DELETE);
+        ret = unlinkat(src->dirFd, src->name, 0);
+        CLEAR_FILE_OPERATION_FLAG(progress);
+        return ret;
+    }
+    // 폴더 삭제: 하위 항목 모두 삭제 후, 오류 없었으면 rmdir() 호출
     SET_FILE_OPERATION_FLAG(progress, src->name, PROGRESS_DELETE);
-    int ret = unlinkat(src->dirFd, src->name, 0);
+    int curDirFd = openat(src->dirFd, src->name, directoryOpenArgs);
+    if (curDirFd == -1)
+        return -1;
+    DIR *currentDir = fdopendir(curDirFd);
+    if (currentDir == NULL) {
+        close(curDirFd);
+        return -1;
+    }
+
+    bool failed = false;
+    SrcDstInfo childInfo;
+    struct stat entryStat;
+    for (struct dirent *entry = readdir(currentDir); entry != NULL; entry = readdir(currentDir)) {
+        if (
+            ((entry->d_name[0] == '.') && (entry->d_name[1] == '\0'))
+            || ((entry->d_name[0] == '.') && (entry->d_name[1] == '.') && (entry->d_name[2] == '\0'))
+        )
+            continue;
+        childInfo.devNo = -1;  // 이 함수에서는 안 쓰임
+        childInfo.dirFd = curDirFd;
+        strcpy(childInfo.name, entry->d_name);
+        childInfo.fileSize = -1;  // 이 함수에서는 안 쓰임
+
+        // 이 함수에서는 파일 종류만 사용
+        switch (entry->d_type) {
+#if defined(DT_BLK) && defined(S_IFBLK)
+            case DT_BLK:
+                childInfo.mode = S_IFBLK;
+                break;
+#endif
+#if defined(DT_CHR) && defined(S_IFCHR)
+            case DT_CHR:
+                childInfo.mode = S_IFCHR;
+                break;
+#endif
+#if defined(DT_DIR) && defined(S_IFDIR)
+            case DT_DIR:
+                childInfo.mode = S_IFDIR;
+                break;
+#endif
+#if defined(DT_FIFO) && defined(S_IFIFO)
+            case DT_FIFO:
+                childInfo.mode = S_IFIFO;
+                break;
+#endif
+#if defined(DT_LNK) && defined(S_IFLNK)
+            case DT_LNK:
+                childInfo.mode = S_IFLNK;
+                break;
+#endif
+#if defined(DT_REG) && defined(S_IFREG)
+            case DT_REG:
+                childInfo.mode = S_IFREG;
+                break;
+#endif
+#if defined(DT_SOCK) && defined(S_IFSOCK)
+            case DT_SOCK:
+                childInfo.mode = S_IFSOCK;
+                break;
+#endif
+            default:  // 아마도 DT_UNKNOWN -> stat()으로 파일 종류 확인
+                if (fstatat(curDirFd, entry->d_name, &entryStat, AT_SYMLINK_FOLLOW) == -1) {
+                    failed = true;
+                    continue;
+                }
+                childInfo.mode = entryStat.st_mode;
+        }
+
+        if (removeFile(&childInfo, progress) == -1) {  // 하위 Item 대해 Recursive하게 삭제 시도
+            failed = true;
+        }
+    }
+    SET_FILE_OPERATION_FLAG(progress, src->name, PROGRESS_DELETE);
+    closedir(currentDir);
+    if (failed)
+        return -1;
+    ret = unlinkat(src->dirFd, src->name, AT_REMOVEDIR);
     CLEAR_FILE_OPERATION_FLAG(progress);
     return ret;
 }
