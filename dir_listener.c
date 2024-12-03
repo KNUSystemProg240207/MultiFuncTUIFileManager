@@ -90,6 +90,7 @@ int dirListener(void *argsPtr) {
     // 현재 폴더 내용 가져옴
     pthread_mutex_lock(&args->bufMutex);  // 결과값 보호 Mutex 획득
     readItems = listEntries(args->currentDir, args->dirEntries, MAX_DIR_ENTRIES);  // 내용 가져오기
+    pthread_mutex_unlock(&args->dirMutex);  // 현재 Directory 보호 Mutex 해제
     if (readItems == -1) {
         pthread_mutex_unlock(&args->bufMutex);  // 결과값 보호 Mutex 해제
         return -1;
@@ -97,7 +98,6 @@ int dirListener(void *argsPtr) {
     if (readItems == 0)
         readItems = 0;
     args->totalReadItems = readItems;
-    pthread_mutex_unlock(&args->dirMutex);  // 현재 Directory 보호 Mutex 해제
 
     applySorting(args->dirEntries, args->commonArgs.statusFlags, readItems);  // 불러온 목록 정렬
 

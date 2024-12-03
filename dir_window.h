@@ -77,13 +77,6 @@ void selectNextWindow(void);
 int setDirWinCnt(int count);
 
 /**
- * 현재 창의 선택된 폴더 Index 리턴
- *
- * @return 폴더 선택됨: (현재 선택의 Index), 폴더 아님: -1
- */
-ssize_t getCurrentSelectedDirectory(void);
-
-/**
  * 현재 창의 선택된 item 정보 리턴
  *
  * @return 폴더 선택됨: (현재 선택의 Index), 폴더 아님: -1

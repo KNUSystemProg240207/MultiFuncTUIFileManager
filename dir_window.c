@@ -476,21 +476,16 @@ int setDirWinCnt(int count) {
     return 0;
 }
 
-ssize_t getCurrentSelectedDirectory(void) {
-    bool isDirectory;
-    assert(pthread_mutex_lock(windows[currentWin].bufMutex) == 0);
-    isDirectory = (windows[currentWin].dirEntry[windows[currentWin].currentPos].statEntry.st_mode & S_IFDIR) == S_IFDIR;
-    pthread_mutex_unlock(windows[currentWin].bufMutex);
-    return isDirectory ? windows[currentWin].currentPos : -1;
-}
-
 SrcDstInfo getCurrentSelectedItem(void) {
     DirWin *currentWinArgs = windows + currentWin;
     size_t currentSelection = currentWinArgs->currentPos;
     assert(pthread_mutex_lock(currentWinArgs->bufMutex) == 0);
+    struct stat *statEntry = &currentWinArgs->dirEntry[currentSelection].statEntry;
     SrcDstInfo result = {
-        .devNo = currentWinArgs->dirEntry[currentSelection].statEntry.st_dev,
-        .fileSize = currentWinArgs->dirEntry[currentSelection].statEntry.st_size
+        .dirFd = -1,  // Directory is unknown -> Prevent bug
+        .mode = statEntry->st_mode,
+        .devNo = statEntry->st_dev,
+        .fileSize = statEntry->st_size
     };
     strcpy(result.name, currentWinArgs->dirEntry[currentSelection].entryName);
     pthread_mutex_unlock(currentWinArgs->bufMutex);

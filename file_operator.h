@@ -24,10 +24,11 @@ typedef enum _FileOperation {
     MKDIR
 } FileOperation;
 
-typedef struct _SrcDstFile {
+typedef struct _SrcDstInfo {
     dev_t devNo;
+    mode_t mode;
     int dirFd;
-    char name[NAME_MAX];
+    char name[NAME_MAX + 1];
     size_t fileSize;
 } SrcDstInfo;
 

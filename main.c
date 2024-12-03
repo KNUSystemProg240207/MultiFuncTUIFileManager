@@ -36,7 +36,8 @@ typedef enum _ProgramState {
     PROCESS_TERM_POPUP,
     RENAME_POPUP,
     CHDIR_POPUP,
-    MKDIR_POPUP
+    MKDIR_POPUP,
+    WARNING_POPUP
 } ProgramState;
 
 
@@ -195,7 +196,6 @@ void initThreads(void) {
  */
 static inline int normalKeyInput(int ch) {
     unsigned int curWin;  // 현재 창
-    ssize_t currentSelection;  // 선택된 Item
 
     // File Task (copy/move 및 source 정보 등 저장)
     static FileTask fileTask = {
@@ -205,6 +205,7 @@ static inline int normalKeyInput(int ch) {
     static FileTask fileDelTask = {
         .type = DELETE,
     };
+    static SrcDstInfo currentSelection;  // 선택 항목 확인용
 
     char tmp[256];
 
@@ -231,22 +232,37 @@ static inline int normalKeyInput(int ch) {
         // 디렉터리 변경
         case '\n':
         case KEY_ENTER:
-            currentSelection = getCurrentSelectedDirectory();
-            if (currentSelection >= 0) {
-                curWin = getCurrentWindow();
-                pthread_mutex_lock(&dirListenerArgs[curWin].bufMutex);
-                strncpy(dirListenerArgs[curWin].newCwdPath, dirListenerArgs[curWin].dirEntries[currentSelection].entryName, PATH_MAX);
-                dirListenerArgs[curWin].commonArgs.statusFlags |= DIRLISTENER_FLAG_CHANGE_DIR;
-                pthread_mutex_unlock(&dirListenerArgs[curWin].bufMutex);
-                pthread_mutex_lock(&dirListenerArgs[curWin].commonArgs.statusMutex);
-                pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
-                pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
-                setCurrentSelection(0);
+            currentSelection = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
+            // 폴더인지 확인
+            if (!S_ISDIR(currentSelection.mode)) {
+                // 폴더 아니면: 오류 표시
+                displayBottomMsg("Not a directory", FRAME_PER_SECOND);
+                break;
             }
+            curWin = getCurrentWindow();  // 현재 창 번호 가져옴
+            // 새 Working directory 경로 전달
+            pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
+            strcpy(dirListenerArgs[curWin].newCwdPath, currentSelection.name);
+            pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
+            // Working directory 변경 요청
+            pthread_mutex_lock(&dirListenerArgs[curWin].commonArgs.statusMutex);
+            dirListenerArgs[curWin].commonArgs.statusFlags |= DIRLISTENER_FLAG_CHANGE_DIR;
+            pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
+            pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
+            setCurrentSelection(0);
             break;
 
         // 이름 변경 창 토글
         case KEY_F(2):
+            // 지원하는 Type인지 확인
+            currentSelection = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
+            if (!S_ISREG(currentSelection.mode) && !S_ISDIR(currentSelection.mode)) {
+                // 지원하지 않으면: 오류 표시
+                showSelectionWindow("Unsupported type!", 1, "Cancel");
+                state = WARNING_POPUP;
+                break;
+            }
+            // 지원하면: 새 이름 입력 창 표시
             state = RENAME_POPUP;
             break;
         // 경로 변경 창 토글
@@ -363,6 +379,14 @@ static inline int normalKeyInput(int ch) {
             }
             fileTask.type = (ch == CTRL_KEY('c')) ? COPY : MOVE;  // 복사/삭제 결정
             fileTask.src = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
+            // 지원하는 Type인지 확인
+            // if (!S_ISREG(fileTask.src.mode) && !S_ISDIR(fileTask.src.mode)) {
+            if (!S_ISREG(fileTask.src.mode)) {
+                // 지원하지 않으면: 오류 표시
+                showSelectionWindow("Unsupported type!", 1, "Cancel");
+                state = WARNING_POPUP;
+                break;
+            }
             // 현재 폴더의 fd 가져옴
             curWin = getCurrentWindow();
             pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
@@ -390,6 +414,14 @@ static inline int normalKeyInput(int ch) {
         case KEY_DC:  // Delete 키
             // fileTask.type = DELETE;  // '삭제' 전용 변수: 종류 대입 불필요
             fileDelTask.src = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
+            // 지원하는 Type인지 확인
+            // if (!S_ISREG(fileDelTask.src.mode) && !S_ISDIR(fileDelTask.src.mode)) {
+            if (!S_ISREG(fileDelTask.src.mode)) {
+                // 지원하지 않으면: 오류 표시
+                showSelectionWindow("Unsupported type!", 1, "Cancel");
+                state = WARNING_POPUP;
+                break;
+            }
             // 현재 폴더의 fd 가져옴
             curWin = getCurrentWindow();
             pthread_mutex_lock(&dirListenerArgs[curWin].dirMutex);
@@ -566,6 +598,11 @@ void mainLoop(void) {
                         state = NORMAL;  // 창 닫기
                     }
                     break;
+                case WARNING_POPUP:
+                    if (ch == '\n') {
+                        state = NORMAL;
+                    }
+                    break;
             }
         }
 
@@ -632,6 +669,10 @@ void mainLoop(void) {
                 }
                 updatePopupWindow();
                 break;
+            case WARNING_POPUP:
+                prevState = WARNING_POPUP;
+                updateSelectionWindow();
+                break;
             default:
                 assert(prevState != PROCESS_TERM_POPUP);
                 if (prevState == PROCESS_WIN) {
@@ -640,6 +681,9 @@ void mainLoop(void) {
                     prevState = NORMAL;
                 } else if (prevState == RENAME_POPUP || prevState == CHDIR_POPUP || prevState == MKDIR_POPUP) {
                     hidePopupWindow();
+                    prevState = NORMAL;
+                } else if (prevState == WARNING_POPUP) {
+                    hideSelectionWindow();
                     prevState = NORMAL;
                 }
                 break;
