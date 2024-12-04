@@ -1,11 +1,9 @@
 #include <assert.h>
 #include <curses.h>
 #include <panel.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "bottom_area.h"
-#include "commons.h"
 #include "config.h"
 #include "file_operator.h"
 

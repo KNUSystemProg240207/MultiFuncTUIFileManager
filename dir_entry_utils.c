@@ -1,9 +1,12 @@
+#include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 
 #include "config.h"
 #include "dir_entry_utils.h"
 #include "dir_window.h"
-#include "thread_commons.h"
 
 
 /**

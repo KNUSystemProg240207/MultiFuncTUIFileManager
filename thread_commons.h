@@ -1,11 +1,8 @@
-#ifndef __THREAD_COMMONS_H_INCLUDED__
-#define __THREAD_COMMONS_H_INCLUDED__
+#ifndef _THREAD_COMMONS_H_INCLUDED_
+#define _THREAD_COMMONS_H_INCLUDED_
 
 #include <pthread.h>
-#include <stdbool.h>
 #include <stdint.h>
-
-#include "config.h"
 
 
 #define THREAD_FLAG_RUNNING (1 << 0)  // Thread 실행 여부

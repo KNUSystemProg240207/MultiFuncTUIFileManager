@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <curses.h>
 #include <panel.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

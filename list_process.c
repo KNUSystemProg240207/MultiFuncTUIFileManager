@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,8 +87,8 @@ int procThreadMain(void *argsPtr) {
             elemPointers[insertPos] = &elements[readCount];
             readCount++;
         } else if (temp.rsize > elemPointers[0]->rsize) {
-            Process* pointerBuffer = elemPointers[0];
-            size_t insertPos = findInsertPosition(elemPointers, MAX_PROCESSES - 1, temp.rsize); // readCount와 동일하게 실제 요소 수를 인자로 주기 위해 MAX_PROCESSES-1
+            Process *pointerBuffer = elemPointers[0];
+            size_t insertPos = findInsertPosition(elemPointers, MAX_PROCESSES - 1, temp.rsize);  // readCount와 동일하게 실제 요소 수를 인자로 주기 위해 MAX_PROCESSES-1
             memmove(&elemPointers[0], &elemPointers[1], insertPos * sizeof(Process *));
             *pointerBuffer = temp;  // 새로운 데이터로 갱신
             elemPointers[insertPos] = pointerBuffer;

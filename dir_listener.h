@@ -1,13 +1,12 @@
-#ifndef __DIR_LISTENER_H_INCLUDED__
-#define __DIR_LISTENER_H_INCLUDED__
+#ifndef _DIR_LISTENER_H_INCLUDED_
+#define _DIR_LISTENER_H_INCLUDED_
 
 #include <dirent.h>
 #include <pthread.h>
-#include <stdbool.h>
+#include <stddef.h>
 #include <sys/stat.h>
 
 #include "config.h"
-#include "dir_entry_utils.h"
 #include "thread_commons.h"
 
 

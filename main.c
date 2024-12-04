@@ -12,6 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include "bottom_area.h"
 #include "colors.h"
@@ -24,6 +25,7 @@
 #include "popup_window.h"
 #include "process_window.h"
 #include "selection_window.h"
+#include "thread_commons.h"
 #include "title_bar.h"
 
 

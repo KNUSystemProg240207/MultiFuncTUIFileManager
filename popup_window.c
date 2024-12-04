@@ -1,6 +1,7 @@
 #include <curses.h>
 #include <panel.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "colors.h"
 #include "config.h"

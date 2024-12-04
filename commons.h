@@ -1,7 +1,7 @@
-#ifndef __COMMONS_H_INCLUDED__
-#define __COMMONS_H_INCLUDED__
+#ifndef _COMMONS_H_INCLUDED_
+#define _COMMONS_H_INCLUDED_
 
-#include <curses.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

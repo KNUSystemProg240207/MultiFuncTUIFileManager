@@ -1,1 +1,14 @@
-{}
+{
+    "files.associations": {
+        "*.yaml": "yaml",
+        "*.txt": "plaintext",
+        "dir_window.h": "c",
+        "thread_commons.h": "c",
+        "commons.h": "c",
+        "list_process.h": "c",
+        "bottom_area.h": "c",
+        "file_operator.h": "c",
+        "dir_listener.h": "c",
+        "process_window.h": "c"
+    }
+}

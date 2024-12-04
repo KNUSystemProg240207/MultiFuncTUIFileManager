@@ -7,6 +7,7 @@
 #include "config.h"
 #include "file_functions.h"
 #include "file_operator.h"
+#include "thread_commons.h"
 
 
 static unsigned int threadCnt = 0;  // 생성된 Thread 개수

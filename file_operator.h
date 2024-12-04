@@ -1,7 +1,8 @@
-#ifndef __FILE_OPERATOR_H_INCLUDED__
-#define __FILE_OPERATOR_H_INCLUDED__
+#ifndef _FILE_OPERATOR_H_INCLUDED_
+#define _FILE_OPERATOR_H_INCLUDED_
 
 #include <pthread.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <sys/stat.h>
 

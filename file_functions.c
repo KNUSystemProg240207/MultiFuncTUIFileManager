@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,6 +12,7 @@
 
 #include "config.h"
 #include "file_functions.h"
+#include "file_operator.h"
 
 #define COPY_CHUNK_SIZE (1024 * 1024)  // 1MB 단위로 복사
 

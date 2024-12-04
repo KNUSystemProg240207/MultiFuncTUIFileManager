@@ -1,10 +1,8 @@
-#ifndef __DIR_WINDOW_H_INCLUDED__
-#define __DIR_WINDOW_H_INCLUDED__
+#ifndef _DIR_WINDOW_H_INCLUDED_
+#define _DIR_WINDOW_H_INCLUDED_
 
-#include <curses.h>
 #include <pthread.h>
-#include <string.h>
-#include <sys/stat.h>
+#include <stddef.h>
 
 #include "dir_listener.h"
 #include "file_operator.h"
@@ -23,8 +21,6 @@
 #define SORT_SIZE_SHIFT 2
 // 날짜 정렬 상태를 위한 비트 쉬프트
 #define SORT_DATE_SHIFT 4
-
-typedef struct _DirEntry DirEntry;
 
 /**
  * 새 폴더 표시 창 초기화 (생성)

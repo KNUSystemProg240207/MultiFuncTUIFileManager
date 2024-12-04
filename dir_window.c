@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <panel.h>
 #include <pthread.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +13,9 @@
 #include "commons.h"
 #include "config.h"
 #include "dir_entry_utils.h"
+#include "dir_listener.h"
 #include "dir_window.h"
+#include "file_operator.h"
 
 
 /**

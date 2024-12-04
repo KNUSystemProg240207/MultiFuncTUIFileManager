@@ -1,5 +1,5 @@
-#ifndef __CONFIG_H_INCLUDED__
-#define __CONFIG_H_INCLUDED__
+#ifndef _CONFIG_H_INCLUDED_
+#define _CONFIG_H_INCLUDED_
 
 #include <limits.h>
 

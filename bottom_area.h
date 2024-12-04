@@ -1,9 +1,8 @@
-#ifndef __FOOTER_AREA_H_INCLUDED__
-#define __FOOTER_AREA_H_INCLUDED__
+#ifndef _FOOTER_AREA_H_INCLUDED_
+#define _FOOTER_AREA_H_INCLUDED_
 
 #include <curses.h>
 
-#include "config.h"
 #include "file_operator.h"
 
 /**
@@ -32,11 +31,11 @@ void updateBottomBox(FileProgressInfo* infos);
 /**
  * 하단 영역에 출력될 메시지 설정
  * 다음 updateBottomBox때부터 실제로 출력됨
- * 
+ *
  * @param msg 출력할 (null-terminated) 문자열
  * @param framesToShow 보여줄 시간, Frame (=updateBottomBox 호출 횟수) 단위
  */
-void displayBottomMsg(const char *msg, int framesToShow);
+void displayBottomMsg(const char* msg, int framesToShow);
 
 /**
  * 하단 영역에 출력된 메시지가 있으면, 지움

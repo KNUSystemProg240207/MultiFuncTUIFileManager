@@ -1,6 +1,7 @@
 #include <limits.h>
 #include <panel.h>
 #include <pthread.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
@@ -167,7 +168,7 @@ void updateProcessWindow() {
     }
 
     if (isColorSafe)
-    wbkgd(window, COLOR_PAIR(PRCSBGRND));
+        wbkgd(window, COLOR_PAIR(PRCSBGRND));
     printTableHeader(window, winW);  // 테이블 헤더 출력
     applyColor(window, PRCSFILE);  // 색상 적용
 

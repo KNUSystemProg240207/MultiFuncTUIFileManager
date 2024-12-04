@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "commons.h"
 #include "config.h"
 #include "dir_entry_utils.h"
 #include "dir_listener.h"

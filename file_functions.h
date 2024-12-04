@@ -1,8 +1,5 @@
-#ifndef __FILE_FUNCTIONS_H_INCLUDED__
-#define __FILE_FUNCTIONS_H_INCLUDED__
-
-#include <pthread.h>
-#include <stdint.h>
+#ifndef _FILE_FUNCTIONS_H_INCLUDED_
+#define _FILE_FUNCTIONS_H_INCLUDED_
 
 #include "file_operator.h"
 
