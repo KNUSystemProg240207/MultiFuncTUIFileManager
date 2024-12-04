@@ -46,23 +46,42 @@ static int doCopyFile(int srcFd, int dstFd, size_t fileSize, FileProgressInfo *p
     size_t totalCopied = 0;
 #if defined(_GNU_SOURCE) && (__LP64__ || (defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64))
     // copy_file_range 사용 가능하면 사용 (kernel에서 바로 복사 -> 성능상 유리)
-    off_t off_in = 0, off_out = 0;
-    ssize_t copied;
-#else
-    // 불가능할 시: read() -> write()로 fallback
+    off_t offIn = 0, offOut = 0;
+    ssize_t copied = 0;
+#endif
+    // 불가능할 or 실패 시: read() -> write()로 fallback
     ssize_t readBytes, writtenBytes, totalWrittenBytes;
     char buf[COPY_FILE_BUF_SIZE];
-#endif
 
-    while (totalCopied < fileSize) {
 #if defined(_GNU_SOURCE) && (__LP64__ || (defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64))
-        copied = copy_file_range(srcFd, &off_in, dstFd, &off_out, COPY_CHUNK_SIZE, 0);
-        if (copied == -1)
-            return -1;
-        if (copied == 0)
+    while (totalCopied < fileSize) {
+        copied = copy_file_range(srcFd, &offIn, dstFd, &offOut, COPY_CHUNK_SIZE, 0);
+        if (
+            copied == 0  // EOF 만남
+            || copied == -1  // copy_file_range 실패
+        )
             break;
         totalCopied += copied;
-#else
+
+        // 진행률 업데이트
+        pthread_mutex_lock(&progress->flagMutex);
+        progress->flags &= ~PROGRESS_PERCENT_MASK;
+        progress->flags |= (int)((double)totalCopied / fileSize * 100) << PROGRESS_PERCENT_START;
+        pthread_mutex_unlock(&progress->flagMutex);
+    }
+    if (copied != -1) {
+        return (totalCopied == fileSize) ? 0 : -1;
+    }
+#endif
+
+    // copy_file_range 실패 시 -> read-and-write로 fallback
+
+    // 복사 성공한 위치로 seek()
+    lseek(srcFd, offIn, SEEK_SET);
+    lseek(dstFd, offOut, SEEK_SET);
+
+    // 복사 수행
+    while (totalCopied < fileSize) {
         readBytes = read(srcFd, buf, COPY_FILE_BUF_SIZE);
         if (readBytes == -1)
             return -1;
@@ -76,7 +95,6 @@ static int doCopyFile(int srcFd, int dstFd, size_t fileSize, FileProgressInfo *p
             totalWrittenBytes += writtenBytes;
         }
         totalCopied += readBytes;
-#endif
 
         // 진행률 업데이트
         pthread_mutex_lock(&progress->flagMutex);
@@ -142,7 +160,6 @@ static inline int doCopy(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *pro
 
                 // 파일 크기 확인 필요 -> 항상 stat() 호출 필요
                 if (fstatat(srcDirFd, entry->d_name, &entryStat, AT_SYMLINK_NOFOLLOW) == -1) {
-                    int tmp = errno;
                     failed = true;
                     continue;
                 }
