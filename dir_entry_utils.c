@@ -61,7 +61,7 @@ static int cmpDateAsc(const void *a, const void *b);
 static int cmpDateDesc(const void *a, const void *b);
 
 
-char *truncateFileName(char *fileName) {
+char *truncateFileName(const char *fileName) {
     static char nameBuf[NAME_MAX + 1];
     size_t len = strlen(fileName);
 

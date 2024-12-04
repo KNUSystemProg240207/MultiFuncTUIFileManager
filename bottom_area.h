@@ -36,7 +36,7 @@ void updateBottomBox(FileProgressInfo* infos);
  * @param msg 출력할 (null-terminated) 문자열
  * @param framesToShow 보여줄 시간, Frame (=updateBottomBox 호출 횟수) 단위
  */
-void displayBottomMsg(char *msg, int framesToShow);
+void displayBottomMsg(const char *msg, int framesToShow);
 
 /**
  * 하단 영역에 출력된 메시지가 있으면, 지움

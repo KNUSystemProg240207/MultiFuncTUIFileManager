@@ -41,6 +41,9 @@ typedef enum _ProgramState {
 } ProgramState;
 
 
+static const char *UNSUPPORTED_TYPE = "Unsupported type!";
+
+
 WINDOW *titleBar, *bottomBox;
 PANEL *titlePanel, *bottomPanel;  // 패널 추가
 
@@ -59,7 +62,7 @@ static FileOperatorArgs fileOpArgs[MAX_FILE_OPERATORS];
 static ProcessThreadArgs processThreadArgs;
 
 static ProgramState state;
-static unsigned int dirWinCnt;  // 표시된 폴더 표시 창 수
+static unsigned int visibleDirWins;  // 표시된 폴더 표시 창 수
 
 static void initVariables(void);  // 변수들 초기화
 static void initScreen(void);  // ncurses 관련 초기화 & subwindow들 생성
@@ -112,7 +115,7 @@ void initVariables(void) {
         pthread_mutex_init(&fileOpArgs[i].commonArgs.statusMutex, NULL);
         pthread_mutex_init(&fileProgresses[i].flagMutex, NULL);
         fileOpArgs[i].pipeReadMutex = &pipeReadMutex;  // 한 pipe의 read end를 여러 개의 Thread가 공유 -> 한 번에 한 곳에서만 읽어야 함
-        fileOpArgs[i].progressInfo = fileProgresses;
+        fileOpArgs[i].progressInfo = &fileProgresses[i];
     }
     pthread_cond_init(&processThreadArgs.commonArgs.resumeThread, NULL);
     pthread_mutex_init(&processThreadArgs.commonArgs.statusMutex, NULL);
@@ -153,7 +156,7 @@ void initScreen(void) {
         );
     }
     setDirWinCnt(1);
-    dirWinCnt = 1;
+    visibleDirWins = 1;
 
     initProcessWindow(
         &processThreadArgs.entriesMutex,
@@ -258,7 +261,7 @@ static inline int normalKeyInput(int ch) {
             currentSelection = getCurrentSelectedItem();  // 현재 선택된 Item 정보 가져옴
             if (!S_ISREG(currentSelection.mode) && !S_ISDIR(currentSelection.mode)) {
                 // 지원하지 않으면: 오류 표시
-                showSelectionWindow("Unsupported type!", 1, "Cancel");
+                showSelectionWindow(UNSUPPORTED_TYPE, 1, "Cancel");
                 state = WARNING_POPUP;
                 break;
             }
@@ -281,7 +284,7 @@ static inline int normalKeyInput(int ch) {
 
         // 창 열기
         case CTRL_KEY('t'):
-            if (dirWinCnt == MAX_DIRWINS) {
+            if (visibleDirWins == MAX_DIRWINS) {
                 displayBottomMsg("Already opened max window", FRAME_PER_SECOND);
                 break;
             }
@@ -296,26 +299,26 @@ static inline int normalKeyInput(int ch) {
             if (cwdFd != -1) {
                 newCwd = fdopendir(cwdFd);
                 if (newCwd != NULL) {
-                    pthread_mutex_lock(&dirListenerArgs[dirWinCnt].dirMutex);
-                    if (dirListenerArgs[dirWinCnt].currentDir != NULL)
-                        closedir(dirListenerArgs[dirWinCnt].currentDir);
-                    dirListenerArgs[dirWinCnt].currentDir = newCwd;
-                    pthread_mutex_unlock(&dirListenerArgs[dirWinCnt].dirMutex);
+                    pthread_mutex_lock(&dirListenerArgs[visibleDirWins].dirMutex);
+                    if (dirListenerArgs[visibleDirWins].currentDir != NULL)
+                        closedir(dirListenerArgs[visibleDirWins].currentDir);
+                    dirListenerArgs[visibleDirWins].currentDir = newCwd;
+                    pthread_mutex_unlock(&dirListenerArgs[visibleDirWins].dirMutex);
                 }
             }
-            resumeThread(&dirListenerArgs[dirWinCnt].commonArgs);  // 새 창과 이어진 Thread 시작
-            dirWinCnt++;
-            setDirWinCnt(dirWinCnt);  // 새 창 표시
+            resumeThread(&dirListenerArgs[visibleDirWins].commonArgs);  // 새 창과 이어진 Thread 시작
+            visibleDirWins++;
+            setDirWinCnt(visibleDirWins);  // 새 창 표시
             break;
         // 현재 창 닫기
         case CTRL_KEY('r'):
-            if (dirWinCnt == 1) {
+            if (visibleDirWins == 1) {
                 displayBottomMsg("There is only one window", FRAME_PER_SECOND);
                 break;
             }
-            dirWinCnt--;
-            setDirWinCnt(dirWinCnt);  // 창 감추기
-            pauseThread(&dirListenerArgs[dirWinCnt].commonArgs);  // 기존 창과 이어진 Thread 정지
+            visibleDirWins--;
+            setDirWinCnt(visibleDirWins);  // 창 감추기
+            pauseThread(&dirListenerArgs[visibleDirWins].commonArgs);  // 기존 창과 이어진 Thread 정지
             break;
 
         // 정렬 변경
@@ -382,7 +385,7 @@ static inline int normalKeyInput(int ch) {
             // 지원하는 Type인지 확인
             if (!S_ISREG(fileTask.src.mode) && !S_ISDIR(fileTask.src.mode)) {
                 // 지원하지 않으면: 오류 표시
-                showSelectionWindow("Unsupported type!", 1, "Cancel");
+                showSelectionWindow(UNSUPPORTED_TYPE, 1, "Cancel");
                 state = WARNING_POPUP;
                 break;
             }
@@ -416,7 +419,7 @@ static inline int normalKeyInput(int ch) {
             // 지원하는 Type인지 확인
             if (!S_ISREG(fileDelTask.src.mode) && !S_ISDIR(fileDelTask.src.mode)) {
                 // 지원하지 않으면: 오류 표시
-                showSelectionWindow("Unsupported type!", 1, "Cancel");
+                showSelectionWindow(UNSUPPORTED_TYPE, 1, "Cancel");
                 state = WARNING_POPUP;
                 break;
             }
@@ -458,9 +461,10 @@ void mainLoop(void) {
 
     state = NORMAL;
     ProgramState prevState = NORMAL;
+    bool refreshFileWindows = false;
 
 // 아래에서, dirFd 변수들에 대해 fd leak 경고 발생
-// File Operator Thread에서 close() -> 여기서 close()하면, Thread쪽에서 오류 발생
+// File Operator Thread에서 사용 후 close() -> 여기서 close()하면, Thread쪽에서 오류 발생
 // 따라서, 의도적으로 leak되게 함
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
@@ -563,7 +567,6 @@ void mainLoop(void) {
                         pthread_cond_signal(&dirListenerArgs[curWin].commonArgs.resumeThread);
                         pthread_mutex_unlock(&dirListenerArgs[curWin].commonArgs.statusMutex);
                         setCurrentSelection(0);
-                        displayBottomMsg("Change working directory requested", FRAME_PER_SECOND);
                         // 창 닫기
                         state = NORMAL;
                     } else if (ch == 0x1f) {  // CTRL_KEY('/')
@@ -589,7 +592,7 @@ void mainLoop(void) {
                         pthread_mutex_unlock(&dirListenerArgs[curWin].dirMutex);
                         // pipe에 명령 쓰기
                         write(pipeFileOpCmd, &fileTask, sizeof(FileTask));  // 구조체 크기 < PIPE_BUF(=4096) -> Atomic, 별도 보호 불필요
-                        displayBottomMsg("Rename requested", FRAME_PER_SECOND);
+                        displayBottomMsg("Create directory requested", FRAME_PER_SECOND);
                         // 창 닫기
                         state = NORMAL;
                     } else if (ch == CTRL_KEY('n')) {
@@ -601,6 +604,77 @@ void mainLoop(void) {
                         state = NORMAL;
                     }
                     break;
+            }
+        }
+
+        if (state == NORMAL) {
+            // 폴더 변경 실패 시, 오류 표시
+            for (int i = 0; i < visibleDirWins; i++) {
+                if (pthread_mutex_trylock(&dirListenerArgs[i].commonArgs.statusMutex) == -1)  // 중요한 것 X -> 획득 대기로 인한 지연 방지
+                    continue;
+                if (dirListenerArgs[i].commonArgs.statusFlags & DIRLISTENER_FLAG_CHDIR_FAIL) {
+                    displayBottomMsg("Failed to change directory", FRAME_PER_SECOND);
+                    dirListenerArgs[i].commonArgs.statusFlags &= ~DIRLISTENER_FLAG_CHDIR_FAIL;
+                }
+                pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
+            }
+            // 진행된 파일 작업 있으면 -> 하단 알림 표시 & 모든 창 새로고침
+            for (int i = 0; i < MAX_FILE_OPERATORS; i++) {
+                if (pthread_mutex_trylock(&fileProgresses[i].flagMutex) == -1)  // 중요한 것 X -> 획득 대기로 인한 지연 방지
+                    continue;
+                if (fileProgresses[i].flags & PROGRESS_PREV_MASK) {
+                    refreshFileWindows = true;
+                    if (fileProgresses[i].flags & PROGRESS_PREV_FAIL) {
+                        // 직전 동작 실패
+                        switch (fileProgresses[i].flags & PROGRESS_PREV_MASK) {
+                            case PROGRESS_PREV_CP:
+                                displayBottomMsg("Failed to copy", FRAME_PER_SECOND);
+                                break;
+                            case PROGRESS_PREV_MV:
+                                displayBottomMsg("Failed to move/rename", FRAME_PER_SECOND);
+                                break;
+                            case PROGRESS_PREV_RM:
+                                displayBottomMsg("Failed to remove", FRAME_PER_SECOND);
+                                break;
+                            case PROGRESS_PREV_MKDIR:
+                                displayBottomMsg("Failed to create new directory", FRAME_PER_SECOND);
+                                break;
+                        }
+                    } else {
+                        // 직전 동작 성공
+                        switch (fileProgresses[i].flags & PROGRESS_PREV_MASK) {
+                            case PROGRESS_PREV_CP:
+                                displayBottomMsg("Successfully copied", FRAME_PER_SECOND);
+                                break;
+                            case PROGRESS_PREV_MV:
+                                displayBottomMsg("Successfully moved/renamed", FRAME_PER_SECOND);
+                                break;
+                            case PROGRESS_PREV_RM:
+                                displayBottomMsg("Successfully removed", FRAME_PER_SECOND);
+                                break;
+                            case PROGRESS_PREV_MKDIR:
+                                displayBottomMsg("Successfully created new directory", FRAME_PER_SECOND);
+                                break;
+                        }
+                    }
+                    fileProgresses[i].flags &= ~(PROGRESS_PREV_MASK | PROGRESS_PREV_FAIL);  // 직전 결과 읽어들임 -> 지우기
+                }
+                pthread_mutex_unlock(&fileProgresses[i].flagMutex);
+            }
+            if (refreshFileWindows) {
+                for (int i = 0; i < visibleDirWins; i++) {
+                    pthread_mutex_lock(&dirListenerArgs[i].commonArgs.statusMutex);
+                    pthread_cond_signal(&dirListenerArgs[i].commonArgs.resumeThread);
+                    pthread_mutex_unlock(&dirListenerArgs[i].commonArgs.statusMutex);
+                }
+            }
+        } else {
+            // (가능한) 각 File operator 직전 결과 삭제
+            for (int i = 0; i < MAX_FILE_OPERATORS; i++) {
+                if (pthread_mutex_trylock(&fileProgresses[i].flagMutex) == -1)
+                    continue;
+                fileProgresses[i].flags &= ~PROGRESS_PREV_MASK;
+                pthread_mutex_unlock(&fileProgresses[i].flagMutex);
             }
         }
 

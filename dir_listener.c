@@ -84,8 +84,13 @@ int dirListener(void *argsPtr) {
 
     // 폴더 변경 처리
     pthread_mutex_lock(&args->dirMutex);  // 현재 Directory 보호 Mutex 획득
-    if (changeDirRequested)
-        changeDir(&args->currentDir, args->newCwdPath);
+    if (changeDirRequested) {
+        if (changeDir(&args->currentDir, args->newCwdPath) == -1) {
+            pthread_mutex_lock(&args->commonArgs.statusMutex);
+            args->commonArgs.statusFlags |= DIRLISTENER_FLAG_CHDIR_FAIL;
+            pthread_mutex_unlock(&args->commonArgs.statusMutex);
+        }
+    }
 
     // 현재 폴더 내용 가져옴
     pthread_mutex_lock(&args->bufMutex);  // 결과값 보호 Mutex 획득
@@ -156,7 +161,7 @@ int changeDir(DIR **dir, char *dirToMove) {
     // (주의: 전달한 fdParent 또한 별도로 close()하면 안 됨: DIR 내부에서 사용)
     DIR *result;
     result = fdopendir(fdParent);
-    if (!result)  // 실패 시 -> -1 리턴, 종료
+    if (result == NULL)  // 실패 시 -> -1 리턴, 종료
         return -1;
     *dir = result;
 

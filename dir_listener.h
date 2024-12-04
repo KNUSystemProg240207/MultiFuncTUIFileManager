@@ -19,6 +19,8 @@
 #define DIRLISTENER_FLAG_SORT_CRITERION_MASK (0b11 << (THREAD_FLAG_MSB + 1))  // 정렬 기준 마스크
 #define DIRLISTENER_FLAG_SORT_REVERSE (1 << (THREAD_FLAG_MSB + 3))  // 내림차순 정렬
 
+#define DIRLISTENER_FLAG_CHDIR_FAIL (1 << (THREAD_FLAG_MSB + 4))  // 폴더 변경 실패
+
 
 /**
  * @struct _DirEntry

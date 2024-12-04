@@ -13,7 +13,7 @@
  * - 파일 확장자는 유지되며, 확장자를 제외한 부분이 생략
  * - 확장자가 너무 길 경우, 확장자를 포함한 문자열을 `MAX_DISPLAY_LEN` 이내로 잘라냄
  */
-char *truncateFileName(char *fileName);
+char *truncateFileName(const char *fileName);
 
 /**
  * 파일 이름이 숨김 파일인지 확인

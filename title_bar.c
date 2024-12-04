@@ -27,7 +27,7 @@ static void renderTime(int barWidth);
  * @param path 출력할 경로 문자열
  * @param pathLen (NULL-문자 제외한) 경로 문자열의 길이
  */
-static void printPath(char *path, size_t pathLen, int barWidth);
+static void printPath(const char *path, size_t pathLen, int barWidth);
 
 
 WINDOW *initTitleBar(int width) {
@@ -55,13 +55,13 @@ void renderTime(int barWidth) {
     mvwaddstr(titleBar, 0, barWidth - DATETIME_LEN, buf);  // 출력
 }
 
-void printPath(char *path, size_t pathLen, int barWidth) {
+void printPath(const char *path, size_t pathLen, int barWidth) {
     int restSpace = barWidth - pathLen;  // 제목 표시된 후 남는 공간
     int start = (restSpace > 0 ? restSpace / 2 : 0);  // 시작 X좌표
     mvwaddnstr(titleBar, 0, start, path, barWidth < pathLen ? barWidth : pathLen);  // 제목 표시: 가운데 정렬 (공간 부족하면: 끝부분이 잘림)
 }
 
-void updateTitleBar(char *cwd, size_t cwdLen) {
+void updateTitleBar(const char *cwd, size_t cwdLen) {
     werase(titleBar);  // 기존 내용을 지움
     int screenWidth = getmaxx(stdscr);
     int longerLen = PROG_NAME_LEN > DATETIME_LEN ? PROG_NAME_LEN : DATETIME_LEN;

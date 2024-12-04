@@ -92,7 +92,7 @@ bool checkAndResizeArea(int *newAreaWidth) {
     return true;
 }
 
-void displayBottomMsg(char *msg, int framesToShow) {
+void displayBottomMsg(const char *msg, int framesToShow) {
     strncpy(msgBuf, msg, MAX_BOTTOMBOX_MSG_LEN);
     msgBuf[MAX_BOTTOMBOX_MSG_LEN] = '\0';
     msgLen = strlen(msgBuf);
@@ -178,16 +178,16 @@ int displayProgress(FileProgressInfo *infos, int winWidth) {
     int runningWins = 0;
     for (int i = 0; i < MAX_FILE_OPERATORS; i++) {
         pthread_mutex_lock(&infos[i].flagMutex);
-        switch (infos[i].flags & PROGRESS_BITS) {
-            case PROGRESS_COPY:
+        switch (infos[i].flags & PROGRESS_OP_MASK) {
+            case PROGRESS_OP_CP:
                 operation = 'C';
                 runningWins++;
                 break;
-            case PROGRESS_MOVE:
+            case PROGRESS_OP_MV:
                 operation = 'M';
                 runningWins++;
                 break;
-            case PROGRESS_DELETE:
+            case PROGRESS_OP_RM:
                 operation = 'D';
                 runningWins++;
                 break;

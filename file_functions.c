@@ -14,17 +14,18 @@
 
 #define COPY_CHUNK_SIZE (1024 * 1024)  // 1MB 단위로 복사
 
-#define SET_FILE_OPERATION_FLAG(progress, fileName, operationType) \
+#define FILEOP_SET_OPERATION(progress, fileName, operationFlag) \
     do { \
         pthread_mutex_lock(&(progress)->flagMutex); \
-        (progress)->flags = operationType; \
+        (progress)->flags |= (operationFlag); \
+        (progress)->flags &= ~PROGRESS_PERCENT_MASK; \
         strcpy((progress)->name, (fileName)); \
         pthread_mutex_unlock(&(progress)->flagMutex); \
     } while (0)
-#define CLEAR_FILE_OPERATION_FLAG(progress) \
+#define FILEOP_SET_RESULT(progress, operationFlag, isFailed) \
     do { \
         pthread_mutex_lock(&(progress)->flagMutex); \
-        (progress)->flags = 0; \
+        (progress)->flags = ((isFailed) ? ((operationFlag) | PROGRESS_PREV_FAIL) : (operationFlag)); \
         pthread_mutex_unlock(&(progress)->flagMutex); \
     } while (0)
 
@@ -106,6 +107,14 @@ static int doCopyFile(int srcFd, int dstFd, size_t fileSize, FileProgressInfo *p
     return (totalCopied == fileSize) ? 0 : -1;
 }
 
+/**
+ * (공통 기능 함수) 파일/폴더 복사 수행 (폴더: 재귀호출로 복사)
+ *
+ * @param src 원본 파일
+ * @param dst 대상 폴더
+ * @param progress 진행 상태 구조체
+ * @return 성공: 0, 실패: -1
+ */
 static inline int doCopy(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress) {
     int ret;
     switch (src->mode & S_IFMT) {
@@ -153,8 +162,7 @@ static inline int doCopy(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *pro
             struct stat entryStat;
             for (struct dirent *entry = readdir(srcDir); entry != NULL; entry = readdir(srcDir)) {
                 if (
-                    ((entry->d_name[0] == '.') && (entry->d_name[1] == '\0'))
-                    || ((entry->d_name[0] == '.') && (entry->d_name[1] == '.') && (entry->d_name[2] == '\0'))
+                    ((entry->d_name[0] == '.') && (entry->d_name[1] == '\0')) || ((entry->d_name[0] == '.') && (entry->d_name[1] == '.') && (entry->d_name[2] == '\0'))
                 )  // '.', '..' 건너뜀
                     continue;
 
@@ -187,40 +195,40 @@ static inline int doCopy(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *pro
 }
 
 int copyFile(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress) {
-    SET_FILE_OPERATION_FLAG(progress, src->name, PROGRESS_COPY);
+    FILEOP_SET_OPERATION(progress, src->name, PROGRESS_OP_CP);
     int ret = doCopy(src, dst, progress);
-    CLEAR_FILE_OPERATION_FLAG(progress);
+    FILEOP_SET_RESULT(progress, PROGRESS_PREV_CP, ret == -1);
     return ret;
 }
 
 int moveFile(SrcDstInfo *src, SrcDstInfo *dst, FileProgressInfo *progress) {
-    SET_FILE_OPERATION_FLAG(progress, src->name, PROGRESS_MOVE);
+    FILEOP_SET_OPERATION(progress, src->name, PROGRESS_OP_MV);
 
     // 같은 디바이스면 rename
     if (src->devNo == dst->devNo && renameat(src->dirFd, src->name, dst->dirFd, dst->name) == 0) {
-        CLEAR_FILE_OPERATION_FLAG(progress);
+        FILEOP_SET_RESULT(progress, PROGRESS_PREV_MV, false);
         return 0;
     }
 
-    // 다른 디바이스면, 혹은 윗 단계 실패 시: 복사 시도, 성공 시 원본 삭제
+    // 다른 디바이스면, 혹은 윗 단계 실패 시: 복사 시도
     int ret = doCopy(src, dst, progress);
     if (ret == 0)
-        ret = removeFile(src, progress);  // 폴더 삭제 -> 아래 함수 사용
-    CLEAR_FILE_OPERATION_FLAG(progress);
+        ret = removeFile(src, progress);  // 성공 시: 원본 삭제 (아래 함수 사용)
+    FILEOP_SET_RESULT(progress, PROGRESS_PREV_MV, ret == -1);
     return ret;
 }
 
 int removeFile(SrcDstInfo *src, FileProgressInfo *progress) {
     int ret;
+    FILEOP_SET_OPERATION(progress, src->name, PROGRESS_OP_RM);
+
     if (!S_ISDIR(src->mode)) {
-        // 폴더 아닌 것 삭제: blocking -> 시작만 표시
-        SET_FILE_OPERATION_FLAG(progress, src->name, PROGRESS_DELETE);
         ret = unlinkat(src->dirFd, src->name, 0);
-        CLEAR_FILE_OPERATION_FLAG(progress);
+        FILEOP_SET_RESULT(progress, PROGRESS_PREV_RM, ret == -1);
         return ret;
     }
+
     // 폴더 삭제: 하위 항목 모두 삭제 후, 오류 없었으면 rmdir() 호출
-    SET_FILE_OPERATION_FLAG(progress, src->name, PROGRESS_DELETE);
     int curDirFd = openat(src->dirFd, src->name, directoryOpenArgs);
     if (curDirFd == -1)
         return -1;
@@ -235,8 +243,7 @@ int removeFile(SrcDstInfo *src, FileProgressInfo *progress) {
     struct stat entryStat;
     for (struct dirent *entry = readdir(currentDir); entry != NULL; entry = readdir(currentDir)) {
         if (
-            ((entry->d_name[0] == '.') && (entry->d_name[1] == '\0'))
-            || ((entry->d_name[0] == '.') && (entry->d_name[1] == '.') && (entry->d_name[2] == '\0'))
+            ((entry->d_name[0] == '.') && (entry->d_name[1] == '\0')) || ((entry->d_name[0] == '.') && (entry->d_name[1] == '.') && (entry->d_name[2] == '\0'))
         )  // '.', '..' 건너뜀
             continue;
         childInfo.devNo = -1;  // 이 함수에서는 안 쓰임
@@ -293,11 +300,20 @@ int removeFile(SrcDstInfo *src, FileProgressInfo *progress) {
             failed = true;
         }
     }
-    SET_FILE_OPERATION_FLAG(progress, src->name, PROGRESS_DELETE);
+    FILEOP_SET_OPERATION(progress, src->name, PROGRESS_OP_RM);
     closedir(currentDir);
-    if (failed)
+    if (failed) {
+        FILEOP_SET_RESULT(progress, PROGRESS_PREV_RM, true);
         return -1;
+    }
     ret = unlinkat(src->dirFd, src->name, AT_REMOVEDIR);
-    CLEAR_FILE_OPERATION_FLAG(progress);
+    FILEOP_SET_RESULT(progress, PROGRESS_PREV_RM, ret == -1);
+    return ret;
+}
+
+int makeDirectory(SrcDstInfo *src, FileProgressInfo *progress) {
+    FILEOP_SET_OPERATION(progress, src->name, PROGRESS_OP_MKDIR);
+    int ret = mkdirat(src->dirFd, src->name, 0755);
+    FILEOP_SET_RESULT(progress, PROGRESS_PREV_MKDIR, ret == -1);
     return ret;
 }

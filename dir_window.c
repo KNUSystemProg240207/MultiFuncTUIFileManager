@@ -171,6 +171,10 @@ int updateDirWins(void) {
             continue;
         itemsCnt = *win->totalReadItems;  // 읽어들인 개수 가져옴
 
+        // 현재 선택이 범위 벗어난 경우 (파일 삭제 등으로 인한) -> 범위 안으로 보내기
+        if (win->currentPos >= itemsCnt - 1)
+            win->currentPos = itemsCnt - 1;
+
         // 첫 Event의 위치 찾아내기: loop 끝나면, eventStartPos는 (event 수 * 2)에 해당하는 값 가짐 (매 event의 크기: 2-bit)
         for (eventStartPos = 0; (win->lineMovementEvent & (UINT64_C(2) << eventStartPos)) != 0; eventStartPos += 2);
 

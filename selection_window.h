@@ -8,7 +8,7 @@
 
 // 외부에서 접근할 함수 선언
 void initSelectionWindow(void);
-void showSelectionWindow(char *title, int selCnt, ...);
+void showSelectionWindow(const char *title, int selCnt, ...);
 void hideSelectionWindow(void);
 void delSelectionWindow(void);
 

@@ -8,7 +8,7 @@
 
 // 외부에서 접근할 함수 선언
 void initPopupWindow(void);
-void showPopupWindow(char *title);
+void showPopupWindow(const char *title);
 void hidePopupWindow(void);
 void delPopupWindow(void);
 
