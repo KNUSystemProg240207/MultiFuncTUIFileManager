@@ -279,6 +279,7 @@ static inline int normalKeyInput(int ch) {
 
         // 프로세스 창 토글
         case 'p':
+        case 'P':
             state = PROCESS_WIN;
             break;
 
@@ -493,17 +494,17 @@ void mainLoop(void) {
                     } else if (ch == '\n') {
                         switch (selectionWindowGetSel()) {
                             case 0:  // Kill
-                                if (kill(selectionPid, SIGKILL) == -1) {
-                                    displayBottomMsg("Failed to kill process", FRAME_PER_SECOND);
-                                } else {
-                                    displayBottomMsg("Sucessfully killed process", FRAME_PER_SECOND);
-                                }
-                                break;
-                            case 1:  // Stop
                                 if (kill(selectionPid, SIGTERM) == -1) {
                                     displayBottomMsg("Failed to terminate process", FRAME_PER_SECOND);
                                 } else {
                                     displayBottomMsg("Sucessfully terminateed process", FRAME_PER_SECOND);
+                                }
+                                break;
+                            case 1:  // Stop
+                                if (kill(selectionPid, SIGKILL) == -1) {
+                                    displayBottomMsg("Failed to kill process", FRAME_PER_SECOND);
+                                } else {
+                                    displayBottomMsg("Sucessfully killed process", FRAME_PER_SECOND);
                                 }
                                 break;
                             case 2:  // Cancel
@@ -709,7 +710,7 @@ void mainLoop(void) {
                     getSelectedProcess(&selectionPid, pathBuf, sizeof(pathBuf));
                     snprintf(tmpBuf, sizeof(tmpBuf) - 1, "KILL or STOP %.8s[%jd]?", pathBuf, (intmax_t)selectionPid);
                     tmpBuf[sizeof(tmpBuf) - 1] = '\0';
-                    showSelectionWindow(tmpBuf, 3, "Kill", "Stop", "Cancel");
+                    showSelectionWindow(tmpBuf, 3, "Stop", "Kill", "Cancel");
                     prevState = PROCESS_TERM_POPUP;
                 }
                 updateProcessWindow();
