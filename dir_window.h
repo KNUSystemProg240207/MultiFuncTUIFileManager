@@ -1,10 +1,8 @@
-#ifndef __DIR_WINDOW_H_INCLUDED__
-#define __DIR_WINDOW_H_INCLUDED__
+#ifndef _DIR_WINDOW_H_INCLUDED_
+#define _DIR_WINDOW_H_INCLUDED_
 
-#include <curses.h>
 #include <pthread.h>
-#include <string.h>
-#include <sys/stat.h>
+#include <stddef.h>
 
 #include "dir_listener.h"
 #include "file_operator.h"
@@ -23,8 +21,6 @@
 #define SORT_SIZE_SHIFT 2
 // 날짜 정렬 상태를 위한 비트 쉬프트
 #define SORT_DATE_SHIFT 4
-
-typedef struct _DirEntry DirEntry;
 
 /**
  * 새 폴더 표시 창 초기화 (생성)
@@ -75,13 +71,6 @@ void selectNextWindow(void);
  * @return 성공: 0, 창 개수 범위 벗어남: -1
  */
 int setDirWinCnt(int count);
-
-/**
- * 현재 창의 선택된 폴더 Index 리턴
- *
- * @return 폴더 선택됨: (현재 선택의 Index), 폴더 아님: -1
- */
-ssize_t getCurrentSelectedDirectory(void);
 
 /**
  * 현재 창의 선택된 item 정보 리턴

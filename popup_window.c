@@ -1,6 +1,7 @@
 #include <curses.h>
 #include <panel.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "colors.h"
 #include "config.h"
@@ -35,7 +36,7 @@ void initPopupWindow(void) {
     hide_panel(popupWindowPanel);
 }
 
-void showPopupWindow(char *title) {
+void showPopupWindow(const char *title) {
     werase(popupWindow);  // 이전 내용 삭제
     if (title != NULL) {
         strncpy(popupTitleBuf, title, MAX_POPUP_TITLE_LEN);

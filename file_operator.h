@@ -1,7 +1,8 @@
-#ifndef __FILE_OPERATOR_H_INCLUDED__
-#define __FILE_OPERATOR_H_INCLUDED__
+#ifndef _FILE_OPERATOR_H_INCLUDED_
+#define _FILE_OPERATOR_H_INCLUDED_
 
 #include <pthread.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <sys/stat.h>
 
@@ -9,11 +10,19 @@
 #include "thread_commons.h"
 
 
-#define PROGRESS_COPY (1 << 10)
-#define PROGRESS_MOVE (2 << 10)
-#define PROGRESS_DELETE (3 << 10)
-#define PROGRESS_BITS (3 << 10)
-#define PROGRESS_PERCENT_START 1
+#define PROGRESS_PREV_CP (1 << 10)
+#define PROGRESS_PREV_MV (2 << 10)
+#define PROGRESS_PREV_RM (3 << 10)
+#define PROGRESS_PREV_MKDIR (4 << 10)
+#define PROGRESS_PREV_MASK (7 << 10)
+#define PROGRESS_PREV_FAIL (1 << 13)
+
+#define PROGRESS_OP_CP (1 << 7)
+#define PROGRESS_OP_MV (2 << 7)
+#define PROGRESS_OP_RM (3 << 7)
+#define PROGRESS_OP_MKDIR (4 << 7)
+#define PROGRESS_OP_MASK (7 << 7)
+#define PROGRESS_PERCENT_START 0
 #define PROGRESS_PERCENT_MASK (0x7f << PROGRESS_PERCENT_START)
 
 
@@ -24,10 +33,11 @@ typedef enum _FileOperation {
     MKDIR
 } FileOperation;
 
-typedef struct _SrcDstFile {
+typedef struct _SrcDstInfo {
     dev_t devNo;
+    mode_t mode;
     int dirFd;
-    char name[NAME_MAX];
+    char name[NAME_MAX + 1];
     size_t fileSize;
 } SrcDstInfo;
 

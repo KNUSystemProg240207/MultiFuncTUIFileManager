@@ -7,7 +7,6 @@
 #include <stdlib.h>
 
 #include "commons.h"
-#include "config.h"
 #include "thread_commons.h"
 
 

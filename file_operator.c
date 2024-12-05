@@ -7,6 +7,7 @@
 #include "config.h"
 #include "file_functions.h"
 #include "file_operator.h"
+#include "thread_commons.h"
 
 
 static unsigned int threadCnt = 0;  // 생성된 Thread 개수
@@ -62,7 +63,7 @@ int fileOperator(void *argsPtr) {
             // DELETE: dst.dirFd 유효하지 않음 -> close()하면 안 됨
             break;
         case MKDIR:
-            mkdirat(command.src.dirFd, command.src.name, 0755);
+            makeDirectory(&command.src, args->progressInfo);
             // MKDIR: dst.dirFd 유효하지 않음 -> close()하면 안 됨
             break;
     }

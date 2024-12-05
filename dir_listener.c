@@ -8,14 +8,13 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "commons.h"
 #include "config.h"
 #include "dir_entry_utils.h"
 #include "dir_listener.h"
 #include "thread_commons.h"
 
 static unsigned int threadCnt = 0;  // 생성된 Thread 개수
-extern mode_t directoryOpenArgs;  // main.c 참조
+extern int directoryOpenArgs;  // main.c 참조
 
 /**
  * (Thread의 loop 함수) 폴더 정보 반복해서 가져옴
@@ -84,12 +83,18 @@ int dirListener(void *argsPtr) {
 
     // 폴더 변경 처리
     pthread_mutex_lock(&args->dirMutex);  // 현재 Directory 보호 Mutex 획득
-    if (changeDirRequested)
-        changeDir(&args->currentDir, args->newCwdPath);
+    if (changeDirRequested) {
+        if (changeDir(&args->currentDir, args->newCwdPath) == -1) {
+            pthread_mutex_lock(&args->commonArgs.statusMutex);
+            args->commonArgs.statusFlags |= DIRLISTENER_FLAG_CHDIR_FAIL;
+            pthread_mutex_unlock(&args->commonArgs.statusMutex);
+        }
+    }
 
     // 현재 폴더 내용 가져옴
     pthread_mutex_lock(&args->bufMutex);  // 결과값 보호 Mutex 획득
     readItems = listEntries(args->currentDir, args->dirEntries, MAX_DIR_ENTRIES);  // 내용 가져오기
+    pthread_mutex_unlock(&args->dirMutex);  // 현재 Directory 보호 Mutex 해제
     if (readItems == -1) {
         pthread_mutex_unlock(&args->bufMutex);  // 결과값 보호 Mutex 해제
         return -1;
@@ -97,7 +102,6 @@ int dirListener(void *argsPtr) {
     if (readItems == 0)
         readItems = 0;
     args->totalReadItems = readItems;
-    pthread_mutex_unlock(&args->dirMutex);  // 현재 Directory 보호 Mutex 해제
 
     applySorting(args->dirEntries, args->commonArgs.statusFlags, readItems);  // 불러온 목록 정렬
 
@@ -156,7 +160,7 @@ int changeDir(DIR **dir, char *dirToMove) {
     // (주의: 전달한 fdParent 또한 별도로 close()하면 안 됨: DIR 내부에서 사용)
     DIR *result;
     result = fdopendir(fdParent);
-    if (!result)  // 실패 시 -> -1 리턴, 종료
+    if (result == NULL)  // 실패 시 -> -1 리턴, 종료
         return -1;
     *dir = result;
 

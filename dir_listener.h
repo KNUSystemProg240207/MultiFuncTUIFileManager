@@ -1,23 +1,24 @@
-#ifndef __DIR_LISTENER_H_INCLUDED__
-#define __DIR_LISTENER_H_INCLUDED__
+#ifndef _DIR_LISTENER_H_INCLUDED_
+#define _DIR_LISTENER_H_INCLUDED_
 
 #include <dirent.h>
 #include <pthread.h>
-#include <stdbool.h>
+#include <stddef.h>
 #include <sys/stat.h>
 
 #include "config.h"
-#include "dir_entry_utils.h"
 #include "thread_commons.h"
 
 
-#define DIRLISTENER_FLAG_CHANGE_DIR (1 << THREAD_FLAG_MSB)  // 디렉터리 변경 요청
+#define DIRLISTENER_FLAG_CHANGE_DIR (1 << (THREAD_FLAG_MSB + 1))  // 디렉터리 변경 요청
 
-#define DIRLISTENER_FLAG_SORT_NAME (0b00 << (THREAD_FLAG_MSB + 1))  // 정렬 기준: 이름
-#define DIRLISTENER_FLAG_SORT_SIZE (0b01 << (THREAD_FLAG_MSB + 1))  // 정렬 기준: 크기
-#define DIRLISTENER_FLAG_SORT_DATE (0b10 << (THREAD_FLAG_MSB + 1))  // 정렬 기준: 날짜
-#define DIRLISTENER_FLAG_SORT_CRITERION_MASK (0b11 << (THREAD_FLAG_MSB + 1))  // 정렬 기준 마스크
-#define DIRLISTENER_FLAG_SORT_REVERSE (1 << (THREAD_FLAG_MSB + 3))  // 내림차순 정렬
+#define DIRLISTENER_FLAG_SORT_NAME (0b00 << (THREAD_FLAG_MSB + 2))  // 정렬 기준: 이름
+#define DIRLISTENER_FLAG_SORT_SIZE (0b01 << (THREAD_FLAG_MSB + 2))  // 정렬 기준: 크기
+#define DIRLISTENER_FLAG_SORT_DATE (0b10 << (THREAD_FLAG_MSB + 2))  // 정렬 기준: 날짜
+#define DIRLISTENER_FLAG_SORT_CRITERION_MASK (0b11 << (THREAD_FLAG_MSB + 2))  // 정렬 기준 마스크
+#define DIRLISTENER_FLAG_SORT_REVERSE (1 << (THREAD_FLAG_MSB + 4))  // 내림차순 정렬
+
+#define DIRLISTENER_FLAG_CHDIR_FAIL (1 << (THREAD_FLAG_MSB + 5))  // 폴더 변경 실패
 
 
 /**

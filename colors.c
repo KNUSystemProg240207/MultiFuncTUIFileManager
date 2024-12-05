@@ -1,8 +1,8 @@
+#include <curses.h>
 #include <stdbool.h>
-#include <stdlib.h>
+#include <stdio.h>
 
 #include "colors.h"
-#include "commons.h"
 
 bool isColorSafe = false;
 

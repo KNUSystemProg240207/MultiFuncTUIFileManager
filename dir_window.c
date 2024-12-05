@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <panel.h>
 #include <pthread.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +13,9 @@
 #include "commons.h"
 #include "config.h"
 #include "dir_entry_utils.h"
+#include "dir_listener.h"
 #include "dir_window.h"
+#include "file_operator.h"
 
 
 /**
@@ -148,7 +151,7 @@ int updateDirWins(void) {
 
     // 각 창들 업데이트
     int eventStartPos;  // 이벤트 시작 위치
-    int i, printedLine;  // 내부 출력 for 문에서 사용할 변수
+    int i;  // 내부 출력 for 문에서 사용할 변수
     for (int winNo = 0; winNo < showingWinCnt; winNo++) {
         win = windows + winNo;
 
@@ -170,6 +173,10 @@ int updateDirWins(void) {
         if (ret != 0)
             continue;
         itemsCnt = *win->totalReadItems;  // 읽어들인 개수 가져옴
+
+        // 현재 선택이 범위 벗어난 경우 (파일 삭제 등으로 인한) -> 범위 안으로 보내기
+        if (win->currentPos >= itemsCnt - 1)
+            win->currentPos = itemsCnt - 1;
 
         // 첫 Event의 위치 찾아내기: loop 끝나면, eventStartPos는 (event 수 * 2)에 해당하는 값 가짐 (매 event의 크기: 2-bit)
         for (eventStartPos = 0; (win->lineMovementEvent & (UINT64_C(2) << eventStartPos)) != 0; eventStartPos += 2);
@@ -220,19 +227,14 @@ int updateDirWins(void) {
         currentLine = win->currentPos - startIdx;  // 역상으로 출력할, 현재 선택된 줄
 
         // 디렉토리 출력
-        for (i = 0, printedLine = 0; i < itemsToPrint; i++) {  // 항목 있는 공간: 출력
-            // "." 항목은 출력하지 않음, line 값은 증가시키지 않음
-            if (strcmp(win->dirEntry[startIdx + i].entryName, ".") == 0) {
-                continue;  // 현재 폴더(".")는 출력하지 않음
-            }
+        for (i = 0; i < itemsToPrint; i++) {  // 항목 있는 공간: 출력
             if (winNo == currentWin && i == currentLine)  // 선택된 것: 역상으로 출력
                 wattron(win->win, A_REVERSE);
             printFileInfo(win, startIdx, i, winW);
             if (winNo == currentWin && i == currentLine)
                 wattroff(win->win, A_REVERSE);
-            printedLine++;
         }
-        wmove(win->win, printedLine + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
+        wmove(win->win, i + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
         wclrtobot(win->win);  // 커서 아래 남는 공간: 지움
         box(win->win, 0, 0);
         pthread_mutex_unlock(win->bufMutex);
@@ -476,21 +478,16 @@ int setDirWinCnt(int count) {
     return 0;
 }
 
-ssize_t getCurrentSelectedDirectory(void) {
-    bool isDirectory;
-    assert(pthread_mutex_lock(windows[currentWin].bufMutex) == 0);
-    isDirectory = (windows[currentWin].dirEntry[windows[currentWin].currentPos].statEntry.st_mode & S_IFDIR) == S_IFDIR;
-    pthread_mutex_unlock(windows[currentWin].bufMutex);
-    return isDirectory ? windows[currentWin].currentPos : -1;
-}
-
 SrcDstInfo getCurrentSelectedItem(void) {
     DirWin *currentWinArgs = windows + currentWin;
     size_t currentSelection = currentWinArgs->currentPos;
     assert(pthread_mutex_lock(currentWinArgs->bufMutex) == 0);
+    struct stat *statEntry = &currentWinArgs->dirEntry[currentSelection].statEntry;
     SrcDstInfo result = {
-        .devNo = currentWinArgs->dirEntry[currentSelection].statEntry.st_dev,
-        .fileSize = currentWinArgs->dirEntry[currentSelection].statEntry.st_size
+        .dirFd = -1,  // Directory is unknown -> Prevent bug
+        .mode = statEntry->st_mode,
+        .devNo = statEntry->st_dev,
+        .fileSize = statEntry->st_size
     };
     strcpy(result.name, currentWinArgs->dirEntry[currentSelection].entryName);
     pthread_mutex_unlock(currentWinArgs->bufMutex);

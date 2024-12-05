@@ -5,7 +5,9 @@
       "includePath": [
         "${workspaceFolder}/**"
       ],
-      "defines": [],
+      "defines": [
+        "_GNU_SOURCE", "_FILE_OFFSET_BITS=64"
+      ],
       "compilerPath": "/usr/bin/gcc",
       "cStandard": "gnu99",
       "cppStandard": "c++17",

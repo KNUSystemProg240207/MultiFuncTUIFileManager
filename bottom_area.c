@@ -1,11 +1,9 @@
 #include <assert.h>
 #include <curses.h>
 #include <panel.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "bottom_area.h"
-#include "commons.h"
 #include "config.h"
 #include "file_operator.h"
 
@@ -92,7 +90,7 @@ bool checkAndResizeArea(int *newAreaWidth) {
     return true;
 }
 
-void displayBottomMsg(char *msg, int framesToShow) {
+void displayBottomMsg(const char *msg, int framesToShow) {
     strncpy(msgBuf, msg, MAX_BOTTOMBOX_MSG_LEN);
     msgBuf[MAX_BOTTOMBOX_MSG_LEN] = '\0';
     msgLen = strlen(msgBuf);
@@ -126,23 +124,23 @@ void displayManual(int screenW) {
     const char *manual1, *manual2;
 
     // 창 크기에 따라 출력 내용 결정
-    if (screenW >= 121) {  // 전체 출력 7열
-        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process   [w] NameSort   [e] SizeSort";
-        manual2 = "[< / >] Switch   [  ^v   ] Paste        [^/] Move to Path   [Enter ] Open     [q] Quit      [r] DateSort";
+    if (screenW >= 125) {  // 전체 출력 7열
+        manual1 = "[^ / v] Move     [^c / ^x] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process   [w] NameSort   [ e] SizeSort";
+        manual2 = "[< / >] Switch   [  ^v   ] Paste        [^/] Move to Path   [Enter ] Open     [q] Quit      [r] DateSort   [^n] Create Folder";
     } else if (screenW >= 106) {  // 6열
-        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process   [w] NameSort";
+        manual1 = "[^ / v] Move     [^c / ^x] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process   [w] NameSort";
         manual2 = "[< / >] Switch   [  ^v   ] Paste        [^/] Move to Path   [Enter ] Open     [q] Quit      [r] DateSort";
     } else if (screenW >= 91) {  // 5열
-        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process";
+        manual1 = "[^ / v] Move     [^c / ^x] Copy / Cut   [F2] Rename         [Delete] Delete   [p] Process";
         manual2 = "[< / >] Switch   [  ^v   ] Paste        [^/] Move to Path   [Enter ] Open     [q] Quit";
     } else if (screenW >= 77) {  // 4열
-        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut   [F2] Rename         [Delete] Delete";
+        manual1 = "[^ / v] Move     [^c / ^x] Copy / Cut   [F2] Rename         [Delete] Delete";
         manual2 = "[< / >] Switch   [  ^v   ] Paste        [^/] Move to Path   [Enter ] Open";
     } else if (screenW >= 59) {  // 3열
-        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut   [F2] Rename";
+        manual1 = "[^ / v] Move     [^c / ^x] Copy / Cut   [F2] Rename";
         manual2 = "[< / >] Switch   [  ^v   ] Paste        [^/] Move to Path";
     } else {  // 최소 출력 2열
-        manual1 = "[^ / v] Move     [^c / ^v] Copy / Cut";
+        manual1 = "[^ / v] Move     [^c / ^x] Copy / Cut";
         manual2 = "[< / >] Switch   [  ^v   ] Paste";
     }
 
@@ -178,16 +176,16 @@ int displayProgress(FileProgressInfo *infos, int winWidth) {
     int runningWins = 0;
     for (int i = 0; i < MAX_FILE_OPERATORS; i++) {
         pthread_mutex_lock(&infos[i].flagMutex);
-        switch (infos[i].flags & PROGRESS_BITS) {
-            case PROGRESS_COPY:
+        switch (infos[i].flags & PROGRESS_OP_MASK) {
+            case PROGRESS_OP_CP:
                 operation = 'C';
                 runningWins++;
                 break;
-            case PROGRESS_MOVE:
+            case PROGRESS_OP_MV:
                 operation = 'M';
                 runningWins++;
                 break;
-            case PROGRESS_DELETE:
+            case PROGRESS_OP_RM:
                 operation = 'D';
                 runningWins++;
                 break;

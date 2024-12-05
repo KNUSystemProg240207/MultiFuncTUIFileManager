@@ -1,7 +1,7 @@
-#ifndef __COLORS_H_INCLUDED__
-#define __COLORS_H_INCLUDED__
+#ifndef _COLORS_H_INCLUDED_
+#define _COLORS_H_INCLUDED_
 
-#include <ncurses.h>
+#include <curses.h>
 
 typedef enum {
     NONE__,

@@ -35,7 +35,7 @@ void initSelectionWindow(void) {
     hide_panel(selectionPanel);
 }
 
-void showSelectionWindow(char *title, int selCnt, ...) {
+void showSelectionWindow(const char *title, int selCnt, ...) {
     if (title != NULL) {
         strncpy(titleBuf, title, MAX_SELECTION_TITLE_LEN);
         titleBuf[MAX_SELECTION_TITLE_LEN] = '\0';

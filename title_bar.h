@@ -1,8 +1,8 @@
-#ifndef __TITLE_BAR_H_INCLUDED__
-#define __TITLE_BAR_H_INCLUDED__
+#ifndef _TITLE_BAR_H_INCLUDED_
+#define _TITLE_BAR_H_INCLUDED_
 
 #include <curses.h>
-
+#include <stddef.h>
 
 /**
  * 화면 상단 제목 Window 초기화
@@ -22,7 +22,6 @@ void delTitleBar(void);
  *
  * @param cwd 현재 작업 디렉토리 경로
  */
-void updateTitleBar(char *cwd, size_t cwdLen);
-
+void updateTitleBar(const char *cwd, size_t cwdLen);
 
 #endif

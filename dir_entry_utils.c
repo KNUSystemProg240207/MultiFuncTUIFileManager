@@ -1,9 +1,12 @@
+#include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 
 #include "config.h"
 #include "dir_entry_utils.h"
 #include "dir_window.h"
-#include "thread_commons.h"
 
 
 /**
@@ -61,7 +64,7 @@ static int cmpDateAsc(const void *a, const void *b);
 static int cmpDateDesc(const void *a, const void *b);
 
 
-char *truncateFileName(char *fileName) {
+char *truncateFileName(const char *fileName) {
     static char nameBuf[NAME_MAX + 1];
     size_t len = strlen(fileName);
 

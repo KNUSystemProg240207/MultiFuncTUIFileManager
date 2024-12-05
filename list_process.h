@@ -1,7 +1,8 @@
-#ifndef __PROC_THREAD_H_INCLUDED__
-#define __PROC_THREAD_H_INCLUDED__
+#ifndef _PROC_THREAD_H_INCLUDED_
+#define _PROC_THREAD_H_INCLUDED_
 
 #include <pthread.h>
+#include <stddef.h>
 
 #include "thread_commons.h"
 
