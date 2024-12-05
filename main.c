@@ -212,8 +212,6 @@ static inline int normalKeyInput(int ch) {
     };
     static SrcDstInfo currentSelection;  // 선택 항목 확인용
 
-    char tmp[256];
-
     int cwdFd;  // 현재 선택된 창의 Working Directory File Descriptor
     DIR *newCwd;
 
@@ -439,11 +437,6 @@ static inline int normalKeyInput(int ch) {
         case 'q':
         case 'Q':
             return 1;  // Main Loop 빠져나감
-
-        default:
-            sprintf(tmp, "0x%x 0x%x", ch, CTRL_KEY(ch));
-            displayBottomMsg(tmp, FRAME_PER_SECOND / 2);
-            break;
     }
     return 0;
 }

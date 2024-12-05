@@ -151,7 +151,7 @@ int updateDirWins(void) {
 
     // 각 창들 업데이트
     int eventStartPos;  // 이벤트 시작 위치
-    int i, printedLine;  // 내부 출력 for 문에서 사용할 변수
+    int i;  // 내부 출력 for 문에서 사용할 변수
     for (int winNo = 0; winNo < showingWinCnt; winNo++) {
         win = windows + winNo;
 
@@ -227,19 +227,14 @@ int updateDirWins(void) {
         currentLine = win->currentPos - startIdx;  // 역상으로 출력할, 현재 선택된 줄
 
         // 디렉토리 출력
-        for (i = 0, printedLine = 0; i < itemsToPrint; i++) {  // 항목 있는 공간: 출력
-            // "." 항목은 출력하지 않음, line 값은 증가시키지 않음
-            if (strcmp(win->dirEntry[startIdx + i].entryName, ".") == 0) {
-                continue;  // 현재 폴더(".")는 출력하지 않음
-            }
+        for (i = 0; i < itemsToPrint; i++) {  // 항목 있는 공간: 출력
             if (winNo == currentWin && i == currentLine)  // 선택된 것: 역상으로 출력
                 wattron(win->win, A_REVERSE);
             printFileInfo(win, startIdx, i, winW);
             if (winNo == currentWin && i == currentLine)
                 wattroff(win->win, A_REVERSE);
-            printedLine++;
         }
-        wmove(win->win, printedLine + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
+        wmove(win->win, i + 3, 0);  // 커서 위치 이동, 이걸 넣어야 맨 아랫줄 공백을 wclrtobot로 안 지움
         wclrtobot(win->win);  // 커서 아래 남는 공간: 지움
         box(win->win, 0, 0);
         pthread_mutex_unlock(win->bufMutex);

@@ -10,15 +10,15 @@
 #include "thread_commons.h"
 
 
-#define DIRLISTENER_FLAG_CHANGE_DIR (1 << THREAD_FLAG_MSB)  // 디렉터리 변경 요청
+#define DIRLISTENER_FLAG_CHANGE_DIR (1 << (THREAD_FLAG_MSB + 1))  // 디렉터리 변경 요청
 
-#define DIRLISTENER_FLAG_SORT_NAME (0b00 << (THREAD_FLAG_MSB + 1))  // 정렬 기준: 이름
-#define DIRLISTENER_FLAG_SORT_SIZE (0b01 << (THREAD_FLAG_MSB + 1))  // 정렬 기준: 크기
-#define DIRLISTENER_FLAG_SORT_DATE (0b10 << (THREAD_FLAG_MSB + 1))  // 정렬 기준: 날짜
-#define DIRLISTENER_FLAG_SORT_CRITERION_MASK (0b11 << (THREAD_FLAG_MSB + 1))  // 정렬 기준 마스크
-#define DIRLISTENER_FLAG_SORT_REVERSE (1 << (THREAD_FLAG_MSB + 3))  // 내림차순 정렬
+#define DIRLISTENER_FLAG_SORT_NAME (0b00 << (THREAD_FLAG_MSB + 2))  // 정렬 기준: 이름
+#define DIRLISTENER_FLAG_SORT_SIZE (0b01 << (THREAD_FLAG_MSB + 2))  // 정렬 기준: 크기
+#define DIRLISTENER_FLAG_SORT_DATE (0b10 << (THREAD_FLAG_MSB + 2))  // 정렬 기준: 날짜
+#define DIRLISTENER_FLAG_SORT_CRITERION_MASK (0b11 << (THREAD_FLAG_MSB + 2))  // 정렬 기준 마스크
+#define DIRLISTENER_FLAG_SORT_REVERSE (1 << (THREAD_FLAG_MSB + 4))  // 내림차순 정렬
 
-#define DIRLISTENER_FLAG_CHDIR_FAIL (1 << (THREAD_FLAG_MSB + 4))  // 폴더 변경 실패
+#define DIRLISTENER_FLAG_CHDIR_FAIL (1 << (THREAD_FLAG_MSB + 5))  // 폴더 변경 실패
 
 
 /**
